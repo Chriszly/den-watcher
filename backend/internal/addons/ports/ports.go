@@ -151,7 +151,7 @@ func Extras(ports []Port, ok bool) []metrics.Extra {
 		Descriptions: map[string]string{
 			"de": "Die TCP- und UDP-Ports, auf denen Programme des Geräts lauschen, mit den Adressen dazu. 0.0.0.0 und :: stehen für alle Adressen.",
 			"fr": "Les ports TCP et UDP sur lesquels les programmes de la machine écoutent, avec leurs adresses. 0.0.0.0 et :: signifient toutes les adresses.",
-			"es": "Los puertos TCP y UDP en los que escuchan los programas del equipo, con sus direcciones. 0.0.0.0 y :: significan todas las direcciones.",
+			"es": "Los puertos TCP y UDP en los que escuchan los programas del equipo, con sus direcciones. 0.0.0.0 y :: significan todas las direcciones.", //nolint:misspell // Spanish
 		},
 		Items: []metrics.ExtraItem{{
 			ID:      "count",

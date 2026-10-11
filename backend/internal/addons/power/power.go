@@ -133,8 +133,8 @@ func Extras(readings []Reading) []metrics.Extra {
 		Description: "How much power the parts of the machine draw, largest first, as far as their sensors tell it.",
 		Descriptions: map[string]string{
 			"de": "Wie viel Leistung die Teile des Geräts aufnehmen, die größte zuerst, soweit ihre Sensoren es melden.",
-			"fr": "La puissance consommée par les composants de la machine, la plus forte en premier, pour autant que leurs capteurs l'indiquent.",
-			"es": "Cuánta potencia consumen las partes del equipo, la mayor primero, según lo que indican sus sensores.",
+			"fr": "La puissance consommée par les composants de la machine, la plus forte en premier, pour autant que leurs capteurs l'indiquent.", //nolint:misspell // French
+			"es": "Cuánta potencia consumen las partes del equipo, la mayor primero, según lo que indican sus sensores.",                           //nolint:misspell // Spanish
 		},
 	}
 	names := make([]string, len(readings))

@@ -493,5 +493,5 @@ const internetDescription = "The router's line to the internet: how fast it is a
 var internetDescriptions = map[string]string{
 	"de": "Die Leitung des Routers ins Internet: wie schnell sie ist und wie lange sie schon verbunden ist.",
 	"fr": "La ligne du routeur vers Internet : son débit et depuis combien de temps elle est connectée.",
-	"es": "La línea del router a Internet: su velocidad y cuánto tiempo lleva conectada.",
+	"es": "La línea del router a Internet: su velocidad y cuánto tiempo lleva conectada.", //nolint:misspell // Spanish
 }

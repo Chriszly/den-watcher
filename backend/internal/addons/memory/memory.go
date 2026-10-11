@@ -172,7 +172,7 @@ var descriptions = map[string]struct {
 		map[string]string{
 			"de": "Was der Arbeitsspeicher außer Programmen enthält: Kernel-Caches und -Pools, gemeinsamen Speicher und Seitentabellen.",
 			"fr": "Ce que la mémoire contient en dehors des programmes : caches et pools du noyau, mémoire partagée et tables de pages.",
-			"es": "Lo que contiene la memoria además de los programas: cachés y bloques del núcleo, memoria compartida y tablas de páginas.",
+			"es": "Lo que contiene la memoria además de los programas: cachés y bloques del núcleo, memoria compartida y tablas de páginas.", //nolint:misspell // Spanish
 		},
 	},
 	"memory-committed": {
@@ -180,7 +180,7 @@ var descriptions = map[string]struct {
 		map[string]string{
 			"de": "Wie viel Speicher den Programmen zugesagt ist; das kann mehr sein, als vorhanden ist.",
 			"fr": "La mémoire promise aux programmes, qui peut dépasser celle disponible.",
-			"es": "Cuánta memoria se ha prometido a los programas, que puede ser más de la que hay.",
+			"es": "Cuánta memoria se ha prometido a los programas, que puede ser más de la que hay.", //nolint:misspell // Spanish
 		},
 	},
 	"memory-writeback": {
@@ -196,7 +196,7 @@ var descriptions = map[string]struct {
 		map[string]string{
 			"de": "Wie oft pro Sekunde Programme auf Speicher zugreifen, der ihnen noch nicht zugeordnet ist. Die meisten werden ohne Datenträger erledigt.",
 			"fr": "Combien de fois par seconde les programmes accèdent à de la mémoire qui ne leur est pas encore attribuée. La plupart sont traités sans le disque.",
-			"es": "Cuántas veces por segundo los programas acceden a memoria que aún no tienen asignada. La mayoría se resuelven sin el disco.",
+			"es": "Cuántas veces por segundo los programas acceden a memoria que aún no tienen asignada. La mayoría se resuelven sin el disco.", //nolint:misspell // Spanish
 		},
 	},
 	"memory-disk": {

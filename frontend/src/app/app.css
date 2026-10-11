@@ -23,36 +23,34 @@ app-alerts-button {
   margin-left: auto;
 }
 
+app-mascot {
+  flex: none;
+  padding: 0.25rem;
+}
+
 h1 {
   margin: 0;
   font-size: 1.5rem;
 }
 
-.mascot,
+/* The sidebar shows beside the page on wide screens; on narrow ones this button opens it. */
 .menu {
   display: flex;
   flex: none;
-  padding: 0.25rem;
+  padding: 0.5rem;
   border: none;
   border-radius: 50%;
   background: none;
+  color: var(--mat-sys-on-surface);
   cursor: pointer;
 }
 
-.mascot:hover,
 .menu:hover {
   background: var(--mat-sys-surface-container-high);
 }
 
-.mascot:focus-visible,
 .menu:focus-visible {
   outline: 2px solid var(--mat-sys-primary);
-}
-
-/* The sidebar shows beside the page on wide screens; on narrow ones this button opens it. */
-.menu {
-  padding: 0.5rem;
-  color: var(--mat-sys-on-surface);
 }
 
 .menu > svg {

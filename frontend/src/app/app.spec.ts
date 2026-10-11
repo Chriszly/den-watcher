@@ -5,10 +5,6 @@ import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 
 describe('App', () => {
-  afterEach(() => {
-    document.documentElement.style.colorScheme = '';
-  });
-
   it('shows the page title', () => {
     TestBed.configureTestingModule({
       imports: [App],
@@ -29,25 +25,21 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
-    const mascot = (fixture.nativeElement as HTMLElement).querySelector(
-      'header button app-mascot svg',
-    );
+    const mascot = (fixture.nativeElement as HTMLElement).querySelector('header app-mascot svg');
     expect(mascot).not.toBeNull();
   });
 
-  it('switches the theme when the mascot is clicked', () => {
+  it('has the light and dark switch next to the languages', () => {
     TestBed.configureTestingModule({
       imports: [App],
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
-    const button = (fixture.nativeElement as HTMLElement).querySelector('header button');
 
-    (button as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    expect(document.documentElement.style.colorScheme).toBe('dark');
-    expect(button?.getAttribute('aria-label')).toBe('Switch to light mode');
+    const toggle = (fixture.nativeElement as HTMLElement).querySelector(
+      'header app-theme-toggle + app-language-switcher',
+    );
+    expect(toggle).not.toBeNull();
   });
 });

@@ -23,8 +23,12 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            // The texts are read as data from the payload and the API; they never reach a shell.
-            const body = context.payload.pull_request.body || '';
+            // The texts are read as data from the API; they never reach a shell. The
+            // PR is fetched fresh, as a re-run of an older run would otherwise
+            // check the title and description it started with.
+            const pull_number = context.payload.pull_request.number;
+            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number });
+            const body = pr.body || '';
             // What GitHub turns into a link: a URL with a scheme, or one starting with www.
             const link = /\b(?:[a-z][a-z0-9+.-]*:\/\/|www\.)[^\s<>()[\]"'`]+/gi;
             const host = (url) => {
@@ -49,11 +53,11 @@ jobs:
 
             const commits = await github.paginate(github.rest.pulls.listCommits, {
               ...context.repo,
-              pull_number: context.payload.pull_request.number,
+              pull_number,
               per_page: 100
             });
             const hits = [
-              ...linksOutside(context.payload.pull_request.title, 'title'),
+              ...linksOutside(pr.title, 'title'),
               ...linksOutside(body, 'description'),
               ...commits.flatMap(c => linksOutside(c.commit.message, `commit ${c.sha.slice(0, 7)}`))
             ];

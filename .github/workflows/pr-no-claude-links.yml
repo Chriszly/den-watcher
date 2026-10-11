@@ -1,0 +1,31 @@
+name: PR No Claude Links
+
+on:
+  pull_request:
+    # "edited" re-runs the check when the description changes, so removing the
+    # link turns it green again.
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  no-claude-links:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR description has no claude.ai links
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            // The body comes from the event payload as data; it never reaches a shell.
+            const body = context.payload.pull_request.body || '';
+            // claude.ai and any subdomain of it, but not names like notclaude.ai.
+            const link = /\b(?:[a-z0-9-]+\.)*claude\.ai\b/gi;
+            const hits = body.split(/\r?\n/).flatMap((line, i) =>
+              [...line.matchAll(link)].map(m => `line ${i + 1}: ${m[0]}`));
+
+            if (hits.length > 0) {
+              core.setFailed(`PR description links to claude.ai (see AGENTS.md, "No AI Links"); remove these and the check re-runs:\n${hits.join('\n')}`);
+            } else {
+              console.log('No claude.ai links in the PR description.');
+            }

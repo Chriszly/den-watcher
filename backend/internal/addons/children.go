@@ -7,17 +7,19 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/winservice"
 )
 
-// Children are the add-ons the den-watcher service on Windows starts as its
-// own child processes, so Task Manager shows them under den-watcher.exe and
-// they stop with it. They run in the service's own low-privilege account, as
-// they did as services of their own. The smart add-on is not one of them: it
+// Children are the add-ons the den-watcher service on Windows starts, through
+// the add-on host (see StartHost), so Task Manager shows them under
+// den-watcher.exe and they stop with it. They run in the service's own
+// low-privilege account, as they did as services of their own. The smart add-on is not one of them: it
 // needs LocalSystem, which a child of a Local Service process cannot get, so
 // it stays a service of its own.
 var Children = []string{"power", "gpu", "pressure", "kernel", "wifi", "memory", "ports", "processes", "bluetooth"}
@@ -30,6 +32,73 @@ const (
 	childRetryDelay    = 10 * time.Second
 	maxChildRetryDelay = 5 * time.Minute
 )
+
+// HostArgument is the argument that makes den-watcher the add-on host: a
+// second den-watcher.exe, started by the service, that starts the add-ons
+// as its own children (RunHost). Task Manager groups the processes a program
+// started under it only once one of them is the program itself, so without
+// the host it lists every add-on on its own line.
+const HostArgument = "addons"
+
+// StartHost starts the running program again with HostArgument when any add-on
+// of Children is installed next to it, and starts it again whenever it stops.
+// The returned function ends the host, which ends the add-ons with it, waits
+// until it has ended and removes the add-ons' reports from the add-on folder
+// dir, as a killed add-on cannot.
+func StartHost(dir string) (stop func()) {
+	if dir == "" {
+		dir = DefaultDir()
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		slog.Error("the add-ons are not started, as the program's folder is unknown", "error", err)
+		return func() {}
+	}
+	if len(installedChildren(exe)) == 0 {
+		return func() {}
+	}
+	return startHost(dir, exe, []string{HostArgument}, Children, childRetryDelay, maxChildRetryDelay)
+}
+
+// startHost runs program with args as StartHost does, and removes the
+// reports of the add-ons names once it has ended it.
+func startHost(dir, program string, args, names []string, retryDelay, maxRetryDelay time.Duration) (stop func()) {
+	keep, err := newChildGroup()
+	if err != nil {
+		// The host still runs, but may outlive a den-watcher that crashes.
+		slog.Warn("the add-on host is not tied to den-watcher's lifetime", "error", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		superviseChild(ctx, "the add-on host", retryDelay, maxRetryDelay, func(ctx context.Context) error {
+			return runChild(ctx, program, args, keep)
+		})
+	}()
+	return func() {
+		cancel()
+		<-done
+		keep.close()
+		for _, name := range names {
+			removeReport(dir, name)
+		}
+	}
+}
+
+// RunHost is the add-on host: it starts the installed add-ons, as
+// StartChildren does, and runs until den-watcher ends it, which ends the
+// add-ons too.
+func RunHost(dir string) {
+	StartChildren(dir)
+	// Go turns a user logging off Windows into SIGTERM, which would end the
+	// host and the add-ons until den-watcher started it again.
+	terms := make(chan os.Signal, 1)
+	signal.Notify(terms, syscall.SIGTERM)
+	for range terms {
+		// Ignored: den-watcher ends the host.
+	}
+}
 
 // StartChildren starts each add-on of Children that is installed next to
 // the running program, as den-watcher-<name>.exe, and starts it again
@@ -45,6 +114,12 @@ func StartChildren(dir string) (stop func()) {
 		slog.Error("the add-ons are not started, as the program's folder is unknown", "error", err)
 		return func() {}
 	}
+	return startChildren(dir, installedChildren(exe), childRetryDelay, maxChildRetryDelay)
+}
+
+// installedChildren are the programs of the add-ons of Children installed
+// next to exe.
+func installedChildren(exe string) []string {
 	var programs []string
 	for _, name := range Children {
 		program := filepath.Join(filepath.Dir(exe), "den-watcher-"+name+".exe")
@@ -52,7 +127,7 @@ func StartChildren(dir string) (stop func()) {
 			programs = append(programs, program)
 		}
 	}
-	return startChildren(dir, programs, childRetryDelay, maxChildRetryDelay)
+	return programs
 }
 
 // startChildren runs each of programs, an add-on named den-watcher-<name>
@@ -71,8 +146,8 @@ func startChildren(dir string, programs []string, retryDelay, maxRetryDelay time
 	for _, program := range programs {
 		name := childName(program)
 		wg.Go(func() {
-			superviseChild(ctx, name, retryDelay, maxRetryDelay, func(ctx context.Context) error {
-				return runChild(ctx, program, keep)
+			superviseChild(ctx, "the "+name+" add-on", retryDelay, maxRetryDelay, func(ctx context.Context) error {
+				return runChild(ctx, program, nil, keep)
 			})
 			removeReport(dir, name)
 		})
@@ -92,9 +167,10 @@ func childName(program string) string {
 	return base[len("den-watcher-"):]
 }
 
-// runChild runs program until it ends or ctx is done, which kills it.
-func runChild(ctx context.Context, program string, keep *childGroup) error {
-	cmd := exec.CommandContext(ctx, program)
+// runChild runs program with args until it ends or ctx is done, which kills
+// it.
+func runChild(ctx context.Context, program string, args []string, keep *childGroup) error {
+	cmd := exec.CommandContext(ctx, program, args...) //nolint:gosec // den-watcher itself or an add-on next to it
 	// A child of a service has no console either, so its warnings go to the
 	// event log, as they did when it was a service of its own.
 	cmd.Env = append(os.Environ(), winservice.EventLogVariable+"=1")
@@ -103,15 +179,15 @@ func runChild(ctx context.Context, program string, keep *childGroup) error {
 		return err
 	}
 	if err := keep.add(cmd.Process); err != nil {
-		slog.Warn("the add-on is not tied to den-watcher's lifetime", "program", program, "error", err)
+		slog.Warn("the program is not tied to den-watcher's lifetime", "program", program, "error", err)
 	}
 	return cmd.Wait()
 }
 
-// superviseChild calls run until ctx is done, waiting retryDelay before it
-// calls it again after it returned, twice as long after each further return
-// in a row, up to maxRetryDelay. A run that lasted maxRetryDelay or longer
-// starts the waits over.
+// superviseChild calls run, which runs the program name names, until ctx is
+// done, waiting retryDelay before it calls it again after it returned, twice
+// as long after each further return in a row, up to maxRetryDelay. A run that
+// lasted maxRetryDelay or longer starts the waits over.
 func superviseChild(ctx context.Context, name string, retryDelay, maxRetryDelay time.Duration, run func(context.Context) error) {
 	maxDelay := max(maxRetryDelay, retryDelay)
 	delay := time.Duration(0)
@@ -129,7 +205,7 @@ func superviseChild(ctx context.Context, name string, retryDelay, maxRetryDelay 
 		if err == nil {
 			err = errors.New("it ended")
 		}
-		slog.Warn(fmt.Sprintf("the %s add-on stopped; starting it again in %s", name, delay), "error", err)
+		slog.Warn(fmt.Sprintf("%s stopped; starting it again in %s", name, delay), "error", err)
 		select {
 		case <-ctx.Done():
 			return

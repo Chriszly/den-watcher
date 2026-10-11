@@ -61,11 +61,13 @@ if (-not $metrics.version) { throw 'The updated service does not report its vers
 if (Get-Service UsageControlPower -ErrorAction SilentlyContinue) { throw 'The update left the power add-on as a service of its own' }
 $service = (Get-CimInstance Win32_Service -Filter "Name = 'UsageControl'").ProcessId
 foreach ($try in 1..30) {
-    $addOn = @(Get-CimInstance Win32_Process -Filter "Name = 'den-watcher-power.exe'" | Where-Object ParentProcessId -eq $service)
+    # The service starts the add-ons through the add-on host, a den-watcher.exe of its own.
+    $hosts = @(Get-CimInstance Win32_Process -Filter "Name = 'den-watcher.exe'" | Where-Object ParentProcessId -eq $service).ProcessId
+    $addOn = @(Get-CimInstance Win32_Process -Filter "Name = 'den-watcher-power.exe'" | Where-Object { $_.ParentProcessId -in $hosts })
     if ($addOn.Count -eq 1) { break }
     Start-Sleep -Seconds 1
 }
-if ($addOn.Count -ne 1) { throw 'The update lost the power add-on, which the service should run as its child process' }
+if ($addOn.Count -ne 1) { throw 'The update lost the power add-on, which the service should run through its add-on host' }
 if (-not (Test-Path "$env:ProgramData\Usage Control\usage-control.db")) { throw 'The update lost the history' }
 if (Test-Path "$env:ProgramFiles\Usage Control") { throw 'The old program folder is still there' }
 if (Get-NetFirewallRule -DisplayName 'Usage Control' -ErrorAction SilentlyContinue) { throw 'The old firewall rule is still there' }

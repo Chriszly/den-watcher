@@ -112,6 +112,10 @@ export class Dashboard {
   protected readonly isPC = computed(() => this.devices.selected().kind === 'pc');
   /** Whether the picked device is a router, which tells only some of what a device does. */
   protected readonly isRouter = computed(() => !!this.devices.selected().router);
+  /** Whether the picked device is only checked for whether it answers, such as a printer. */
+  protected readonly isChecked = computed(() => !!this.devices.selected().checked);
+  /** Whether the picked device runs no Den-Watcher, so it tells only some of what a device does. */
+  protected readonly readsLess = computed(() => this.isRouter() || this.isChecked());
   /** Whether the backend does not connect to the picked device, as its address is the hub's own. */
   protected readonly refused = computed(() => !!this.devices.selected().refused);
   /** How long the picked device did not answer since it was added; null for this device. */
@@ -176,9 +180,9 @@ export class Dashboard {
       .subscribe((availability) => this.availability.set(availability));
   }
 
-  /** Whether the device tells its uptime: a router read over UPnP may not. */
+  /** Whether the device tells its uptime: a router read over UPnP may not, a check never does. */
   protected showsUptime(s: Snapshot): boolean {
-    return !this.isRouter() || s.uptimeSeconds > 0;
+    return !this.readsLess() || s.uptimeSeconds > 0;
   }
 
   /**

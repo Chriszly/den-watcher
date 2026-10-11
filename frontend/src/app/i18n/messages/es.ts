@@ -13,6 +13,8 @@ export const es: Messages = {
     '{device} no ha respondido últimamente. ¿Está Den-Watcher en marcha en él?',
   'dashboard.routerUnreachable':
     '{device} no ha respondido últimamente. ¿Está encendido y son correctos su dirección y su inicio de sesión?',
+  'dashboard.checkUnreachable':
+    '{device} no ha respondido últimamente. ¿Está encendido y son correctos su dirección y su puerto?',
   'dashboard.deviceRefused':
     '{device} está en una dirección del propio hub, a la que el hub no se conecta para un dispositivo añadido en la página. Quítalo con «Conservar su historial» marcado y añádelo a HUB_DEVICES con el mismo nombre.',
   'dashboard.deviceNotInUse':

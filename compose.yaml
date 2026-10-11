@@ -38,6 +38,7 @@ services:
       DEVICE_NAME: ${DEVICE_NAME:-}
       HUB_DEVICES: ${HUB_DEVICES:-}
       HUB_ROUTERS: ${HUB_ROUTERS:-}
+      HUB_CHECKS: ${HUB_CHECKS:-}
       # Written by setup-router.sh for a router that needs a login.
       ROUTER_PASSWORDS_FILE: /run/secrets/router-passwords
       RESET_PASSWORD: ${RESET_PASSWORD:-}
@@ -72,6 +73,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    # Lets the hub ping the things in HUB_CHECKS without a capability, over
+    # ICMP datagram sockets; the container's own network only. Docker sets
+    # this by default too, but older versions do not.
+    sysctls:
+      net.ipv4.ping_group_range: "0 2147483647"
 
   # The power add-on, started with COMPOSE_PROFILES=power: reads the power
   # Intel and AMD CPUs (RAPL) and the kernel's hwmon sensors report. It runs

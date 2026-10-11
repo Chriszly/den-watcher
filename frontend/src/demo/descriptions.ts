@@ -213,6 +213,15 @@ export const descriptions: Record<
       es: 'La línea del router a Internet: su velocidad y cuánto tiempo lleva conectada.',
     },
   },
+  reachability: {
+    description:
+      'How long it took to answer the hub, which checks it every 15 seconds. It runs no den-watcher, so this is all the hub knows of it.',
+    descriptions: {
+      de: 'Wie lange die Antwort an den Hub dauerte, der alle 15 Sekunden prüft. Hier läuft kein den-watcher, daher weiß der Hub nur das.',
+      fr: "Le temps de réponse au hub, qui vérifie toutes les 15 secondes. Aucun den-watcher n'y tourne, le hub ne sait donc que cela.",
+      es: 'El tiempo que tardó en responder al hub, que lo comprueba cada 15 segundos. No ejecuta den-watcher, así que es todo lo que el hub sabe.',
+    },
+  },
   bluetooth: {
     description:
       'The Bluetooth devices connected to the machine, each with its battery level or its kind.',

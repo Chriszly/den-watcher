@@ -11,6 +11,8 @@ export const fr: Messages = {
   'dashboard.deviceUnreachable': '{device} n’a pas répondu récemment. Den-Watcher y est-il lancé ?',
   'dashboard.routerUnreachable':
     '{device} n’a pas répondu récemment. Est-il allumé, et son adresse et ses identifiants sont-ils corrects ?',
+  'dashboard.checkUnreachable':
+    '{device} n’a pas répondu récemment. Est-il allumé, et son adresse et son port sont-ils corrects ?',
   'dashboard.deviceRefused':
     '{device} est à une adresse du hub lui-même, à laquelle le hub ne se connecte pas pour un appareil ajouté sur la page. Retirez-le avec « Conserver son historique » coché et ajoutez-le à HUB_DEVICES sous le même nom.',
   'dashboard.deviceNotInUse':

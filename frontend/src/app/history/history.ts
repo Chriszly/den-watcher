@@ -163,7 +163,7 @@ export class HistoryCharts {
       ...chartsOf(
         history.series,
         (key, params) => this.i18n.t(key, params),
-        !!this.devices.selected().router,
+        !!this.devices.selected().router || !!this.devices.selected().checked,
       ),
       ...extraChartsOf(history.series, history.extras ?? {}, language),
     ];

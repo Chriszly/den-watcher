@@ -51,7 +51,10 @@ type Device struct {
 	Refused bool `json:"refused,omitempty"`
 	// Router is set for a router, which the hub reads itself, as it runs
 	// no den-watcher.
-	Router  bool          `json:"router,omitempty"`
+	Router bool `json:"router,omitempty"`
+	// Checked is set for a thing the hub only checks for whether it
+	// answers, such as a printer, as it runs no den-watcher.
+	Checked bool          `json:"checked,omitempty"`
 	Metrics Collector     `json:"-"`
 	History HistoryReader `json:"-"`
 	// Availability is set for the devices the hub collects from.

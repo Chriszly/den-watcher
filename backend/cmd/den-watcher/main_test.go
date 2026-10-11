@@ -372,3 +372,19 @@ func TestRouterDevicesRefuseAShortSNMPv3Password(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestCheckDevices(t *testing.T) {
+	t.Setenv("HUB_CHECKS", "Printer=192.168.1.50:631, NAS=192.168.1.10")
+	devices, err := checkDevices()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(devices) != 2 || devices[0].ID != "printer" || devices[0].Address != "192.168.1.50:631" ||
+		devices[1].Address != "192.168.1.10" || !devices[1].Checked || devices[1].Source == nil {
+		t.Errorf("got %+v", devices)
+	}
+	t.Setenv("HUB_CHECKS", "Printer=192.168.1.50:99999")
+	if _, err := checkDevices(); err == nil || !strings.Contains(err.Error(), "HUB_CHECKS") {
+		t.Errorf("with a wrong port: %v, want an error naming HUB_CHECKS", err)
+	}
+}

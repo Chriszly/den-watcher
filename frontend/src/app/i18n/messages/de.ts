@@ -13,6 +13,8 @@ export const de: Messages = {
     '{device} hat in letzter Zeit nicht geantwortet. Läuft Den-Watcher darauf?',
   'dashboard.routerUnreachable':
     '{device} hat in letzter Zeit nicht geantwortet. Ist das Gerät eingeschaltet, und stimmen Adresse und Anmeldung?',
+  'dashboard.checkUnreachable':
+    '{device} hat in letzter Zeit nicht geantwortet. Ist das Gerät eingeschaltet, und stimmen Adresse und Port?',
   'dashboard.deviceRefused':
     '{device} hat eine Adresse des Hubs selbst, zu der sich der Hub bei einem auf der Seite hinzugefügten Gerät nicht verbindet. Entferne es mit angehaktem „Verlauf behalten“ und trage es unter demselben Namen in HUB_DEVICES ein.',
   'dashboard.deviceNotInUse':

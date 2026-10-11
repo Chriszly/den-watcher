@@ -87,3 +87,23 @@ func TestCheckFixedRefusesTheSameNameTwice(t *testing.T) {
 		t.Error("a router with the name of the hub itself was taken")
 	}
 }
+
+func TestACheckIsNoRouter(t *testing.T) {
+	source := &fakeRouter{}
+	source.up.Store(true)
+	check, err := NewCheck("Printer", "192.168.1.50:631", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !check.Checked || check.ID != "printer" {
+		t.Fatalf("got %+v", check)
+	}
+	h := openTestHub(t, openTestStore(t), []Device{check})
+	remote := h.Remotes()[0]
+	if remote.Router() || !remote.Checked {
+		t.Errorf("Router() = %v, Checked = %v; want a check that is no router", remote.Router(), remote.Checked)
+	}
+	if _, err := NewCheck(" ", "192.168.1.50", source); err == nil {
+		t.Error("NewCheck() took an empty name")
+	}
+}

@@ -16,8 +16,8 @@
 # reduced user interface leave the tray icon running, and that a full repair
 # keeps the add-ons and closes the tray icon, checks a bad remembered
 # UPDATE_CHECK is refused with the repair that fixes it, which does, but does
-# not hold up the uninstall, uninstalls it with DELETE_DATA=1 and checks it
-# deletes the data folder, then installs it with the defaults
+# not hold up the uninstall, uninstalls it with DELETE_HISTORY=1 and checks it
+# leaves no data folder, then installs it with the defaults
 # and checks it only serves the usage data, and last installs it with a
 # router and its password, checks the service encrypted the password and
 # deleted it from the registry, and checks that an update with WEBSITE=0
@@ -413,8 +413,8 @@ Assert-ServiceSetting UPDATE_CHECK 'true'
 if ((Get-ItemPropertyValue 'HKLM:\SOFTWARE\Usage Control' UPDATE_CHECK) -ne 'true') { throw 'The repair did not rewrite the remembered UPDATE_CHECK' }
 Set-ItemProperty 'HKLM:\SOFTWARE\Usage Control' -Name UPDATE_CHECK -Value 'no'
 
-Write-Host 'Uninstalling with DELETE_DATA=1'
-Invoke-Installer "/x `"$NewerMsi`" DELETE_DATA=1"
+Write-Host 'Uninstalling with DELETE_HISTORY=1'
+Invoke-Installer "/x `"$NewerMsi`" DELETE_HISTORY=1"
 if (Get-Service UsageControl -ErrorAction SilentlyContinue) { throw 'The service is still installed' }
 if (Get-Service UsageControlPower -ErrorAction SilentlyContinue) { throw 'The power add-on is still installed' }
 if (Get-Service UsageControlGPU -ErrorAction SilentlyContinue) { throw 'The gpu add-on is still installed' }
@@ -483,6 +483,6 @@ if ($status -ne 404) { throw "The website answered $status after the update with
 if (-not (Test-Path $protected)) { throw 'The update deleted the stored router password' }
 Invoke-Installer "/x `"$NewerMsi`""
 if (Test-Path $protected) { throw 'Uninstalling left the router password behind' }
-if (-not (Test-Path "$env:ProgramData\Usage Control\usage-control.db")) { throw 'Uninstalling without DELETE_DATA=1 deleted the history' }
+if (-not (Test-Path "$env:ProgramData\Usage Control\usage-control.db")) { throw 'Uninstalling without DELETE_HISTORY=1 deleted the history' }
 
 Write-Host 'The installer works'

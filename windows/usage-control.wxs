@@ -76,9 +76,12 @@
                     start and deletes them from the registry. Routers it
                     already has a password for keep it without this, until
                     uninstalling deletes them
-    DELETE_DATA     1 when uninstalling to also delete the history, that is
-                    the whole data folder (default: kept, so reinstalling
-                    keeps the history); the Remove page asks for it
+  Uninstall options (msiexec /x usage-control.msi DELETE_HISTORY=1), which the
+  Remove page of the installer asks for, each with a box of its own:
+    DELETE_HISTORY  1 to also delete the history (default: kept, so
+                    reinstalling keeps it)
+    DELETE_ROUTER_PASSWORDS  0 to keep the encrypted router passwords
+                    (default 1: deleted)
     RETENTION_DAYS  with WEBSITE=1, days of history to keep (default 30)
     HISTORY_MAX_ENTRIES  with WEBSITE=1, how many disks, sensors, network cards
                     and GPUs each the history keeps per device (default 64)
@@ -243,26 +246,35 @@
     </InstallExecuteSequence>
 
     <!--
-      Uninstalling deletes the encrypted router passwords and the add-on
-      reports from the data folder, once the services are stopped, and keeps
-      the history, unless DELETE_DATA=1 (the box on the Remove page, see
-      RemoveDataDlg), which deletes the whole folder. An update also
-      uninstalls the version before it (UPGRADINGPRODUCTCODE), which keeps
-      them all, so an empty password in an update still keeps the one stored
-      for that name. The path is spelled out from CommonAppDataFolder rather
-      than DATAFOLDER, which a command line could point elsewhere.
+      Uninstalling deletes from the data folder, once the services are
+      stopped, the add-on reports, the encrypted router passwords unless
+      DELETE_ROUTER_PASSWORDS=0, and the history with DELETE_HISTORY=1: the
+      two boxes on the Remove page (see RemoveDataDlg). With both, the folder
+      is left empty and goes too. An update also uninstalls the version
+      before it (UPGRADINGPRODUCTCODE), which keeps them all, so an empty
+      password in an update still keeps the one stored for that name. The
+      path is spelled out from CommonAppDataFolder rather than DATAFOLDER,
+      which a command line could point elsewhere.
     -->
-    <Property Id="DELETE_DATA" Secure="yes" />
-    <SetProperty Action="DeleteDataFiles" Id="DeleteData" Before="DeleteData" Sequence="execute"
-                 Value='"[System64Folder]cmd.exe" /d /c del /f /q "[CommonAppDataFolder]Usage Control\router-passwords.dpapi" "[CommonAppDataFolder]Usage Control\addons\*.json"'
-                 Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE AND DELETE_DATA &lt;&gt; "1"' />
-    <SetProperty Action="DeleteDataFolder" Id="DeleteData" Before="DeleteData" Sequence="execute"
-                 Value='"[System64Folder]cmd.exe" /d /c rmdir /s /q "[CommonAppDataFolder]Usage Control"'
-                 Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE AND DELETE_DATA = "1"' />
-    <CustomAction Id="DeleteData" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixQuietExec"
+    <Property Id="DELETE_HISTORY" Secure="yes" />
+    <Property Id="DELETE_ROUTER_PASSWORDS" Value="1" Secure="yes" />
+    <?foreach Data in AddOnReports;RouterPasswords;History ?>
+    <CustomAction Id="Delete$(Data)" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixQuietExec"
                   Execute="deferred" Impersonate="no" Return="ignore" />
+    <?endforeach?>
+    <SetProperty Id="DeleteAddOnReports" Before="DeleteAddOnReports" Sequence="execute"
+                 Value='"[System64Folder]cmd.exe" /d /c del /f /q "[CommonAppDataFolder]Usage Control\addons\*.json"'
+                 Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE' />
+    <SetProperty Id="DeleteRouterPasswords" Before="DeleteRouterPasswords" Sequence="execute"
+                 Value='"[System64Folder]cmd.exe" /d /c del /f /q "[CommonAppDataFolder]Usage Control\router-passwords.dpapi"'
+                 Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE AND DELETE_ROUTER_PASSWORDS = "1"' />
+    <SetProperty Id="DeleteHistory" Before="DeleteHistory" Sequence="execute"
+                 Value='"[System64Folder]cmd.exe" /d /c del /f /q "[CommonAppDataFolder]Usage Control\usage-control.db*"'
+                 Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE AND DELETE_HISTORY = "1"' />
     <InstallExecuteSequence>
-      <Custom Action="DeleteData" After="StopServices" Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE' />
+      <Custom Action="DeleteAddOnReports" After="StopServices" Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE' />
+      <Custom Action="DeleteRouterPasswords" After="DeleteAddOnReports" Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE AND DELETE_ROUTER_PASSWORDS = "1"' />
+      <Custom Action="DeleteHistory" After="DeleteRouterPasswords" Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE AND DELETE_HISTORY = "1"' />
     </InstallExecuteSequence>
 
     <!--
@@ -699,8 +711,8 @@
       The database: the history with WEBSITE=1, otherwise the minutes kept for
       a hub that cannot reach this PC (BUFFER_HOURS). Only the service,
       administrators and the system can read or change it. Uninstalling keeps
-      it, so reinstalling keeps the history, unless DELETE_DATA=1 (see
-      DeleteData).
+      it, so reinstalling keeps the history, unless DELETE_HISTORY=1 (see
+      DeleteHistory).
     -->
     <Component Id="DataFolder" Directory="DATAFOLDER" Guid="C3AF9720-FF5B-4D29-AA9B-A3FB303E3586">
       <CreateFolder>
@@ -850,16 +862,20 @@
 
       <!--
         The Remove page, after Remove on the maintenance page of an installer
-        run again: its box sets DELETE_DATA. Windows' own Uninstall button in
-        Apps runs no page, so it keeps the history.
+        run again: one box for the history (DELETE_HISTORY) and one for the
+        router passwords (DELETE_ROUTER_PASSWORDS). Windows' own Uninstall
+        button in Apps runs no page, so it keeps the history and deletes the
+        passwords.
       -->
       <Dialog Id="RemoveDataDlg" Width="370" Height="270" Title="[ProductName] Setup">
         <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
         <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
-        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Keep the history?" />
-        <Control Id="Description" Type="Text" X="25" Y="23" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Text="Removing Usage Control deletes the router passwords either way." />
-        <Control Id="DeleteData" Type="CheckBox" X="20" Y="55" Width="330" Height="15" Property="DELETE_DATA" CheckBoxValue="1" Text="Also &amp;delete the history" />
-        <Control Id="DeleteDataText" Type="Text" X="38" Y="72" Width="310" Height="24" NoPrefix="yes" Text="Otherwise it stays in C:\ProgramData\Usage Control, and installing Usage Control again keeps it." />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}What else should go?" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Text="What is not ticked stays in C:\ProgramData\Usage Control." />
+        <Control Id="DeleteHistory" Type="CheckBox" X="20" Y="55" Width="330" Height="15" Property="DELETE_HISTORY" CheckBoxValue="1" Text="Delete the &amp;history" />
+        <Control Id="DeleteHistoryText" Type="Text" X="38" Y="72" Width="310" Height="24" NoPrefix="yes" Text="Kept, installing Usage Control again shows it again." />
+        <Control Id="DeleteRouterPasswords" Type="CheckBox" X="20" Y="100" Width="330" Height="15" Property="DELETE_ROUTER_PASSWORDS" CheckBoxValue="1" Text="Delete the &amp;router passwords" />
+        <Control Id="DeleteRouterPasswordsText" Type="Text" X="38" Y="117" Width="310" Height="24" NoPrefix="yes" Text="Kept, installing Usage Control again with the same router name and an empty password uses them again." />
         <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
         <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)" />

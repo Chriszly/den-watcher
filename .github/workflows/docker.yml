@@ -1,9 +1,10 @@
 name: Docker image
 
 # Builds the image for arm64 (Raspberry Pi) and amd64 and publishes it to the GitHub
-# Container Registry as ghcr.io/<owner>/usage-control when a pull request is merged
-# into main or a version tag (v1.2.3 or 1.2.3, a bugfix such as 1.2.3a, or a pre-release
-# such as 1.2.3-alpha) is pushed.
+# Container Registry as ghcr.io/<owner>/den-watcher, and under its old name
+# ghcr.io/<owner>/usage-control so installs from before the rename keep getting
+# updates, when a pull request is merged into main or a version tag (v1.2.3 or
+# 1.2.3, a bugfix such as 1.2.3a, or a pre-release such as 1.2.3-alpha) is pushed.
 # Pull requests only build it, in the CI workflow's "Docker image (arm64 and amd64)" job,
 # which also starts the amd64 image with two add-on containers.
 on:
@@ -65,7 +66,11 @@ jobs:
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ghcr.io/${{ github.repository }}
+          # Both names, independent of the repository's name: den-watcher, and
+          # usage-control, which compose.yaml files from before the rename pull.
+          images: |
+            ghcr.io/${{ github.repository_owner }}/den-watcher
+            ghcr.io/${{ github.repository_owner }}/usage-control
           flavor: latest=false
           tags: |
             type=ref,event=branch
@@ -108,12 +113,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          REPOSITORY: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
           version="${tag#v}"
-          image="ghcr.io/${REPOSITORY,,}"
+          image="ghcr.io/${OWNER,,}/den-watcher"
+          old_image="ghcr.io/${OWNER,,}/usage-control"
           # The Windows workflow may create the release at the same time.
           if ! gh release view "$tag" > /dev/null 2>&1; then
             # A pre-release tag, such as 1.2.3-alpha, makes a pre-release.
@@ -141,6 +147,8 @@ jobs:
           ## Docker (Linux, Raspberry Pi)
 
           Images for arm64 and amd64: \`$image:$version\`$also.
+
+          The images are also published under the old name, \`$old_image\`, for now; switch the \`image:\` lines in \`compose.yaml\` to \`$image\`.
 
           Update with \`docker compose pull && docker compose up -d\` in the folder with \`compose.yaml\`.
           NOTES

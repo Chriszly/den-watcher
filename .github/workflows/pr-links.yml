@@ -2,8 +2,9 @@ name: PR Links
 
 on:
   pull_request:
-    # "edited" re-runs the check when the description changes and "synchronize"
-    # when commits are pushed, so removing the link turns it green again.
+    # "edited" re-runs the check when the title or description changes and
+    # "synchronize" when commits are pushed, so removing the link turns it green
+    # again.
     types: [opened, edited, reopened, synchronize]
 
 permissions:
@@ -18,7 +19,7 @@ jobs:
     if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR description and commit messages link only to GitHub
+      - name: Check PR title, description and commit messages link only to GitHub
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -52,12 +53,13 @@ jobs:
               per_page: 100
             });
             const hits = [
+              ...linksOutside(context.payload.pull_request.title, 'title'),
               ...linksOutside(body, 'description'),
               ...commits.flatMap(c => linksOutside(c.commit.message, `commit ${c.sha.slice(0, 7)}`))
             ];
 
             if (hits.length > 0) {
-              core.setFailed(`PR links outside GitHub; edit the description or reword the commits and the check re-runs:\n${hits.join('\n')}`);
+              core.setFailed(`PR links outside GitHub; edit the title or description, or reword the commits and the check re-runs:\n${hits.join('\n')}`);
             } else {
-              console.log(`PR description and ${commits.length} commit message(s) link only to GitHub.`);
+              console.log(`PR title, description and ${commits.length} commit message(s) link only to GitHub.`);
             }

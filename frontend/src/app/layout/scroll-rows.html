@@ -1,4 +1,7 @@
-<div #list class="list" (scroll)="update()"><ng-content /></div>
+<!-- While it scrolls, the list takes the focus, so the arrow keys scroll it both ways. -->
+<div #list class="list" [attr.tabindex]="scrolls() ? 0 : null" (scroll)="update()">
+  <ng-content />
+</div>
 @if (scrolls()) {
   <button
     type="button"

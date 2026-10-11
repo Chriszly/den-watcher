@@ -106,6 +106,12 @@ describe('ScrollRows', () => {
     const { list, arrow } = render(MAX_ROWS);
     expect(list.style.maxHeight).toBe('');
     expect(arrow()).toBeNull();
+    expect(list.hasAttribute('tabindex')).toBe(false);
+  });
+
+  it('lets the keyboard scroll a list with more rows both ways', () => {
+    const { list } = render(12);
+    expect(list.getAttribute('tabindex')).toBe('0');
   });
 
   it('shows eight of more rows and an arrow that scrolls down a page', () => {

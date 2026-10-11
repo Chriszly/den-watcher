@@ -50,17 +50,12 @@ export class LineChart {
   protected readonly width = WIDTH;
   protected readonly height = HEIGHT;
 
-  protected readonly top = computed(() => {
-    const fixed = this.max();
-    if (fixed !== undefined) {
-      return fixed;
-    }
-    const highest = Math.max(0, ...this.lines().flatMap((line) => line.points.map((p) => p.value)));
-    return niceCeiling(highest, this.unit());
-  });
+  protected readonly top = computed(() => chartTop(this.lines(), this.unit(), this.max()));
 
   protected readonly paths = computed(() =>
-    this.lines().map((line) => this.path(line.points, this.top())),
+    this.lines().map((line) =>
+      linePath(line.points, this.from(), this.to(), this.step(), this.top()),
+    ),
   );
 
   /** Whether the chart's dates need their year, so dates a year apart are told apart. */
@@ -152,23 +147,31 @@ export class LineChart {
   private fraction(time: number): number {
     return (time - this.from()) / (this.to() - this.from());
   }
+}
 
-  /** The SVG path of a line, starting a new segment after a gap. */
-  private path(points: Point[], top: number): string {
-    const step = this.step();
-    let path = '';
-    let previous: number | null = null;
-    for (const point of points) {
-      // Each point is the average of its step, so it is drawn in the step's middle.
-      const x = this.fraction(point.time + step / 2) * WIDTH;
-      const y = HEIGHT - (Math.min(point.value, top) / top) * HEIGHT;
-      const gap = previous === null || point.time - previous > 2 * step;
-      // A lone point gets a line of no length, which the round line caps show as a dot.
-      path += gap ? `M${x.toFixed(1)} ${y.toFixed(1)}h0` : `L${x.toFixed(1)} ${y.toFixed(1)}`;
-      previous = point.time;
-    }
-    return path;
+/**
+ * The SVG path of a line from `from` to `to` (Unix seconds) with one point per `step` seconds,
+ * drawn 1000 × 100 with `top` at the top, starting a new segment after a gap.
+ */
+export function linePath(
+  points: Point[],
+  from: number,
+  to: number,
+  step: number,
+  top: number,
+): string {
+  let path = '';
+  let previous: number | null = null;
+  for (const point of points) {
+    // Each point is the average of its step, so it is drawn in the step's middle.
+    const x = ((point.time + step / 2 - from) / (to - from)) * WIDTH;
+    const y = HEIGHT - (Math.min(point.value, top) / top) * HEIGHT;
+    const gap = previous === null || point.time - previous > 2 * step;
+    // A lone point gets a line of no length, which the round line caps show as a dot.
+    path += gap ? `M${x.toFixed(1)} ${y.toFixed(1)}h0` : `L${x.toFixed(1)} ${y.toFixed(1)}`;
+    previous = point.time;
   }
+  return path;
 }
 
 /**
@@ -188,6 +191,15 @@ export function dateTimeFormat(seconds: boolean, year: boolean): MessageKey {
     return seconds ? 'format.dateTimeSecondsYear' : 'format.dateTimeYear';
   }
   return seconds ? 'format.dateTimeSeconds' : 'format.dateTime';
+}
+
+/** The top of the y axis: `max` when it is set, else a round number above the highest value. */
+export function chartTop(lines: ChartLine[], unit: ChartUnit, max?: number): number {
+  if (max !== undefined) {
+    return max;
+  }
+  const highest = Math.max(0, ...lines.flatMap((line) => line.points.map((p) => p.value)));
+  return niceCeiling(highest, unit);
 }
 
 /**

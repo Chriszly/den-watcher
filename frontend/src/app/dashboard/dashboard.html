@@ -111,6 +111,7 @@
 }
 
 @if (snapshot(); as s) {
+  <app-glance [snapshot]="s" [class.stale]="connection.lost()" />
   <div class="categories" [class.stale]="connection.lost()">
     @for (category of cardGroups(); track category.category) {
       @let folded = foldedCategories.folded().has(category.category);

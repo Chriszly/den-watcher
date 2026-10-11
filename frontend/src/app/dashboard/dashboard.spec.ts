@@ -58,6 +58,8 @@ describe('Dashboard', () => {
   });
 
   afterEach(() => {
+    // The glance row reads the history for its small charts, which its own tests cover.
+    http.match((r) => r.url === '/api/history');
     http.verify();
     vi.useRealTimers();
     vi.restoreAllMocks();

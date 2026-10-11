@@ -18,7 +18,7 @@ import { BytesPipe } from '../metrics/bytes.pipe';
 import { History, MetricsService, Point, Series } from '../metrics/metrics';
 import { Summary } from '../metrics/summary';
 import { PageVisibility } from '../page-visibility';
-import { refreshIntervalMs } from '../history/history';
+import { refreshIntervalMs } from '../history/history-store';
 import { ChartLine, ChartUnit, LineChart } from '../history/line-chart';
 
 /** A column of the table the rows can be sorted by, largest first. */

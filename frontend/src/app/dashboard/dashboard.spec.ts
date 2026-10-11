@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
 import { HubConnection } from '../connection/connection';
+import { TIMELINE_STORAGE_KEY, TimelineMode } from '../history/timeline';
 import { DeviceService, LOCAL_DEVICE } from '../devices/devices';
 import { I18n, LANGUAGE_STORAGE_KEY } from '../i18n/i18n';
 import { Snapshot } from '../metrics/metrics';
@@ -570,6 +571,17 @@ describe('Dashboard', () => {
       ['System'],
     );
     expect(element.querySelector('.category app-line-chart')).not.toBeNull();
+  });
+
+  it('shows every value on one timeline instead of the categories while the timeline is on', () => {
+    TestBed.inject(TimelineMode).toggle();
+    respond(snapshot);
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('app-timeline')).not.toBeNull();
+    expect(element.querySelector('.categories')).toBeNull();
+    expect(element.querySelector('app-glance')).not.toBeNull();
+    TestBed.inject(TimelineMode).toggle();
+    localStorage.removeItem(TIMELINE_STORAGE_KEY);
   });
 
   it('leaves out what the device does not report', () => {

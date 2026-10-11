@@ -225,6 +225,8 @@ export const es: Messages = {
   'history.chartSummary': 'Gráfico «{title}» del {from} al {to}: {lines}',
   'history.chartLineLatest': '{label} (último valor {value})',
   'history.chartLineNoData': '{label} (sin datos)',
+  'timeline.label': 'Línea de tiempo',
+  'timeline.show': 'Mostrar todos los valores en una línea de tiempo',
   'languageSwitcher.label': 'Idioma',
   'bytes.unit.b': 'B',
   'bytes.unit.kib': 'KiB',

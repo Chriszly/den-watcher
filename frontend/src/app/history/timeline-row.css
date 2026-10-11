@@ -1,0 +1,51 @@
+/* A row of the timeline's grid, so the labels, values and strips of all rows line up. */
+:host {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.label {
+  overflow: hidden;
+  padding-right: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  padding-right: 0.75rem;
+  font: var(--mat-sys-title-small);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* The strip runs from the start to the end of the range; the timeline draws the crosshair over it. */
+.strip {
+  position: relative;
+  height: 2.25rem;
+  padding: 0.25rem 0;
+  cursor: crosshair;
+  /* A sideways drag moves the crosshair instead of scrolling the page. */
+  touch-action: pan-y;
+}
+
+.strip::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 var(--cursor);
+  display: var(--cursor-display, none);
+  border-left: 1px solid var(--mat-sys-on-surface-variant);
+  pointer-events: none;
+}
+
+@media (width < 40rem) {
+  .label {
+    grid-column: 1 / -1;
+    padding-top: 0.5rem;
+  }
+}

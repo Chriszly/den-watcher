@@ -23,9 +23,19 @@ app-alerts-button {
   margin-left: auto;
 }
 
-app-mascot {
+/* Nothing shows that the mascot is a button but the pointer and the focus ring. */
+.mascot {
+  display: flex;
   flex: none;
   padding: 0.25rem;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.mascot:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
 }
 
 h1 {

@@ -20,7 +20,7 @@ const WIDTH = 1000;
 const HEIGHT = 100;
 
 /** How many colors the lines take in turn; lines after them are dashed. */
-const COLORS = 8;
+export const COLORS = 8;
 
 /**
  * Draws lines over time, from `from` to `to` (Unix seconds), with one point
@@ -115,7 +115,7 @@ export class LineChart {
     }
     return {
       time,
-      left: this.fraction(time + this.step() / 2) * 100,
+      left: stepCenter(time, this.from(), this.to(), this.step()),
       values: this.lines().map((line) => line.points.find((p) => p.time === time)?.value ?? null),
     };
   });
@@ -131,22 +131,29 @@ export class LineChart {
   }
 
   protected onPointerMove(event: PointerEvent): void {
-    const area = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const fraction = Math.min(1, Math.max(0, (event.clientX - area.left) / area.width));
-    const time = this.from() + fraction * (this.to() - this.from());
-    const step = this.step();
-    // The right edge belongs to the last step, which starts before `to`.
-    this.hoverTime.set(Math.floor(Math.min(time, this.to() - 1) / step) * step);
+    this.hoverTime.set(stepUnder(event, this.from(), this.to(), this.step()));
   }
 
   protected onPointerLeave(): void {
     this.hoverTime.set(null);
   }
+}
 
-  /** Where a time is on the time axis, from 0 (start) to 1 (end). */
-  private fraction(time: number): number {
-    return (time - this.from()) / (this.to() - this.from());
-  }
+/**
+ * The start of the step under the pointer on a time axis that runs across the event's target, from
+ * `from` to `to` (Unix seconds) in steps of `step` seconds.
+ */
+export function stepUnder(event: PointerEvent, from: number, to: number, step: number): number {
+  const area = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const fraction = Math.min(1, Math.max(0, (event.clientX - area.left) / area.width));
+  const time = from + fraction * (to - from);
+  // The right edge belongs to the last step, which starts before `to`.
+  return Math.floor(Math.min(time, to - 1) / step) * step;
+}
+
+/** Where the middle of the step that starts at `time` is on a time axis, in percent of its width. */
+export function stepCenter(time: number, from: number, to: number, step: number): number {
+  return ((time + step / 2 - from) / (to - from)) * 100;
 }
 
 /**

@@ -1,0 +1,53 @@
+/*
+ * The labels, values and strips in three columns that every row shares, so all strips run over the
+ * same time axis. On a phone each label goes on its own line above its value and strip.
+ */
+:host {
+  display: grid;
+  grid-template-columns: minmax(6rem, 16rem) minmax(4.5rem, auto) minmax(8rem, 1fr);
+  padding: 0.5rem 1rem 1rem;
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface-container);
+}
+
+/* Until there is history with values, there is nothing to show. */
+:host:empty {
+  display: none;
+}
+
+.rows {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+/* The start, the time under the pointer and the end of the range, over the strips. */
+.axis {
+  position: relative;
+  display: flex;
+  grid-column: 3;
+  justify-content: space-between;
+  padding-bottom: 0.25rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+}
+
+.at {
+  position: absolute;
+  left: var(--cursor);
+  padding: 0 0.25rem;
+  border-radius: var(--mat-sys-corner-extra-small);
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface);
+  transform: translateX(-50%);
+}
+
+@media (width < 40rem) {
+  :host {
+    grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr);
+  }
+
+  .axis {
+    grid-column: 2;
+  }
+}

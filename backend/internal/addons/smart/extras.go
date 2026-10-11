@@ -70,7 +70,8 @@ var warnedTooMany atomic.Bool
 // disks' own checks, each labelled with the disk, such as "Samsung SSD 980
 // (nvme0): SMART check passed", or for a disk that cannot be read any more or
 // has SMART switched off only that, in place of its check; and the numbers
-// the disks report, labelled the same way. The checks are a group of their
+// the disks report, labelled the same way. Each value has its disk as its
+// section, so the page shows a disk's values under it. The checks are a group of their
 // own, so they are never among what usage-control leaves out of a group with
 // too many values: past defaultMaxEntries values, which about 21 SATA or 16
 // NVMe disks reach, it keeps those whose ids come first unless HISTORY_MAX_ENTRIES is
@@ -106,11 +107,12 @@ func Extras(disks []Disk) []metrics.Extra {
 				label, labels, text = "SMART check FAILED", failedLabels, "✗"
 			}
 			checks.Items = append(checks.Items, metrics.ExtraItem{
-				ID:     id + "-health",
-				Label:  prefix + ": " + label,
-				Labels: labelled(prefix, labels),
-				Unit:   metrics.UnitText,
-				Text:   text,
+				ID:      id + "-health",
+				Label:   prefix + ": " + label,
+				Labels:  labelled(prefix, labels),
+				Section: prefix,
+				Unit:    metrics.UnitText,
+				Text:    text,
 			})
 		}
 		for _, v := range values {
@@ -123,6 +125,7 @@ func Extras(disks []Disk) []metrics.Extra {
 				ID:      id + "-" + v.id,
 				Label:   prefix + ": " + v.label,
 				Labels:  labelled(prefix, v.labels),
+				Section: prefix,
 				Unit:    v.unit,
 				Value:   &n,
 				History: true,

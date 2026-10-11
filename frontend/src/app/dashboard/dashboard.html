@@ -339,7 +339,7 @@
       <div class="card" [appFitLabels]="s.temperatures">
         <h2>{{ i18n.t('dashboard.temperature') }}</h2>
         <app-scroll-rows>
-          @for (t of s.temperatures; track t.sensor) {
+          @for (t of hottestFirst(s.temperatures); track t.sensor) {
             <p class="sensor">
               <span class="label" [title]="t.sensor">{{ t.sensor }}</span
               ><span>{{ t.celsius | number: '1.0-1' : i18n.language() }} °C</span>
@@ -423,14 +423,24 @@
     @for (group of s.extras; track group.id) {
       <div class="card" [appFitLabels]="group.items">
         <h2>{{ extraText(group.title, group.titles) }}</h2>
+        <!-- Texts, such as the addresses of a port, can be long, so they fit like the names. -->
         <app-scroll-rows>
-          @for (item of group.items; track item.id) {
-            <p class="sensor">
-              <span class="label" [title]="extraText(item.label, item.labels)">{{
-                extraText(item.label, item.labels)
-              }}</span
-              ><span>{{ extraValue(item) }}</span>
-            </p>
+          @for (part of extraSections(group); track part.section) {
+            @if (part.section) {
+              <p class="section label" [title]="part.section">{{ part.section }}</p>
+            }
+            @for (item of part.items; track item.id) {
+              <p class="sensor">
+                <span class="label" [title]="extraText(item.label, item.labels)">{{
+                  extraLabel(item)
+                }}</span
+                ><span
+                  [class.label]="item.unit === 'text'"
+                  [attr.title]="item.unit === 'text' ? extraValue(item) : null"
+                  >{{ extraValue(item) }}</span
+                >
+              </p>
+            }
           }
         </app-scroll-rows>
       </div>

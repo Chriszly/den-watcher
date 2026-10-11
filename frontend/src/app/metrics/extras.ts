@@ -35,6 +35,11 @@ export interface ExtraItem {
   id: string;
   label: string;
   labels?: Record<string, string>;
+  /**
+   * What the value belongs to, such as a disk, when the group holds the values of several things:
+   * the values of one section show under it, each label without the section and ": " before it.
+   */
+  section?: string;
   unit: ExtraUnit;
   value?: number;
   text?: string;

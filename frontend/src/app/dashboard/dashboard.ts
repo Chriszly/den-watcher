@@ -10,11 +10,12 @@ import { I18n } from '../i18n/i18n';
 import { EvenColumns } from '../layout/even-columns';
 import { ScrollRows } from '../layout/scroll-rows';
 import { BytesPipe } from '../metrics/bytes.pipe';
-import { ExtraItem, formatExtra, localized } from '../metrics/extras';
+import { Extra, ExtraItem, formatExtra, localized } from '../metrics/extras';
 import {
   MetricsService,
   NetworkInterface,
   Snapshot,
+  Temperature,
   Throttling,
   ThrottlingCondition,
   TimeZone,
@@ -38,6 +39,41 @@ const MAX_CORES_PER_ROW = 8;
 export function coreColumns(cores: number): number {
   const rows = Math.ceil(cores / MAX_CORES_PER_ROW);
   return Math.ceil(cores / rows);
+}
+
+/** The groups of extras whose values are shown largest first, such as what each part draws. */
+const LARGEST_FIRST = new Set(['power']);
+
+/** The temperatures, hottest first; equal ones by name, so they keep their places. */
+export function hottestFirst(temperatures: readonly Temperature[]): Temperature[] {
+  return [...temperatures].sort(
+    (a, b) => b.celsius - a.celsius || a.sensor.localeCompare(b.sensor),
+  );
+}
+
+/** One section of the values of an extra: what they belong to, if anything, and the values. */
+export interface ExtraSection {
+  section?: string;
+  items: ExtraItem[];
+}
+
+/**
+ * The values of an extra as the card shows them: largest first for the groups in LARGEST_FIRST,
+ * else in the order the device lists them, and the values of one section together under it, in the
+ * order the sections first appear.
+ */
+export function extraSections(group: Extra): ExtraSection[] {
+  const items = LARGEST_FIRST.has(group.id)
+    ? [...group.items].sort(
+        (a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity) || a.id.localeCompare(b.id),
+      )
+    : group.items;
+  const sections = new Map<string | undefined, ExtraItem[]>();
+  for (const item of items) {
+    const key = item.section || undefined;
+    sections.set(key, [...(sections.get(key) ?? []), item]);
+  }
+  return [...sections].map(([section, items]) => ({ section, items }));
 }
 
 /** Why no new values arrived: the backend did not answer, or the device it collects from did not. */
@@ -77,6 +113,8 @@ export class Dashboard {
     this.refused() ? null : this.availability(),
   );
   protected readonly coreColumns = coreColumns;
+  protected readonly hottestFirst = hottestFirst;
+  protected readonly extraSections = extraSections;
 
   constructor() {
     toObservable(this.devices.selectedId)
@@ -177,6 +215,13 @@ export class Dashboard {
   /** A title or label of an extra in the page's language. */
   protected extraText(text: string, texts?: Record<string, string>): string {
     return localized(text, texts, this.i18n.language());
+  }
+
+  /** The label of an extra in the page's language, without its section, which shows above it. */
+  protected extraLabel(item: ExtraItem): string {
+    const label = this.extraText(item.label, item.labels);
+    const prefix = `${item.section}: `;
+    return item.section && label.startsWith(prefix) ? label.slice(prefix.length) : label;
   }
 
   /** The value of an extra with its unit, in the page's language. */

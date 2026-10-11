@@ -17,6 +17,7 @@ func TestCleanExtrasKeepsValidValues(t *testing.T) {
 		Items: []ExtraItem{
 			{ID: "cpu", Label: "CPU", Unit: UnitPercent, Value: number(3.5), History: true},
 			{ID: "kernel", Label: "Kernel", Unit: UnitText, Text: "6.12"},
+			{ID: "sda-temperature", Label: "WDC (sda): Temperature", Section: "WDC (sda)", Unit: UnitCelsius, Value: number(38)},
 		},
 	}}
 
@@ -134,5 +135,15 @@ func TestCleanTranslationsKeepsTheSameLanguagesEveryTime(t *testing.T) {
 		if got := cleanTranslations(texts); !reflect.DeepEqual(got, want) {
 			t.Fatalf("cleanTranslations() = %v, then %v, want the same languages every time", want, got)
 		}
+	}
+}
+
+func TestCleanExtrasCutsTheSection(t *testing.T) {
+	extras := []Extra{{ID: "smart", Title: "Disk health", Items: []ExtraItem{
+		{ID: "a", Label: "x", Section: strings.Repeat("s", MaxTextLength+5), Unit: UnitNumber, Value: number(1)},
+	}}}
+
+	if got := CleanExtras(extras, 64)[0].Items[0].Section; len(got) != MaxTextLength {
+		t.Errorf("section has %d characters, want %d", len(got), MaxTextLength)
 	}
 }

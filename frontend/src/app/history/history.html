@@ -3,22 +3,26 @@
     <h2 id="history-title">{{ i18n.t('history.title') }}</h2>
 
     <div class="choices units" role="group" [attr.aria-label]="i18n.t('history.unit')">
-      @for (u of units(); track u.id) {
-        <button type="button" [attr.aria-pressed]="u.id === unit()?.id" (click)="selectUnit(u.id)">
+      @for (u of store.units(); track u.id) {
+        <button
+          type="button"
+          [attr.aria-pressed]="u.id === store.unit()?.id"
+          (click)="store.selectUnit(u.id)"
+        >
           <span class="label">{{ i18n.t(u.label) }}</span>
         </button>
       }
     </div>
   </div>
 
-  @if (unit(); as u) {
+  @if (store.unit(); as u) {
     @if (u.id !== 'all') {
       <div class="choices ranges" role="group" [attr.aria-label]="i18n.t('history.range')">
         @for (range of u.ranges; track range.seconds) {
           <button
             type="button"
-            [attr.aria-pressed]="range.seconds === span()"
-            (click)="span.set(range.seconds)"
+            [attr.aria-pressed]="range.seconds === store.span()"
+            (click)="store.span.set(range.seconds)"
           >
             <span class="label">{{ i18n.t(range.label) }}</span>
           </button>
@@ -27,13 +31,13 @@
     }
   }
 
-  @if (history(); as h) {
+  @if (store.history(); as h) {
     <p class="period">
       {{ h.from * 1000 | date: dateFormat() : undefined : i18n.language() }} –
       {{ h.to * 1000 | date: dateFormat() : undefined : i18n.language() }}
     </p>
 
-    @if (unreachable() && !connection.lost()) {
+    @if (store.unreachable() && !connection.lost()) {
       <p class="warning" role="alert">{{ i18n.t('history.unreachableStale') }}</p>
     } @else if (lastReading(); as time) {
       <p class="warning" role="status">{{ i18n.t('history.notLive', { time }) }}</p>
@@ -77,7 +81,7 @@
         <p class="detail">{{ i18n.t('history.empty') }}</p>
       }
     </div>
-  } @else if (unreachable()) {
+  } @else if (store.unreachable()) {
     @if (!connection.lost()) {
       <p class="warning" role="alert">{{ i18n.t('history.unreachable') }}</p>
     }

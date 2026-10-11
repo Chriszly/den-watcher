@@ -1,0 +1,79 @@
+:host {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  overflow: hidden;
+  padding: 1rem 1rem 0;
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface-container);
+  container-type: inline-size;
+}
+
+:host(.warning),
+:host(.alert) {
+  outline: 1px solid var(--alert-color);
+  outline-offset: -1px;
+}
+
+:host(.warning) {
+  --alert-color: light-dark(#b26a00, #f0a030);
+}
+
+:host(.alert) {
+  --alert-color: light-dark(#c62828, #f85149);
+}
+
+/* Where the label leaves no room, the detail moves to its own line. */
+h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.375rem;
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+h3 > app-alert-icon {
+  --alert-icon-size: 1rem;
+}
+
+.detail {
+  overflow: hidden;
+  max-width: 100%;
+  margin-left: auto;
+  font: var(--mat-sys-label-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  margin: 0.25rem 0 0;
+  font: var(--mat-sys-display-small);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.unit {
+  margin-left: 0.25rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-title-medium);
+}
+
+.sub {
+  margin: 0 0 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+/* Two tiles side by side on a phone leave too little room for the big number. */
+@container (width < 9rem) {
+  .value {
+    font: var(--mat-sys-headline-small);
+  }
+}
+
+/* The chart runs to the edges at the foot of the tile, which keeps its room while it loads. */
+.chart {
+  min-height: 3rem;
+  margin: 0 -1rem;
+}

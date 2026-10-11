@@ -7,7 +7,8 @@ import { History } from '../metrics/metrics';
 import { TextParams, translate } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
 import { FOLDED_STORAGE_KEY, FoldedCategories } from '../dashboard/categories';
-import { HistoryCharts, chartsOf, extraChartsOf, refreshIntervalMs } from './history';
+import { HistoryCharts, chartsOf, extraChartsOf } from './history';
+import { refreshIntervalMs } from './history-store';
 
 const NOW = new Date('2026-10-02T20:00:00Z');
 const NOW_SECONDS = NOW.getTime() / 1000;

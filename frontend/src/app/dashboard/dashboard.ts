@@ -28,6 +28,7 @@ import { CardInfo } from './card-info';
 import { Category, FoldedCategories, byCategory, extraCategory } from './categories';
 import { CategoryFold } from './category-fold';
 import { FitLabels } from './fit-labels';
+import { Glance } from './glance';
 
 /** How often the dashboard asks the backend for new values. */
 export const REFRESH_INTERVAL_MS = 2000;
@@ -136,6 +137,7 @@ type Problem = 'backend' | 'device';
     DecimalPipe,
     EvenColumns,
     FitLabels,
+    Glance,
     NgTemplateOutlet,
     ScrollRows,
   ],

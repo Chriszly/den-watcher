@@ -25,7 +25,8 @@ for folder in backend/internal/addons/*/; do
   addons=$((addons + 1))
   if ! grep -qE "^function ${name}AddOn\(" "$fleet"; then
     problem "add-on $name: no ${name}AddOn() in $fleet; add the cards it reports to the demo"
-  elif [[ "$(grep -cE "\b${name}AddOn\(" "$fleet")" -lt 2 ]]; then
+  # Comments that name it are no use; only code lines count.
+  elif [[ "$(grep -vE '^\s*(//|/?\*)' "$fleet" | grep -cE "\b${name}AddOn\(")" -lt 2 ]]; then
     problem "add-on $name: no device in $fleet uses ${name}AddOn(); add it to one, with its values"
   fi
 done

@@ -25,8 +25,9 @@ import (
 )
 
 // licenseFile matches the files in a module's root that hold its license or
-// its notices, such as LICENSE, LICENSE-SQLITE, COPYING or NOTICE.
-var licenseFile = regexp.MustCompile(`(?i)^(licen[cs]e|copying|notice)([-._].*)?$`)
+// its notices, such as LICENSE, LICENSE-SQLITE, COPYING, NOTICE, PATENTS or
+// AUTHORS.
+var licenseFile = regexp.MustCompile(`(?i)^(licen[cs]e|copying|notice|patents|authors)([-._].*)?$`)
 
 // module is what `go list -deps -json` says about a package's module.
 type module struct {

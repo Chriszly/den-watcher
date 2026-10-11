@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { CardInfo } from './card-info';
+import { CardInfo, headingTitle } from './card-info';
 
 @Component({
   imports: [CardInfo],
@@ -29,7 +29,10 @@ describe('CardInfo', () => {
 
   it('names the button and describes it with the text, for screen readers', () => {
     const { button, tip } = render();
-    expect(button.getAttribute('aria-label')).toBe('About this card');
+    expect(button.getAttribute('aria-label')).toBe('About CPU');
+    // The heading keeps its title as its name, without the button's.
+    expect(button.closest('h2')!.getAttribute('aria-label')).toBe('CPU');
+    expect(tip.getAttribute('aria-hidden')).toBe('true');
     expect(tip.getAttribute('role')).toBe('tooltip');
     expect(button.getAttribute('aria-describedby')).toBe(tip.id);
     expect(tip.textContent).toBe('How busy the processor is.');
@@ -67,5 +70,45 @@ describe('CardInfo', () => {
     button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     fixture.detectChanges();
     expect(tip.classList).not.toContain('open');
+  });
+
+  it('hides with Escape the text that hover or the focus shows, until they leave', () => {
+    const { fixture, button, tip } = render();
+    button.focus();
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(tip.classList).toContain('dismissed');
+
+    button.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    fixture.detectChanges();
+    expect(tip.classList).not.toContain('dismissed');
+
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    button.dispatchEvent(new MouseEvent('mouseleave'));
+    fixture.detectChanges();
+    expect(tip.classList).toContain('dismissed');
+    button.closest('app-card-info')!.dispatchEvent(new MouseEvent('mouseleave'));
+    fixture.detectChanges();
+    expect(tip.classList).not.toContain('dismissed');
+
+    // A tap after Escape opens it again.
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    button.click();
+    fixture.detectChanges();
+    expect(tip.classList).toContain('open');
+    expect(tip.classList).not.toContain('dismissed');
+  });
+});
+
+describe('headingTitle', () => {
+  it('reads the heading without the element in it', () => {
+    const heading = document.createElement('h2');
+    heading.append('  Disks ');
+    const info = document.createElement('app-card-info');
+    info.textContent = 'About Disks';
+    heading.append(info);
+    expect(headingTitle(info)).toBe('Disks');
+    expect(headingTitle(document.createElement('span'))).toBe('');
   });
 });

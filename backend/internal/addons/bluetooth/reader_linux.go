@@ -23,28 +23,28 @@ const callTimeout = 2 * time.Second
 // It keeps one D-Bus connection open, opened at the first read and again
 // after it failed, and closed when ctx of the first read is done.
 func NewReader(sysDir string) func(ctx context.Context) *Reading {
-	var (
-		conn   *dbus.Conn
-		logged string
-	)
+	var conn *dbus.Conn
+	// The last problem logged of each source, so each is logged once
+	// until it changes, also while both fail.
+	var loggedBlueZ, loggedLinks string
 	classDir := ClassDir(sysDir)
 	return func(ctx context.Context) *Reading {
 		reading, err := askBlueZ(ctx, &conn)
 		if err == nil {
-			if logged != "" {
+			if loggedBlueZ != "" {
 				slog.Info("BlueZ answers again, so the devices' names are shown again")
-				logged = ""
+				loggedBlueZ, loggedLinks = "", ""
 			}
 			return reading
 		}
-		if problem := err.Error(); problem != logged {
-			logged = problem
+		if problem := err.Error(); problem != loggedBlueZ {
+			loggedBlueZ = problem
 			slog.Warn("BlueZ cannot be asked for the connected devices, so only the kernel's count of connections is shown", "error", err)
 		}
 		reading, err = countLinks(classDir)
 		if err != nil {
-			if problem := err.Error(); problem != logged {
-				logged = problem
+			if problem := err.Error(); problem != loggedLinks {
+				loggedLinks = problem
 				slog.Warn("the kernel's Bluetooth connections cannot be read", "folder", classDir, "error", err)
 			}
 		}

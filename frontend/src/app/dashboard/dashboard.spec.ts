@@ -7,7 +7,13 @@ import { HubConnection } from '../connection/connection';
 import { DeviceService } from '../devices/devices';
 import { I18n, LANGUAGE_STORAGE_KEY } from '../i18n/i18n';
 import { Snapshot } from '../metrics/metrics';
-import { Dashboard, REFRESH_INTERVAL_MS, coreColumns } from './dashboard';
+import {
+  Dashboard,
+  REFRESH_INTERVAL_MS,
+  coreColumns,
+  extraSections,
+  hottestFirst,
+} from './dashboard';
 import { FitLabels } from './fit-labels';
 
 const snapshot: Snapshot = {
@@ -255,6 +261,25 @@ describe('Dashboard', () => {
       .queryAll(By.css('.sensor, .section'))
       .map((row) => (row.nativeElement as HTMLElement).textContent!.trim());
   }
+
+  it('keeps temperatures and power that look the same in their places by name', () => {
+    const sensors = hottestFirst([
+      { sensor: 'b', celsius: 45.04 },
+      { sensor: 'a', celsius: 45.01 },
+      { sensor: 'c', celsius: 50 },
+    ]);
+    expect(sensors.map((t) => t.sensor)).toEqual(['c', 'a', 'b']);
+    const power = extraSections({
+      id: 'power',
+      title: 'Power',
+      items: [
+        { id: 'gpu', label: 'GPU', unit: 'watts', value: 9.04 },
+        { id: 'dram', label: 'Memory', unit: 'watts', value: 9.01 },
+        { id: 'missing', label: 'Missing', unit: 'watts' },
+      ],
+    });
+    expect(power[0].items.map((i) => i.id)).toEqual(['dram', 'gpu', 'missing']);
+  });
 
   it('shows the temperatures and the power hottest and largest first', () => {
     respond({

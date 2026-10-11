@@ -235,7 +235,7 @@ export const fr: Messages = {
   'format.dayMonthYear': 'd MMM y',
   'format.dateTimeYear': 'EEE d MMM y, HH:mm',
   'format.dateTimeSecondsYear': 'EEE d MMM y, HH:mm:ss',
-  'dashboard.cardInfo': 'À propos de cette carte',
+  'dashboard.cardInfo': 'À propos de {title}',
   'dashboard.info.cpu':
     "L'occupation du processeur, au total et par cœur, avec sa fréquence, la charge moyenne et les processus.",
   'dashboard.info.memory':

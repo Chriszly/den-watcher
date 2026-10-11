@@ -76,6 +76,7 @@ Run before opening a pull request:
 
 ```bash
 bash ci/check-no-secrets.sh
+bash ci/check-no-ai-links.sh
 bash ci/check-demo-covers-addons.sh
 (cd backend && gofmt -l . && golangci-lint run && go test ./... && go mod tidy -diff && go tool govulncheck ./...)
 (cd frontend && npm run format:check && npm run lint && npm audit --audit-level=high && npm test && npm run build)

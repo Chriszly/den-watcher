@@ -1,0 +1,45 @@
+.fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: -0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: var(--mat-sys-corner-small);
+  background: none;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+.fold:hover {
+  background: var(--mat-sys-surface-container-high);
+}
+
+.fold:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+}
+
+.chevron::before {
+  content: '';
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-25%) rotate(45deg);
+  transition: transform 0.15s;
+}
+
+.fold[aria-expanded='false'] .chevron::before {
+  transform: rotate(-45deg);
+}
+
+.fold > app-alert-icon {
+  --alert-icon-size: 1.25rem;
+}
+
+.fold > .count {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}

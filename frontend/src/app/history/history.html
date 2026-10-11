@@ -39,25 +39,40 @@
       <p class="warning" role="status">{{ i18n.t('history.notLive', { time }) }}</p>
     }
 
-    <div
-      class="charts"
-      appEvenColumns
-      [class.alone]="charts().length === 1"
-      [class.stale]="connection.lost()"
-    >
-      @for (chart of charts(); track $index) {
-        <div class="card">
-          <h3>{{ chart.title }}</h3>
-          <app-line-chart
-            [chartTitle]="chart.title"
-            [lines]="chart.lines"
-            [from]="h.from"
-            [to]="h.to"
-            [step]="h.stepSeconds"
-            [unit]="chart.unit"
-            [max]="chart.max"
-          />
-        </div>
+    <div class="categories" [class.stale]="connection.lost()">
+      @for (category of chartGroups(); track category.category) {
+        <section [attr.aria-labelledby]="'chart-category-' + category.category">
+          <h3 class="category-title" [id]="'chart-category-' + category.category">
+            <app-category-fold
+              [category]="category.category"
+              [count]="
+                i18n.plural(
+                  category.items.length,
+                  'categories.charts.one',
+                  'categories.charts.other'
+                )
+              "
+            />
+          </h3>
+          @if (!foldedCategories.folded().has(category.category)) {
+            <div class="charts" appEvenColumns keepCardWidth>
+              @for (chart of category.items; track $index) {
+                <div class="card">
+                  <h4>{{ chart.title }}</h4>
+                  <app-line-chart
+                    [chartTitle]="chart.title"
+                    [lines]="chart.lines"
+                    [from]="h.from"
+                    [to]="h.to"
+                    [step]="h.stepSeconds"
+                    [unit]="chart.unit"
+                    [max]="chart.max"
+                  />
+                </div>
+              }
+            </div>
+          }
+        </section>
       } @empty {
         <p class="detail">{{ i18n.t('history.empty') }}</p>
       }

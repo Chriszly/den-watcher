@@ -294,6 +294,8 @@ export const es: Messages = {
   'categories.device': 'Hora y actividad',
   'categories.cards.one': '{count} tarjeta',
   'categories.cards.other': '{count} tarjetas',
+  'categories.charts.one': '{count} gráfico',
+  'categories.charts.other': '{count} gráficos',
   'compare.button': 'Comparar',
   'compare.title': 'Comparar dispositivos',
   'compare.intro':

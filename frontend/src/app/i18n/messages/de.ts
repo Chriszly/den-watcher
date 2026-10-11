@@ -294,6 +294,8 @@ export const de: Messages = {
   'categories.device': 'Uhrzeit und Laufzeit',
   'categories.cards.one': '{count} Karte',
   'categories.cards.other': '{count} Karten',
+  'categories.charts.one': '{count} Diagramm',
+  'categories.charts.other': '{count} Diagramme',
   'compare.button': 'Vergleichen',
   'compare.title': 'Geräte vergleichen',
   'compare.intro':

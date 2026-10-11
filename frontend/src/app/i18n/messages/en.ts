@@ -292,6 +292,8 @@ export const en = {
   'categories.device': 'Time and uptime',
   'categories.cards.one': '{count} card',
   'categories.cards.other': '{count} cards',
+  'categories.charts.one': '{count} chart',
+  'categories.charts.other': '{count} charts',
   'compare.button': 'Compare',
   'compare.title': 'Compare devices',
   'compare.intro':

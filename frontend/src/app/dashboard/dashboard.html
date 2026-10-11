@@ -116,28 +116,13 @@
       @let folded = foldedCategories.folded().has(category.category);
       <section class="category" [attr.aria-labelledby]="'category-' + category.category">
         <h2 class="category-title" [id]="'category-' + category.category">
-          <button
-            type="button"
-            class="fold"
-            [attr.aria-expanded]="!folded"
-            (click)="foldedCategories.toggle(category.category)"
-          >
-            <span class="chevron" aria-hidden="true"></span
-            >{{ i18n.t(categoryTitle[category.category]) }}
-            @if (folded) {
-              @let alerting = categoryAlert(category.items);
-              @if (alerting) {
-                <app-alert-icon
-                  [level]="alerting"
-                  role="img"
-                  [attr.aria-label]="i18n.t('alerts.onCard')"
-                />
-              }
-              <span class="count">{{
-                i18n.plural(category.items.length, 'categories.cards.one', 'categories.cards.other')
-              }}</span>
-            }
-          </button>
+          <app-category-fold
+            [category]="category.category"
+            [count]="
+              i18n.plural(category.items.length, 'categories.cards.one', 'categories.cards.other')
+            "
+            [alert]="categoryAlert(category.items)"
+          />
         </h2>
         @if (!folded) {
           <div class="cards" appEvenColumns keepCardWidth>

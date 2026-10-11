@@ -292,6 +292,8 @@ export const fr: Messages = {
   'categories.device': 'Heure et fonctionnement',
   'categories.cards.one': '{count} carte',
   'categories.cards.other': '{count} cartes',
+  'categories.charts.one': '{count} graphique',
+  'categories.charts.other': '{count} graphiques',
   'compare.button': 'Comparer',
   'compare.title': 'Comparer les appareils',
   'compare.intro':

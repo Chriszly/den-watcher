@@ -116,8 +116,14 @@ func Extras(reading *Reading) []metrics.Extra {
 	}
 	connected := float64(reading.Connected)
 	group := metrics.Extra{
-		ID:    "bluetooth",
-		Title: "Bluetooth",
+		ID:          "bluetooth",
+		Title:       "Bluetooth",
+		Description: "The Bluetooth devices connected to the machine, each with its battery level or its kind.",
+		Descriptions: map[string]string{
+			"de": "Die mit dem Gerät verbundenen Bluetooth-Geräte, jeweils mit Akkustand oder Geräteart.",
+			"fr": "Les appareils Bluetooth connectés à la machine, chacun avec son niveau de batterie ou son type.",
+			"es": "Los dispositivos Bluetooth conectados al equipo, cada uno con su nivel de batería o su tipo.",
+		},
 		Items: []metrics.ExtraItem{{
 			ID:    "connected",
 			Label: "Connected devices",

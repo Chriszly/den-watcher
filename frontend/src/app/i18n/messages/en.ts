@@ -235,6 +235,30 @@ export const en = {
   'format.dayMonthYear': 'd MMM y',
   'format.dateTimeYear': 'EEE d MMM y, HH:mm',
   'format.dateTimeSecondsYear': 'EEE d MMM y, HH:mm:ss',
+  'dashboard.cardInfo': 'About this card',
+  'dashboard.info.cpu':
+    'How busy the processor is: in total and per core, with its clock speed, the load average and the processes.',
+  'dashboard.info.memory':
+    'How much of the working memory (RAM) is in use and how much is still available, and the swap space on disk.',
+  'dashboard.info.disks':
+    'How full each drive or partition is, and how fast it is read and written right now.',
+  'dashboard.info.network':
+    'How fast each network interface receives and sends right now, busiest first, with its addresses and link speed.',
+  'dashboard.info.gpu': 'How busy each graphics card is, with its memory and temperature.',
+  'dashboard.info.temperature':
+    'The temperatures the sensors of the machine report, hottest first.',
+  'dashboard.info.fans': 'How fast each fan turns, in revolutions per minute.',
+  'dashboard.info.battery':
+    'How full the battery is, whether the machine is plugged in, the power it charges or draws with, and how much of its original capacity the battery still holds.',
+  'dashboard.info.power':
+    'Whether the Raspberry Pi got too little power or got too hot and slowed itself down, now or since it started.',
+  'dashboard.info.time': "The time on the device's own clock, in its time zone.",
+  'dashboard.info.uptime':
+    'How long the device has been running since it last started, and the version of Usage Control on it.',
+  'dashboard.info.availability':
+    'How much of the time since it was added the device answered; the times it did not are outages.',
+  'dashboard.info.usage':
+    'How much of the time since it was added the PC or laptop was switched on. Time switched off is just time it was not in use.',
 } as const;
 
 /** The key of one text on the website. */

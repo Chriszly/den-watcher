@@ -440,6 +440,12 @@ func clientsExtra(wired, wireless float64) metrics.Extra {
 	total := wired + wireless
 	return metrics.Extra{
 		ID: "clients", Title: "Clients", Titles: map[string]string{"de": "Geräte im Netz", "fr": "Appareils connectés", "es": "Dispositivos conectados"},
+		Description: "How many devices are online in the router's network, on a cable and on Wi-Fi.",
+		Descriptions: map[string]string{
+			"de": "Wie viele Geräte im Netz des Routers online sind, per Kabel und per WLAN.",
+			"fr": "Le nombre d'appareils en ligne sur le réseau du routeur, par câble et en Wi-Fi.",
+			"es": "Cuántos dispositivos están en línea en la red del router, por cable y por Wi-Fi.",
+		},
 		Items: []metrics.ExtraItem{
 			{ID: "online", Label: "Online", Unit: metrics.UnitNumber, Value: &total, History: true, Labels: map[string]string{"de": "Online", "fr": "En ligne", "es": "En línea"}},
 			{ID: "wired", Label: "On a cable", Unit: metrics.UnitNumber, Value: &wired, Labels: map[string]string{"de": "Per Kabel", "fr": "Par câble", "es": "Por cable"}},

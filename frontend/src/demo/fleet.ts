@@ -1,6 +1,7 @@
 import { Device, LOCAL_DEVICE } from '../app/devices/devices';
 import { Extra, ExtraInfo, ExtraUnit } from '../app/metrics/extras';
 import { Snapshot, Throttling, TimeZone } from '../app/metrics/metrics';
+import { descriptions } from './descriptions';
 
 /**
  * The made-up devices of the demo: a Raspberry Pi as the hub, and Windows and
@@ -1920,7 +1921,11 @@ export function snapshotOf(machine: DemoMachine, t: number, version: string): Sn
     const items = group.items.map((item) =>
       item.unit === 'text' ? item : { ...item, value: v[`extra:${group.id}/${item.id}`] },
     );
-    return { ...group, items: group.id.startsWith('processes-') ? busiestFirst(items) : items };
+    return {
+      ...descriptions[group.id],
+      ...group,
+      items: group.id.startsWith('processes-') ? busiestFirst(items) : items,
+    };
   });
 
   if (machine.router) {

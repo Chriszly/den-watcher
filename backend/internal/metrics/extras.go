@@ -21,7 +21,12 @@ type Extra struct {
 	// languages by language code, such as "de" or "en-US".
 	Title  string            `json:"title"`
 	Titles map[string]string `json:"titles,omitempty"`
-	Items  []ExtraItem       `json:"items"`
+	// Description tells in a sentence or two what the card shows, in English,
+	// and Descriptions the same in other languages; the page shows it when the
+	// (i) at the title is pointed at or tapped.
+	Description  string            `json:"description,omitempty"`
+	Descriptions map[string]string `json:"descriptions,omitempty"`
+	Items        []ExtraItem       `json:"items"`
 }
 
 // ExtraItem is one value of an Extra.
@@ -72,6 +77,8 @@ const (
 	// MaxTextLength is the most characters a title, label or text keeps, so
 	// an add-on can make its texts fit.
 	MaxTextLength = 80
+	// MaxDescriptionLength is the most characters a description keeps.
+	MaxDescriptionLength = 300
 	// maxTranslations is the most languages a title or label keeps.
 	maxTranslations = 8
 )
@@ -112,10 +119,12 @@ func CleanExtras(extras []Extra, maxEntries int) []Extra {
 		}
 		groups[group.ID] = true
 		clean = append(clean, Extra{
-			ID:     group.ID,
-			Title:  cut(group.Title),
-			Titles: cleanTranslations(group.Titles),
-			Items:  items,
+			ID:           group.ID,
+			Title:        cut(group.Title),
+			Titles:       cleanTranslations(group.Titles),
+			Description:  cutTo(group.Description, MaxDescriptionLength),
+			Descriptions: cleanTranslationsTo(group.Descriptions, MaxDescriptionLength),
+			Items:        items,
 		})
 	}
 	return first(clean, maxEntries, func(group Extra) string { return group.ID }, func(group Extra) bool {
@@ -182,6 +191,12 @@ func first[T any](list []T, n int, id func(T) string, history func(T) bool) []T 
 // language codes, so the same ones are kept on every read when there are too
 // many.
 func cleanTranslations(texts map[string]string) map[string]string {
+	return cleanTranslationsTo(texts, MaxTextLength)
+}
+
+// cleanTranslationsTo is cleanTranslations for texts of at most limit
+// characters.
+func cleanTranslationsTo(texts map[string]string, limit int) map[string]string {
 	var clean map[string]string
 	for _, language := range slices.Sorted(maps.Keys(texts)) {
 		if len(clean) == maxTranslations {
@@ -194,7 +209,7 @@ func cleanTranslations(texts map[string]string) map[string]string {
 		if clean == nil {
 			clean = map[string]string{}
 		}
-		clean[language] = cut(text)
+		clean[language] = cutTo(text, limit)
 	}
 	return clean
 }
@@ -202,11 +217,16 @@ func cleanTranslations(texts map[string]string) map[string]string {
 // cut returns text cut to MaxTextLength characters, with invalid UTF-8
 // replaced.
 func cut(text string) string {
+	return cutTo(text, MaxTextLength)
+}
+
+// cutTo returns text cut to limit characters, with invalid UTF-8 replaced.
+func cutTo(text string, limit int) string {
 	if !utf8.ValidString(text) {
 		text = string([]rune(text))
 	}
-	if utf8.RuneCountInString(text) <= MaxTextLength {
+	if utf8.RuneCountInString(text) <= limit {
 		return text
 	}
-	return string([]rune(text)[:MaxTextLength])
+	return string([]rune(text)[:limit])
 }

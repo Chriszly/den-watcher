@@ -296,7 +296,8 @@ func (f *FritzBoxReader) read(ctx context.Context) (metrics.Snapshot, error) {
 	if len(items) > 0 {
 		snapshot.Extras = append(snapshot.Extras, metrics.Extra{
 			ID: "internet", Title: "Internet connection", Items: items,
-			Titles: map[string]string{"de": "Internetverbindung", "fr": "Connexion Internet", "es": "Conexión a Internet"},
+			Titles:      map[string]string{"de": "Internetverbindung", "fr": "Connexion Internet", "es": "Conexión a Internet"},
+			Description: internetDescription, Descriptions: internetDescriptions,
 		})
 	}
 	if clients, ok := f.clients(ctx); ok {

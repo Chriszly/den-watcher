@@ -144,9 +144,15 @@ func Extras(ports []Port, ok bool) []metrics.Extra {
 	count := float64(len(ports))
 	labels := map[string]string{"de": "Offene Ports", "fr": "Ports en écoute", "es": "Puertos en escucha"}
 	group := metrics.Extra{
-		ID:     "ports",
-		Title:  "Listening ports",
-		Titles: labels,
+		ID:          "ports",
+		Title:       "Listening ports",
+		Titles:      labels,
+		Description: "The TCP and UDP ports that programs on the machine listen on, with the addresses they listen on. 0.0.0.0 and :: mean every address.",
+		Descriptions: map[string]string{
+			"de": "Die TCP- und UDP-Ports, auf denen Programme des Geräts lauschen, mit den Adressen dazu. 0.0.0.0 und :: stehen für alle Adressen.",
+			"fr": "Les ports TCP et UDP sur lesquels les programmes de la machine écoutent, avec leurs adresses. 0.0.0.0 et :: signifient toutes les adresses.",
+			"es": "Los puertos TCP y UDP en los que escuchan los programas del equipo, con sus direcciones. 0.0.0.0 y :: significan todas las direcciones.", //nolint:misspell // Spanish
+		},
 		Items: []metrics.ExtraItem{{
 			ID:      "count",
 			Label:   "Listening ports",

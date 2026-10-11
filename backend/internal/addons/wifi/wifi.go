@@ -103,9 +103,15 @@ func Extras(readings []Reading) []metrics.Extra {
 		return nil
 	}
 	group := metrics.Extra{
-		ID:     "wifi",
-		Title:  "Wi-Fi",
-		Titles: map[string]string{"de": "WLAN", "fr": "Wi-Fi", "es": "Wi-Fi"},
+		ID:          "wifi",
+		Title:       "Wi-Fi",
+		Titles:      map[string]string{"de": "WLAN", "fr": "Wi-Fi", "es": "Wi-Fi"},
+		Description: "How good the Wi-Fi connection of each wireless interface is, with its signal level.",
+		Descriptions: map[string]string{
+			"de": "Wie gut die WLAN-Verbindung jeder Funkschnittstelle ist, mit ihrem Signalpegel.",
+			"fr": "La qualité de la connexion Wi-Fi de chaque interface sans fil, avec le niveau du signal.",
+			"es": "La calidad de la conexión Wi-Fi de cada interfaz inalámbrica, con su nivel de señal.",
+		},
 	}
 	for _, r := range readings {
 		quality := r.QualityPercent

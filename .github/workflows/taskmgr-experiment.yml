@@ -1,0 +1,75 @@
+name: Task Manager experiment
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  look:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.2'
+          cache: false
+      - name: Build
+        working-directory: experiment
+        run: |
+          go build -ldflags=-H=windowsgui -o "$env:RUNNER_TEMP\bg-parent-detached.exe" .
+          Copy-Item "$env:RUNNER_TEMP\bg-parent-detached.exe" "$env:RUNNER_TEMP\bg-parent-nowindow.exe"
+          go build -o "$env:RUNNER_TEMP\console-parent.exe" .
+      - name: Install Den-Watcher 2.0.10a with add-ons
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download 2.0.10a --repo $env:GITHUB_REPOSITORY --pattern '*x64.msi' --dir msi
+          $msi = (Get-ChildItem msi\*.msi)[0].FullName
+          $p = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn KERNEL=1 MEMORY=1 PORTS=1" -PassThru
+          $p.WaitForExit(300000) | Out-Null
+          Write-Host "msiexec exit $($p.ExitCode)"
+          Start-Sleep 10
+          Get-CimInstance Win32_Process -Filter "Name like 'den-watcher%'" | Select-Object ProcessId, ParentProcessId, SessionId, Name | Format-Table
+      - name: Start the test parents
+        run: |
+          Start-Process "$env:RUNNER_TEMP\bg-parent-detached.exe"
+          Start-Process "$env:RUNNER_TEMP\bg-parent-nowindow.exe" -ArgumentList nowindow
+          Start-Process "$env:RUNNER_TEMP\console-parent.exe"
+          # A windowed app that starts children too.
+          Start-Process powershell -ArgumentList '-NoProfile','-Command',"Start-Process '$env:RUNNER_TEMP\bg-parent-detached.exe' -ArgumentList child; Start-Process '$env:RUNNER_TEMP\bg-parent-detached.exe' -ArgumentList child; Add-Type -AssemblyName System.Windows.Forms; `$f = New-Object Windows.Forms.Form; `$f.Text = 'Windowed parent'; [Windows.Forms.Application]::Run(`$f)"
+          Start-Sleep 5
+          Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'bg-parent*' -or $_.Name -like 'console-parent*' -or $_.Name -eq 'powershell.exe' } | Select-Object ProcessId, ParentProcessId, SessionId, Name, CommandLine | Format-Table -AutoSize
+          Write-Host "Runner session: $((Get-Process -Id $PID).SessionId)"
+      - name: Screenshot Task Manager
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing, UIAutomationClient, UIAutomationTypes
+          Start-Process taskmgr
+          Start-Sleep 8
+          $root = [Windows.Automation.AutomationElement]::RootElement
+          $more = $root.FindFirst([Windows.Automation.TreeScope]::Descendants,
+            (New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::NameProperty, 'More details')))
+          if ($more) { ($more.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern)).Invoke(); Start-Sleep 6 }
+          $tm = Get-Process taskmgr | Select-Object -First 1
+          Add-Type @'
+          using System; using System.Runtime.InteropServices;
+          public static class W { [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); }
+          '@
+          [W]::ShowWindow($tm.MainWindowHandle, 3) | Out-Null
+          [W]::SetForegroundWindow($tm.MainWindowHandle) | Out-Null
+          Start-Sleep 6
+          New-Item -ItemType Directory shots | Out-Null
+          $b = [Windows.Forms.Screen]::PrimaryScreen.Bounds
+          Write-Host "Screen $($b.Width)x$($b.Height)"
+          foreach ($i in 1..3) {
+            $bmp = New-Object Drawing.Bitmap $b.Width, $b.Height
+            $g = [Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("shots\taskmgr-$i.png")
+            # Scroll down the list for the next one.
+            [Windows.Forms.SendKeys]::SendWait('{PGDN}')
+            Start-Sleep 2
+          }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: taskmgr
+          path: shots

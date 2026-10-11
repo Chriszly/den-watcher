@@ -5,6 +5,7 @@ den-watcher is one program. The same binary runs on every device, and settings d
 - [Roles](#roles)
 - [Devices and connections](#devices-and-connections)
 - [Inside one device](#inside-one-device)
+- [Windows processes](#windows-processes)
 - [How the hub collects from a device](#how-the-hub-collects-from-a-device)
 - [While the hub is away](#while-the-hub-is-away)
 - [Availability, usage and outages](#availability-usage-and-outages)
@@ -107,6 +108,17 @@ flowchart TB
 - **Pruner** deletes everything older than the retention, once at start and then once a day, for every device at once.
 
 The database is described in [Database and history](database.md).
+
+## Windows processes
+
+On Windows, den-watcher runs as the service *Den-Watcher* in the low-privilege *Local Service* account. It starts a second `den-watcher.exe`, the add-on host, as its child process, and the host starts the installed add-ons as its own children. Task Manager groups the processes a program started under it only once one of them is that same program, so without the host every add-on had a line of its own; with it, they all show under `den-watcher.exe`. The service keeps the host in a job that Windows ends with the service, even when the service crashes, and the host does the same for the add-ons.
+
+Two programs stay outside that group, on purpose:
+
+- The **tray icon** (`den-watcher-tray.exe`) runs in the signed-in user's session, where Windows starts it at sign-in. A service in the Local Service account cannot start programs in a user's session; only one running as *LocalSystem* can.
+- The **smart add-on** runs as the service *Den-Watcher smart add-on* in the LocalSystem account, as only administrators may send disks the commands that read their health. A child of a Local Service process cannot get those rights.
+
+Both could join the group only if den-watcher itself ran as LocalSystem, with full control of the PC. That was decided against: the grouping only changes how Task Manager looks, and den-watcher, which serves a website on the network, keeps the fewest rights it needs.
 
 ## How the hub collects from a device
 

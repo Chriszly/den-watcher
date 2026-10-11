@@ -1,0 +1,47 @@
+name: PR Links
+
+on:
+  pull_request:
+    # "edited" re-runs the check when the description changes, so removing the
+    # link turns it green again.
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  github-links-only:
+    # Dependabot's descriptions link to the release notes of each dependency.
+    # Skipping the job still reports the check as passed.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR description links only to GitHub
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            // The body comes from the event payload as data; it never reaches a shell.
+            const body = context.payload.pull_request.body || '';
+            // What GitHub turns into a link: a URL with a scheme, or one starting with www.
+            const link = /\b(?:[a-z][a-z0-9+.-]*:\/\/|www\.)[^\s<>()[\]"'`]+/gi;
+            const host = (url) => {
+              try {
+                return new URL(/^www\./i.test(url) ? `https://${url}` : url).hostname.toLowerCase();
+              } catch {
+                return '';
+              }
+            };
+            const onGitHub = (h) =>
+              h === 'github.com' || h.endsWith('.github.com') || h.endsWith('.githubusercontent.com');
+
+            const hits = body.split(/\r?\n/).flatMap((line, i) =>
+              [...line.matchAll(link)]
+                .map(m => m[0])
+                .filter(url => !onGitHub(host(url)))
+                .map(url => `line ${i + 1}: ${url}`));
+
+            if (hits.length > 0) {
+              core.setFailed(`PR description links outside GitHub; remove these and the check re-runs:\n${hits.join('\n')}`);
+            } else {
+              console.log('PR description links only to GitHub.');
+            }

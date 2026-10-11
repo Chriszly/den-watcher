@@ -28,7 +28,7 @@ Backend packages, in `backend/internal/`:
 | `web` | the built website, embedded into the binary |
 | `sysfile` | reads the small one-value files under `/sys` and `/proc`, for `metrics` and the add-ons |
 
-`backend/cmd/usage-control/main.go` reads the settings and wires these together; on Windows `service_windows.go` runs it as a service. `backend/cmd/usage-control-tray` is the Windows tray icon, and `backend/cmd/tray-icons` draws its icons. How the parts work together is in [How it works](architecture.md).
+`backend/cmd/usage-control/main.go` reads the settings and wires these together; on Windows `service_windows.go` runs it as a service. `backend/cmd/usage-control-tray` is the Windows tray icon, and `backend/cmd/tray-icons` draws its icons. `backend/cmd/licenses` writes the license notices of the Go modules into the built website (see [Open-source projects](third-party.md)). How the parts work together is in [How it works](architecture.md).
 
 ## Run it while developing
 

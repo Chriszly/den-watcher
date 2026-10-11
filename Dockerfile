@@ -21,6 +21,8 @@ COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ ./
 COPY --from=frontend /src/backend/internal/web/files/build ./internal/web/files/build
+# The licenses of the Go code, served next to the website's 3rdpartylicenses.txt.
+RUN go run ./cmd/licenses
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath \
       -ldflags="-s -w -X github.com/Chriszly/usage-control/backend/internal/version.Version=$VERSION" \

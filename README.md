@@ -44,5 +44,6 @@ You alone are responsible for how and where you use it. usage-control is provide
 - [What is collected](docs/data.md): every value, per system, and what is kept in the history
 - [Database and history](docs/database.md): the SQLite file, retention, size and backups
 - [Development](docs/development.md): code layout, translations, checks and releases
+- [Open-source projects](docs/third-party.md): what it is built on, with licenses and where each build's license notices are
 
 Contributions follow [AGENTS.md](AGENTS.md); security issues go to [SECURITY.md](SECURITY.md).

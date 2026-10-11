@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 const table = `/dev/mmcblk0p2 / ext4 rw,noatime 0 0
@@ -242,7 +242,7 @@ func TestIDsDependOnTheMountPointAlone(t *testing.T) {
 		for _, path := range order {
 			usages = append(usages, Usage{Path: path, UsedPercent: 1})
 		}
-		// CleanExtras is what usage-control keeps of an add-on's extras.
+		// CleanExtras is what den-watcher keeps of an add-on's extras.
 		items := metrics.CleanExtras(Extras(usages), 64)[0].Items
 		if len(items) != len(paths) {
 			t.Fatalf("CleanExtras() kept %d of %d values: %+v", len(items), len(paths), items)

@@ -18,7 +18,7 @@ describe('App', () => {
     fixture.detectChanges();
 
     const heading = (fixture.nativeElement as HTMLElement).querySelector('h1');
-    expect(heading?.textContent).toContain('Usage Control');
+    expect(heading?.textContent).toContain('Den-Watcher');
   });
 
   it('shows the mascot next to the page title', () => {

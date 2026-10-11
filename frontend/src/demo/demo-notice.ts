@@ -16,7 +16,7 @@ interface NoticeText {
 
 const ENGLISH: NoticeText = {
   notice: 'This is a demo with made-up values from sample devices.',
-  install: 'Install Usage Control',
+  install: 'Install Den-Watcher',
   release: 'Version {version}',
   main: 'Development version from main {commit}',
   toMain: 'See the development version',
@@ -35,7 +35,7 @@ const TEXT: Record<LanguageCode, NoticeText> = {
   'en-US': ENGLISH,
   de: {
     notice: 'Dies ist eine Demo mit erfundenen Werten von Beispielgeräten.',
-    install: 'Usage Control installieren',
+    install: 'Den-Watcher installieren',
     release: 'Version {version}',
     main: 'Entwicklungsstand von main {commit}',
     toMain: 'Entwicklungsstand ansehen',
@@ -43,7 +43,7 @@ const TEXT: Record<LanguageCode, NoticeText> = {
   },
   fr: {
     notice: 'Ceci est une démo avec des valeurs inventées d’appareils d’exemple.',
-    install: 'Installer Usage Control',
+    install: 'Installer Den-Watcher',
     release: 'Version {version}',
     main: 'Version de développement de main {commit}',
     toMain: 'Voir la version de développement',
@@ -51,7 +51,7 @@ const TEXT: Record<LanguageCode, NoticeText> = {
   },
   es: {
     notice: 'Esto es una demo con valores inventados de dispositivos de ejemplo.',
-    install: 'Instalar Usage Control',
+    install: 'Instalar Den-Watcher',
     release: 'Versión {version}',
     main: 'Versión en desarrollo de main {commit}',
     toMain: 'Ver la versión en desarrollo',
@@ -78,7 +78,7 @@ const TEXT: Record<LanguageCode, NoticeText> = {
       </p>
     }
     <p>
-      <a href="https://github.com/Chriszly/usage-control#readme">{{ text().install }}</a>
+      <a href="https://github.com/Chriszly/den-watcher#readme">{{ text().install }}</a>
     </p>
   `,
   styles: `

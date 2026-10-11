@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/sysfile"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 // This part tells whether Linux has put a GPU to sleep through runtime power

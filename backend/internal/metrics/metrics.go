@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/version"
+	"github.com/Chriszly/den-watcher/backend/internal/version"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/host"
 	"github.com/shirou/gopsutil/v4/mem"
@@ -25,7 +25,7 @@ type Snapshot struct {
 	// Name is what the device calls itself, which a hub offers as the name
 	// when the device is added. Left out when it is not known.
 	Name string `json:"name,omitempty"`
-	// Version is the version of usage-control that read the usage. Devices
+	// Version is the version of den-watcher that read the usage. Devices
 	// running a version from before it was reported leave it out.
 	Version string    `json:"version,omitempty"`
 	Time    time.Time `json:"time"`

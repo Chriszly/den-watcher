@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // client is one client of the router that is online, as the router names

@@ -1,6 +1,6 @@
 # Open-source projects it is built on
 
-usage-control is MIT licensed and stands on the open-source projects below. The exact versions are in `backend/go.mod`, `frontend/package-lock.json`, the `Dockerfile` and the workflows in `.github/workflows`.
+den-watcher is MIT licensed and stands on the open-source projects below. The exact versions are in `backend/go.mod`, `frontend/package-lock.json`, the `Dockerfile` and the workflows in `.github/workflows`.
 
 ## License notices
 
@@ -38,7 +38,7 @@ The website loads no web fonts or icon fonts; it uses the system font. The masco
 | `nvidia-smi`, from the NVIDIA driver | NVIDIA's own license | The gpu and power add-ons |
 | [`vcgencmd`](https://github.com/raspberrypi/utils) | BSD-3-Clause | A Raspberry Pi 5's power |
 
-They are not shipped with usage-control.
+They are not shipped with den-watcher.
 
 ## To build, check and release it
 
@@ -59,4 +59,4 @@ They are not shipped with usage-control.
 | GitHub Actions from [docker](https://github.com/docker) | Apache-2.0 |
 | [golangci-lint-action](https://github.com/golangci/golangci-lint-action) | MIT |
 
-These only build and check the code; none of their code ends up in usage-control, so their licenses, the GPL ones included, do not apply to it.
+These only build and check the code; none of their code ends up in den-watcher, so their licenses, the GPL ones included, do not apply to it.

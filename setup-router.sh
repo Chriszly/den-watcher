@@ -27,7 +27,7 @@ if [[ ! -t 0 ]]; then
   exit 1
 fi
 
-echo "usage-control can show your router as a device: its internet traffic, and depending on the"
+echo "den-watcher can show your router as a device: its internet traffic, and depending on the"
 echo "router its line, ports, clients, CPU, memory and temperatures."
 echo "Read from the router over the local network only. No data is sent to any server;"
 echo "everything stays on your own devices, and a router password is stored encrypted where"

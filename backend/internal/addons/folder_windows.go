@@ -14,7 +14,7 @@ import (
 // openFolder opens the add-on folder, refusing one that is, or lies below, a
 // junction or symbolic link. The smart add-on runs as LocalSystem but writes
 // to a folder the Local Service account may change, so a compromised
-// usage-control could otherwise swap the add-on folder, or the data folder
+// den-watcher could otherwise swap the add-on folder, or the data folder
 // above it, for a junction and have the add-on create, replace and delete
 // its report files elsewhere. The check asks Windows for the path of the
 // folder it opened, which differs from dir when a junction or link was

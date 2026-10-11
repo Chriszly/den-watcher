@@ -25,7 +25,7 @@
 # a space clears DISK_PATHS, UPDATE_CHECK and PORT, and that uninstalling
 # deletes the password and keeps the history.
 #
-#   pwsh windows/check-installer.ps1 -Msi usage-control-1.2.3-x64.msi -NewerMsi usage-control-1.2.3a-x64.msi
+#   pwsh windows/check-installer.ps1 -Msi den-watcher-1.2.3-x64.msi -NewerMsi den-watcher-1.2.3a-x64.msi
 param(
     [Parameter(Mandatory)] [string] $Msi,
     # The same installer with the next bugfix version, to check an update.
@@ -46,10 +46,10 @@ function Invoke-Installer([string] $Arguments, [string] $Ui = '/qn') {
     }
 }
 
-# The versions of Usage Control that Windows lists as installed.
+# The versions of Den-Watcher that Windows lists as installed.
 function Get-InstalledVersions {
     @(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*' |
-        Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -eq 'Usage Control' } |
+        Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -eq 'Den-Watcher' } |
         ForEach-Object { $_.DisplayVersion }) -join ', '
 }
 
@@ -105,7 +105,7 @@ function Get-StatusCode([string] $Url) {
 }
 
 function Assert-FirewallPort([string] $Port) {
-    $rule = Get-NetFirewallRule -DisplayName 'Usage Control'
+    $rule = Get-NetFirewallRule -DisplayName 'Den-Watcher'
     $opened = ($rule | Get-NetFirewallPortFilter).LocalPort
     if ($opened -ne $Port) { throw "The firewall rule opens port $opened, not $Port" }
     if ($rule.Profile -ne 'Private') { throw "The firewall rule applies to $($rule.Profile) networks, not only private ones" }
@@ -126,7 +126,7 @@ Add-Type -Namespace Win32 -Name Tray -MemberDefinition @'
 [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string className, string windowName);
 [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 '@
-$trayExe = "$env:ProgramFiles\Usage Control\usage-control-tray.exe"
+$trayExe = "$env:ProgramFiles\Den-Watcher\den-watcher-tray.exe"
 
 function Wait-Until([scriptblock] $Condition, [string] $What) {
     foreach ($try in 1..30) {
@@ -150,7 +150,7 @@ function Invoke-TrayMenu([int] $Entry) {
 
 function Assert-Tray {
     if (-not (Test-Path $trayExe)) { throw 'The tray program is missing' }
-    $run = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'Usage Control').'Usage Control'
+    $run = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'Den-Watcher').'Den-Watcher'
     if ($run -ne "`"$trayExe`"") { throw "The tray icon starts at login as '$run', not '`"$trayExe`"'" }
     $rights = (sc.exe sdshow UsageControl) -join ''
     if ($rights -notlike '*(A;;CCLCSWRPWPLOCRRC;;;IU)*') { throw "Logged-in users may not start and stop the service: $rights" }
@@ -165,7 +165,7 @@ function Assert-Tray {
     Wait-Until { (Get-Service UsageControl).Status -eq 'Running' } 'Resume started the service'
     Start-Sleep -Seconds 6
     Invoke-TrayMenu 8
-    Wait-Until { (Get-Service UsageControl).Status -eq 'Stopped' -and -not (Get-Process usage-control-tray -ErrorAction SilentlyContinue) } 'Stop and exit stopped the service and closed the icon'
+    Wait-Until { (Get-Service UsageControl).Status -eq 'Stopped' -and -not (Get-Process den-watcher-tray -ErrorAction SilentlyContinue) } 'Stop and exit stopped the service and closed the icon'
     Start-Service UsageControl
 }
 
@@ -294,10 +294,10 @@ Assert-Website 8091
 Write-Host 'Updating without options keeps them and closes the tray icon'
 Start-Tray
 Invoke-Installer "/i `"$NewerMsi`""
-if (Get-Process usage-control-tray -ErrorAction SilentlyContinue) { throw 'The update left the old tray icon running' }
+if (Get-Process den-watcher-tray -ErrorAction SilentlyContinue) { throw 'The update left the old tray icon running' }
 $installed = @(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*' |
-    Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -eq 'Usage Control' })
-if ($installed.Count -ne 1) { throw "The update left $($installed.Count) installs of Usage Control, not 1" }
+    Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -eq 'Den-Watcher' })
+if ($installed.Count -ne 1) { throw "The update left $($installed.Count) installs of Den-Watcher, not 1" }
 Assert-Website 8091
 if (-not (Test-Path "$env:ProgramData\Usage Control\usage-control.db")) { throw 'The update deleted the history' }
 Assert-ServiceSetting DISK_PATHS "$env:SystemDrive\"
@@ -315,7 +315,7 @@ Assert-ProcessesAddOn
 Assert-BluetoothAddOn
 
 Write-Host 'The older bugfix refuses to install over the newer one'
-Assert-InstallerRefuses "/i `"$Msi`"" 'A newer bugfix of this version of Usage Control is already installed.'
+Assert-InstallerRefuses "/i `"$Msi`"" 'A newer bugfix of this version of Den-Watcher is already installed.'
 Assert-Website 8091
 
 Write-Host 'A repair with RESET_PASSWORD=true restarts the service with it, and one without it turns it off'
@@ -325,7 +325,7 @@ Invoke-Installer "/i `"$NewerMsi`" REINSTALL=ALL REINSTALLMODE=m RESET_PASSWORD=
 Assert-ServiceSetting RESET_PASSWORD 'true'
 Assert-Website 8091
 if ((Get-ServiceProcessId) -eq $before) { throw 'The repair did not restart the service' }
-if (-not (Get-Process usage-control-tray -ErrorAction SilentlyContinue)) { throw 'The repair closed the tray icon' }
+if (-not (Get-Process den-watcher-tray -ErrorAction SilentlyContinue)) { throw 'The repair closed the tray icon' }
 Invoke-Installer "/i `"$NewerMsi`" REINSTALL=ALL REINSTALLMODE=m"
 Assert-ServiceSetting RESET_PASSWORD ''
 Assert-ServiceSetting UPDATE_CHECK 'false'
@@ -360,9 +360,9 @@ Remove-Item "$env:ProgramData\Usage Control\addons\*.json" -ErrorAction Silently
 # remembered options along as if they were given.
 Invoke-Installer "/i `"$NewerMsi`" REINSTALL=ALL REINSTALLMODE=m POWER=0" '/qr'
 if (Get-Service UsageControlPower -ErrorAction SilentlyContinue) { throw 'The repair with POWER=0 left the power add-on installed' }
-if (Test-Path "$env:ProgramFiles\Usage Control\usage-control-power.exe") {
-    Show-InstallerLog 'usage-control-power|UsageControlPower|Component: |Transitive|RemoveFiles|FileRemove|POWER|in use|reboot|REINSTALLMODE'
-    throw 'The repair with POWER=0 left usage-control-power.exe'
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-power.exe") {
+    Show-InstallerLog 'den-watcher-power|UsageControlPower|Component: |Transitive|RemoveFiles|FileRemove|POWER|in use|reboot|REINSTALLMODE'
+    throw 'The repair with POWER=0 left den-watcher-power.exe'
 }
 if ((Get-ItemPropertyValue 'HKLM:\SOFTWARE\Usage Control' POWER) -ne '0') { throw 'The repair did not remember POWER=0' }
 Assert-GpuAddOn
@@ -378,9 +378,9 @@ Assert-Website 8091
 # The report the add-on left behind, so the check below sees a new one.
 Remove-Item "$env:ProgramData\Usage Control\addons\power.json" -ErrorAction SilentlyContinue
 Invoke-Installer "/i `"$NewerMsi`" REINSTALL=ALL REINSTALLMODE=m POWER=1"
-if (-not (Test-Path "$env:ProgramFiles\Usage Control\usage-control-power.exe")) {
-    Show-InstallerLog 'usage-control-power|UsageControlPower|Component: |Transitive|InstallFiles|FileCopy|POWER|in use|reboot|REINSTALLMODE'
-    throw 'The repair with POWER=1 did not install usage-control-power.exe'
+if (-not (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-power.exe")) {
+    Show-InstallerLog 'den-watcher-power|UsageControlPower|Component: |Transitive|InstallFiles|FileCopy|POWER|in use|reboot|REINSTALLMODE'
+    throw 'The repair with POWER=1 did not install den-watcher-power.exe'
 }
 Assert-PowerAddOn
 if ((Get-ItemPropertyValue 'HKLM:\SOFTWARE\Usage Control' POWER) -ne '1') { throw 'The repair did not remember POWER=1' }
@@ -391,13 +391,13 @@ Assert-GpuAddOn
 Assert-Website 8091
 
 Write-Host 'A repair with RESET_PASSWORD=true and the reduced user interface leaves the tray icon running'
-if (-not (Get-Process usage-control-tray -ErrorAction SilentlyContinue)) { Start-Tray }
+if (-not (Get-Process den-watcher-tray -ErrorAction SilentlyContinue)) { Start-Tray }
 Invoke-Installer "/i `"$NewerMsi`" REINSTALL=ALL REINSTALLMODE=m RESET_PASSWORD=true" '/qr'
 Assert-ServiceSetting RESET_PASSWORD 'true'
-if (-not (Get-Process usage-control-tray -ErrorAction SilentlyContinue)) { throw 'The repair with the reduced user interface closed the tray icon' }
+if (-not (Get-Process den-watcher-tray -ErrorAction SilentlyContinue)) { throw 'The repair with the reduced user interface closed the tray icon' }
 Invoke-Installer "/i `"$NewerMsi`" REINSTALL=ALL REINSTALLMODE=m" '/qr'
 Assert-ServiceSetting RESET_PASSWORD ''
-if (-not (Get-Process usage-control-tray -ErrorAction SilentlyContinue)) { throw 'The repair with the reduced user interface closed the tray icon' }
+if (-not (Get-Process den-watcher-tray -ErrorAction SilentlyContinue)) { throw 'The repair with the reduced user interface closed the tray icon' }
 Assert-PowerAddOn
 Assert-Website 8091
 
@@ -405,7 +405,7 @@ Write-Host 'A full repair, which replaces every file, keeps the add-ons and clos
 Start-Tray
 Remove-Item "$env:ProgramData\Usage Control\addons\*.json" -ErrorAction SilentlyContinue
 Invoke-Installer "/fa `"$NewerMsi`""
-if (Get-Process usage-control-tray -ErrorAction SilentlyContinue) { throw 'The full repair left the tray icon running' }
+if (Get-Process den-watcher-tray -ErrorAction SilentlyContinue) { throw 'The full repair left the tray icon running' }
 Assert-PowerAddOn
 Assert-GpuAddOn
 Assert-KernelAddOn
@@ -439,10 +439,10 @@ if (Get-Service UsageControlPorts -ErrorAction SilentlyContinue) { throw 'The po
 if (Get-Service UsageControlSmart -ErrorAction SilentlyContinue) { throw 'The smart add-on is still installed' }
 if (Get-Service UsageControlProcesses -ErrorAction SilentlyContinue) { throw 'The processes add-on is still installed' }
 if (Get-Service UsageControlBluetooth -ErrorAction SilentlyContinue) { throw 'The Bluetooth add-on is still installed' }
-if (Get-NetFirewallRule -DisplayName 'Usage Control' -ErrorAction SilentlyContinue) { throw 'The firewall rule is still there' }
+if (Get-NetFirewallRule -DisplayName 'Den-Watcher' -ErrorAction SilentlyContinue) { throw 'The firewall rule is still there' }
 if (Get-ItemProperty 'HKLM:\SOFTWARE\Usage Control' -Name PORT -ErrorAction SilentlyContinue) { throw 'The remembered options are still there' }
 if (Test-Path $trayExe) { throw 'The tray program is still there' }
-if (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'Usage Control' -ErrorAction SilentlyContinue) { throw 'The tray icon still starts at login' }
+if (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'Den-Watcher' -ErrorAction SilentlyContinue) { throw 'The tray icon still starts at login' }
 if (Test-Path "$env:ProgramData\Usage Control") { throw 'The data folder is still there' }
 
 Write-Host 'Installing with the defaults serves only the usage data'

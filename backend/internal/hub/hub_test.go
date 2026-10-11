@@ -18,11 +18,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/history"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/history"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
-// startDevice runs a usage-control that answers with a fixed snapshot and
+// startDevice runs a den-watcher that answers with a fixed snapshot and
 // returns its address.
 func startDevice(t *testing.T) string {
 	t.Helper()
@@ -111,7 +111,7 @@ func TestAddRefusesDevicesThatCannotBeAdded(t *testing.T) {
 	ctx := context.Background()
 	address := startDevice(t)
 	h := openTestHub(t, openTestStore(t), []Device{{ID: "office-pc", Name: "Office PC", Address: address}})
-	// A usage-control asked by a name it does not know, as one in Docker by
+	// A den-watcher asked by a name it does not know, as one in Docker by
 	// the machine's hostname, answers 421; any other answer than 200 OK
 	// tells nothing.
 	answering := func(status int) string {
@@ -424,7 +424,7 @@ func TestOwnAddressesGoOnWithTheHostsWhileTheUsageCannotBeRead(t *testing.T) {
 	atOnce(retry, "after reading it again failed")
 }
 
-// countingDevice is a usage-control that counts the connections opened to
+// countingDevice is a den-watcher that counts the connections opened to
 // it and tells the connection, by its address, that the newest reading came
 // over. A request for its minutes is sent on held and waits until the
 // channel it comes with is closed.

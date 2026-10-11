@@ -1,8 +1,8 @@
-// Package gpu reads more about the NVIDIA GPUs than usage-control itself
+// Package gpu reads more about the NVIDIA GPUs than den-watcher itself
 // does, for the gpu add-on: the fan, the graphics and memory clocks, the
 // video encoder and decoder, the performance state and the power limit, all
 // from one call of nvidia-smi, which comes with the NVIDIA driver. Usage,
-// memory and temperature are on usage-control's own page, and the power the
+// memory and temperature are on den-watcher's own page, and the power the
 // GPU draws comes from the power add-on.
 //
 // It only reads; nothing in here changes the machine.
@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/addons"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/addons"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 const (

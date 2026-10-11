@@ -140,12 +140,12 @@ jobs:
           context: .
           platforms: linux/amd64
           load: true
-          tags: ghcr.io/chriszly/usage-control:ci
+          tags: ghcr.io/chriszly/den-watcher:ci
           cache-from: type=gha
 
-      # Starts usage-control with two add-on containers as compose.yaml sets
+      # Starts den-watcher with two add-on containers as compose.yaml sets
       # them up, one as root without capabilities (power) and one as the
-      # image's user (processes), and waits until usage-control shows what
+      # image's user (processes), and waits until den-watcher shows what
       # the processes add-on wrote to the shared add-on volume.
       - name: Start it with add-ons
         env:
@@ -162,16 +162,48 @@ jobs:
           done
           if ! curl -fsS http://127.0.0.1:9393/api/metrics | grep -q '"id":"processes-memory"'; then
             docker compose logs >&2
-            echo "usage-control does not show the processes add-on" >&2
+            echo "den-watcher does not show the processes add-on" >&2
             exit 1
           fi
           # A container that ends is restarted, so it has to have run throughout.
           mapfile -t containers < <(docker compose ps -aq)
           restarts="$(docker inspect -f '{{.RestartCount}}' "${containers[@]}" | sort -u | tr '\n' ' ')"
-          if [[ "$(docker compose ps --status running --services | sort | tr '\n' ' ')" != "power processes usage-control " || "$restarts" != "0 " ]]; then
+          if [[ "$(docker compose ps --status running --services | sort | tr '\n' ' ')" != "den-watcher power processes " || "$restarts" != "0 " ]]; then
             docker compose ps -a >&2
             docker compose logs >&2
             echo "not every container is running" >&2
             exit 1
           fi
           docker compose down -v
+
+      # The compose.yaml of 2.0.7a, the last release before the rename to
+      # den-watcher, pulls the image by its old name and starts the add-ons
+      # by their old names; the new image has to run it the same way.
+      - name: Start it with a compose.yaml from before the rename
+        env:
+          IMAGE_TAG: ci
+          COMPOSE_PROFILES: power,processes
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/contents/compose.yaml?ref=2.0.7a" -H 'Accept: application/vnd.github.raw' > old-compose.yaml
+          docker tag ghcr.io/chriszly/den-watcher:ci ghcr.io/chriszly/usage-control:ci
+          docker compose -f old-compose.yaml up -d --no-build --pull never
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9393/api/metrics 2> /dev/null | grep -q '"id":"processes-memory"'; then
+              break
+            fi
+            sleep 1
+          done
+          if ! curl -fsS http://127.0.0.1:9393/api/metrics | grep -q '"id":"processes-memory"'; then
+            docker compose -f old-compose.yaml logs >&2
+            echo "the compose.yaml from before the rename does not show the processes add-on" >&2
+            exit 1
+          fi
+          if [[ "$(docker compose -f old-compose.yaml ps --status running --services | sort | tr '\n' ' ')" != "power processes usage-control " ]]; then
+            docker compose -f old-compose.yaml ps -a >&2
+            docker compose -f old-compose.yaml logs >&2
+            echo "not every container from before the rename is running" >&2
+            exit 1
+          fi
+          docker compose -f old-compose.yaml down -v

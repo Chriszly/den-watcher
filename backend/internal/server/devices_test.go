@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Chriszly/usage-control/backend/internal/hub"
-	"github.com/Chriszly/usage-control/backend/internal/password"
+	"github.com/Chriszly/den-watcher/backend/internal/hub"
+	"github.com/Chriszly/den-watcher/backend/internal/password"
 )
 
 type fakeHub struct {

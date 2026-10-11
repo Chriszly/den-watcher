@@ -7,7 +7,7 @@ import { Extra, ExtraInfo } from './extras';
 
 /** The usage of the machine at one point in time, as served by GET /api/metrics. */
 export interface Snapshot {
-  /** The version of usage-control on the device; missing on versions from before it was reported. */
+  /** The version of den-watcher on the device; missing on versions from before it was reported. */
   version?: string;
   time: string;
   /** The time zone the device's clock is set to; missing on versions from before it was reported. */

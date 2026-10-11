@@ -1,4 +1,4 @@
-# usage-control
+# Den-Watcher
 
 A small website that shows the usage of the hardware it runs on: CPU, memory, disks, network, temperatures, GPU, battery and more, live and as charts over time. It runs on a Raspberry Pi or any Linux machine with Docker or as a service, and on Windows PCs with an installer. One device, the hub, can collect from the others on the network and show them all on one page.
 
@@ -16,7 +16,7 @@ flowchart LR
     hub -- "every 5 s" --> windows["Windows PC"]
 ```
 
-**[Try the demo](https://chriszly.github.io/usage-control/)**: the real page with made-up Windows and Linux devices, to click through before installing anything. It shows the latest release; the development version from main is at [/main/](https://chriszly.github.io/usage-control/main/).
+**[Try the demo](https://chriszly.github.io/den-watcher/)**: the real page with made-up Windows and Linux devices, to click through before installing anything. It shows the latest release; the development version from main is at [/main/](https://chriszly.github.io/den-watcher/main/).
 
 ## Quick start
 
@@ -31,11 +31,11 @@ Then open `http://<the machine's address>:9393` from a device on the same networ
 
 ## Intended use
 
-usage-control is meant for monitoring your own devices: machines you own, or machines whose owner and users have allowed you to monitor them. It is not spyware and must not be used as such.
+den-watcher is meant for monitoring your own devices: machines you own, or machines whose owner and users have allowed you to monitor them. It is not spyware and must not be used as such.
 
 The charts and the availability view show when a device was switched on and how busy it was, which can reveal when and how a person used it. Before you install it on a device someone else uses (family members, flatmates, employees, customers), make sure you are allowed to: tell the people concerned, get their consent where the law requires it, and follow the data protection and workplace rules that apply to you (in the EU the GDPR; in Germany, where there is a works council, monitoring employees also needs its agreement). Installing it secretly on another person's device can be a criminal offence.
 
-You alone are responsible for how and where you use it. usage-control is provided free of charge and "as is", without any warranty, as set out in the [MIT licence](LICENSE); to the extent permitted by law, the authors are not liable for any misuse or for any damage arising from its use.
+You alone are responsible for how and where you use it. den-watcher is provided free of charge and "as is", without any warranty, as set out in the [MIT licence](LICENSE); to the extent permitted by law, the authors are not liable for any misuse or for any damage arising from its use.
 
 ## Documentation
 

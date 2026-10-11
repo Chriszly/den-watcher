@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/history"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/history"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
-// minutesDevice is a usage-control whose clock is behind by an hour and that
+// minutesDevice is a den-watcher whose clock is behind by an hour and that
 // kept a minute for every one of the last few, as while the hub could not
 // reach it. It hands them out three per answer and remembers what it was
 // asked.

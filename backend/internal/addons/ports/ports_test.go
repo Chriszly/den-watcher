@@ -8,7 +8,7 @@ import (
 
 	"github.com/shirou/gopsutil/v4/net"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 const procNetTCP = `  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode

@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
-	"github.com/Chriszly/usage-control/backend/internal/pdh"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/pdh"
 )
 
 // On Windows the memory details come from the performance counters of the

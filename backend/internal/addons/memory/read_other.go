@@ -5,7 +5,7 @@ package memory
 import (
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // New returns what reads the memory details of this machine: /proc, which

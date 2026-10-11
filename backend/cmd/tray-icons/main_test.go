@@ -68,7 +68,7 @@ func TestWritesTheIcons(t *testing.T) {
 	if err := run(mascotDir, builtSite(t, "#e37100"), out); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"usage-control.ico", "running.ico", "stopped.ico", "paused.ico"} {
+	for _, name := range []string{"den-watcher.ico", "running.ico", "stopped.ico", "paused.ico"} {
 		data, err := os.ReadFile(filepath.Join(out, name)) //nolint:gosec // the test's own folder
 		if err != nil {
 			t.Fatal(err)

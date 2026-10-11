@@ -13,7 +13,7 @@ router-secrets/
 backend/internal/web/files/build/
 
 # Tray icons, drawn from the mascot by backend/cmd/tray-icons at build time
-backend/cmd/usage-control-tray/icons/*.ico
+backend/cmd/den-watcher-tray/icons/*.ico
 
 # History database written when running the backend locally
 *.db

@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/sys/windows/registry"
 
-	"github.com/Chriszly/usage-control/backend/internal/pdh"
+	"github.com/Chriszly/den-watcher/backend/internal/pdh"
 )
 
 // gpuReader reads every GPU through the performance counters Windows keeps for

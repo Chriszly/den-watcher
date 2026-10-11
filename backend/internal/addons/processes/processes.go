@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // Top is how many processes each group lists.

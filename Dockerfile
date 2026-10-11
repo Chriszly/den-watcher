@@ -25,27 +25,34 @@ COPY --from=frontend /src/backend/internal/web/files/build ./internal/web/files/
 RUN go run ./cmd/licenses
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath \
-      -ldflags="-s -w -X github.com/Chriszly/usage-control/backend/internal/version.Version=$VERSION" \
-      -o /out/usage-control ./cmd/usage-control
+      -ldflags="-s -w -X github.com/Chriszly/den-watcher/backend/internal/version.Version=$VERSION" \
+      -o /out/den-watcher ./cmd/den-watcher
 # The add-ons, each run as a container of its own when its profile in
-# compose.yaml is picked: every command but usage-control, the Windows tray
+# compose.yaml is picked: every command but den-watcher, the Windows tray
 # and the add-ons without a container (gpu, inodes and smart, which come only
 # with the Linux archive).
-RUN mkdir /out/addons && for cmd in cmd/usage-control-*/; do \
+RUN mkdir /out/addons && for cmd in cmd/den-watcher-*/; do \
       name="$(basename "$cmd")"; \
-      case "$name" in usage-control-tray|usage-control-gpu|usage-control-inodes|usage-control-smart) continue ;; esac; \
+      case "$name" in den-watcher-tray|den-watcher-gpu|den-watcher-inodes|den-watcher-smart) continue ;; esac; \
       CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
         go build -trimpath -ldflags="-s -w" -o "/out/addons/$name" "./$cmd" || exit 1; \
+    done
+# The names from before the rename to den-watcher, which compose.yaml files
+# from then name as the add-ons' entrypoints: /usage-control-power and so on.
+RUN cd /out/addons && ln -s den-watcher usage-control && for addon in den-watcher-*; do \
+      ln -s "$addon" "usage-control-${addon#den-watcher-}" || exit 1; \
     done
 # The folder the history database is kept in, mounted as a volume at run time.
 RUN mkdir /out/data
 
 # A minimal image without a shell or package manager, running as a non-root user.
 FROM gcr.io/distroless/static-debian13:nonroot
-COPY --from=backend /out/usage-control /out/addons/ /
+COPY --from=backend /out/den-watcher /out/addons/ /
 # Owned by the nonroot user (65532), so a new volume mounted here is writable.
 COPY --from=backend --chown=65532:65532 /out/data /data
+# The file keeps its name from before the rename, so a volume from then keeps
+# its history.
 ENV DATABASE_PATH=/data/usage-control.db
 VOLUME /data
 EXPOSE 9393
-ENTRYPOINT ["/usage-control"]
+ENTRYPOINT ["/den-watcher"]

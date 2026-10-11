@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "usage-control": {
+    "den-watcher": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -54,7 +54,7 @@
             },
             "demo": {
               "browser": "src/demo/main.ts",
-              "baseHref": "/usage-control/",
+              "baseHref": "/den-watcher/",
               "outputPath": {
                 "base": "dist/demo",
                 "browser": ""
@@ -80,10 +80,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "usage-control:build:production"
+              "buildTarget": "den-watcher:build:production"
             },
             "development": {
-              "buildTarget": "usage-control:build:development"
+              "buildTarget": "den-watcher:build:development"
             }
           },
           "defaultConfiguration": "development",

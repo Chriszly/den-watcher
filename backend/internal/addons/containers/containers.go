@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
-	"github.com/Chriszly/usage-control/backend/internal/sysfile"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 // MaxContainers is the most containers the add-on reports, as many values as

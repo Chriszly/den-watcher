@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/addons"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/addons"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // nvidiaTimeout is how long nvidia-smi may take. Without the driver's

@@ -1,7 +1,7 @@
 name: Linux archives
 
 # Builds the archives for installing without Docker on Linux
-# (usage-control-<version>-linux-amd64.tar.gz and -arm64.tar.gz: the program,
+# (den-watcher-<version>-linux-amd64.tar.gz and -arm64.tar.gz: the program,
 # a systemd service, the add-ons with their services, and install.sh) and checks on a machine with systemd that
 # the amd64 one installs, keeps its settings across an update and uninstalls
 # (linux/check-install.sh). Pull requests and main keep the archives as a
@@ -84,32 +84,38 @@ jobs:
         run: |
           set -euo pipefail
           for arch in amd64 arm64; do
-            folder="usage-control-$VERSION-linux-$arch"
+            folder="den-watcher-$VERSION-linux-$arch"
             mkdir -p "dist/$folder"
             (cd backend && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath \
-              -ldflags="-s -w -X github.com/Chriszly/usage-control/backend/internal/version.Version=$VERSION" \
-              -o "../dist/$folder/usage-control" ./cmd/usage-control)
+              -ldflags="-s -w -X github.com/Chriszly/den-watcher/backend/internal/version.Version=$VERSION" \
+              -o "../dist/$folder/den-watcher" ./cmd/den-watcher)
             # Every add-on, each with its service file in linux/.
-            for addon in linux/usage-control-*.service; do
+            for addon in linux/den-watcher-*.service; do
               name="$(basename "$addon" .service)"
               (cd backend && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags="-s -w" \
                 -o "../dist/$folder/$name" "./cmd/$name")
               cp "$addon" "dist/$folder/"
             done
-            cp linux/install.sh linux/usage-control.service linux/usage-control.env.example "dist/$folder/"
+            cp linux/install.sh linux/den-watcher.service linux/den-watcher.env.example "dist/$folder/"
             tar -czf "dist/$folder.tar.gz" -C dist "$folder"
           done
           ls -l dist/*.tar.gz
 
-      # The runner has systemd, so the archive is installed for real.
+      # The runner has systemd, so the archive is installed for real, first
+      # over 2.0.7a, the last release from before the rename to den-watcher,
+      # which it has to take over.
       - name: Install, update and uninstall it
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: sudo linux/check-install.sh "dist/usage-control-$VERSION-linux-amd64.tar.gz" "$VERSION"
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download 2.0.7a --repo "$GITHUB_REPOSITORY" --pattern 'usage-control-2.0.7a-linux-amd64.tar.gz' --dir old
+          sudo linux/check-install.sh "dist/den-watcher-$VERSION-linux-amd64.tar.gz" "$VERSION" old/usage-control-2.0.7a-linux-amd64.tar.gz
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: usage-control-${{ steps.version.outputs.version }}-linux
+          name: den-watcher-${{ steps.version.outputs.version }}-linux
           path: dist/*.tar.gz
           retention-days: 14
 
@@ -123,7 +129,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: usage-control-${{ needs.archives.outputs.version }}-linux
+          name: den-watcher-${{ needs.archives.outputs.version }}-linux
           path: dist
 
       # Creates the release for the tag if there is none yet (the other

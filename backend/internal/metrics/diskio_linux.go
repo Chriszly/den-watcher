@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/Chriszly/usage-control/backend/internal/sysfile"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 	"golang.org/x/sys/unix"
 )
 

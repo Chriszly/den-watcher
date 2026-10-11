@@ -10,7 +10,7 @@ export const de: Messages = {
   'dashboard.unreachable':
     'Das Backend ist nicht erreichbar. Angezeigt werden die zuletzt bekannten Werte.',
   'dashboard.deviceUnreachable':
-    '{device} hat in letzter Zeit nicht geantwortet. Läuft usage-control darauf?',
+    '{device} hat in letzter Zeit nicht geantwortet. Läuft Den-Watcher darauf?',
   'dashboard.routerUnreachable':
     '{device} hat in letzter Zeit nicht geantwortet. Ist das Gerät eingeschaltet, und stimmen Adresse und Anmeldung?',
   'dashboard.deviceRefused':
@@ -115,7 +115,7 @@ export const de: Messages = {
   'devices.addOther': 'Weitere Geräte hinzufügen',
   'devicesDialog.title': 'Geräte',
   'devicesDialog.intro':
-    'Dieses Gerät kann die Auslastung anderer Geräte im lokalen Netzwerk anzeigen, auf denen usage-control läuft.',
+    'Dieses Gerät kann die Auslastung anderer Geräte im lokalen Netzwerk anzeigen, auf denen Den-Watcher läuft.',
   'devicesDialog.remove': 'Entfernen',
   'devicesDialog.fixed': 'In .env festgelegt',
   'devicesDialog.router': 'Router',
@@ -145,7 +145,7 @@ export const de: Messages = {
   'devices.problem.kind':
     'Wähle, ob das Gerät ein Server oder IoT-Gerät oder ein PC oder Laptop ist.',
   'devices.problem.unreachable':
-    'Unter dieser Adresse antwortet kein usage-control. Läuft es, und liegt die Adresse im lokalen Netzwerk?',
+    'Unter dieser Adresse antwortet kein Den-Watcher. Läuft es, und liegt die Adresse im lokalen Netzwerk?',
   'devices.problem.hostUnknown':
     'Das Gerät antwortet nicht auf diesen Namen. In Docker gilt das auch für den bloßen Hostnamen des Rechners. Schreibe seine IP-Adresse oder seinen .local-Namen, zum Beispiel raspberrypi.local:9393, oder trage den Namen auf dem Gerät in ALLOWED_HOSTS ein.',
   'devices.problem.fixed':
@@ -256,7 +256,7 @@ export const de: Messages = {
     'Ob der Raspberry Pi zu wenig Strom bekam oder zu heiß wurde und sich deshalb verlangsamt hat, jetzt oder seit dem Start.',
   'dashboard.info.time': 'Die Uhrzeit nach der eigenen Uhr des Geräts, in seiner Zeitzone.',
   'dashboard.info.uptime':
-    'Wie lange das Gerät seit dem letzten Start läuft, und die Version von Usage Control darauf.',
+    'Wie lange das Gerät seit dem letzten Start läuft, und die Version von Den-Watcher darauf.',
   'dashboard.info.availability':
     'Wie viel der Zeit seit dem Hinzufügen das Gerät geantwortet hat; die Zeiten ohne Antwort sind Ausfälle.',
   'dashboard.info.usage':

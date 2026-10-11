@@ -10,8 +10,8 @@ import (
 	"net/netip"
 	"sync"
 
-	"github.com/Chriszly/usage-control/backend/internal/hub"
-	"github.com/Chriszly/usage-control/backend/internal/password"
+	"github.com/Chriszly/den-watcher/backend/internal/hub"
+	"github.com/Chriszly/den-watcher/backend/internal/password"
 )
 
 // maxChangeBytes is the largest request body that adds or removes a device.

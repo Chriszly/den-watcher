@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/addons"
-	"github.com/Chriszly/usage-control/backend/internal/sysfile"
+	"github.com/Chriszly/den-watcher/backend/internal/addons"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 // lastReadings keeps the readings of a program the add-on starts, vcgencmd

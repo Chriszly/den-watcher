@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // availabilitySchema keeps when the hub started collecting from each device

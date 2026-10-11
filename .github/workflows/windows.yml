@@ -2,7 +2,7 @@ name: Windows installer
 
 # Builds the Windows programs (the service and the tray icon) and runs the
 # Windows-only tests on every pull request. The installers
-# (usage-control-<version>-x64.msi and -arm64.msi) are built on main, on
+# (den-watcher-<version>-x64.msi and -arm64.msi) are built on main, on
 # version tags, and on pull requests that change the installer or a program
 # it installs or the code they run as services (windows/, this workflow,
 # backend/go.mod and go.sum, backend/cmd, backend/internal/addons,
@@ -138,7 +138,7 @@ jobs:
           set -euo pipefail
           go run ./cmd/tray-icons
           mkdir -p ../dist
-          cp cmd/usage-control-tray/icons/usage-control.ico ../dist/
+          cp cmd/den-watcher-tray/icons/den-watcher.ico ../dist/
 
       # The tray program is a windowless GUI program, so no console opens with
       # it. The test program runs the Windows-only tests on the Windows runner.
@@ -151,20 +151,20 @@ jobs:
           for arch in amd64 arm64; do
             CGO_ENABLED=0 GOOS=windows GOARCH="$arch" \
               go build -trimpath \
-                -ldflags="-s -w -X github.com/Chriszly/usage-control/backend/internal/version.Version=$VERSION" \
-                -o "../dist/$arch/usage-control.exe" ./cmd/usage-control
+                -ldflags="-s -w -X github.com/Chriszly/den-watcher/backend/internal/version.Version=$VERSION" \
+                -o "../dist/$arch/den-watcher.exe" ./cmd/den-watcher
             # Every add-on; the installer picks the ones that work on Windows.
-            for cmd in cmd/usage-control-*/; do
+            for cmd in cmd/den-watcher-*/; do
               name="$(basename "$cmd")"
-              [[ $name == usage-control-tray ]] && continue
+              [[ $name == den-watcher-tray ]] && continue
               CGO_ENABLED=0 GOOS=windows GOARCH="$arch" \
                 go build -trimpath -ldflags="-s -w" -o "../dist/$arch/addons/$name.exe" "./$cmd"
             done
             CGO_ENABLED=0 GOOS=windows GOARCH="$arch" \
               go build -trimpath -ldflags="-s -w -H=windowsgui" \
-                -o "../dist/$arch/usage-control-tray.exe" ./cmd/usage-control-tray
+                -o "../dist/$arch/den-watcher-tray.exe" ./cmd/den-watcher-tray
           done
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/usage-control-tests.exe ./cmd/usage-control
+          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/den-watcher-tests.exe ./cmd/den-watcher
           GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/metrics-tests.exe ./internal/metrics
           GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/winservice-tests.exe ./internal/winservice
           GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/router-tests.exe ./internal/router
@@ -200,7 +200,7 @@ jobs:
       - name: Run the Windows-only tests
         run: |
           # Quoted: PowerShell would split -test.v into -test and .v.
-          dist\tests\usage-control-tests.exe '-test.v'
+          dist\tests\den-watcher-tests.exe '-test.v'
           if ($LASTEXITCODE -ne 0) { exit 1 }
           # Only the GPU and network card tests: the other metrics tests assume Linux paths.
           dist\tests\metrics-tests.exe '-test.v' '-test.run=GPU|IsHardware'
@@ -266,15 +266,32 @@ jobs:
       - name: Build the installers
         run: |
           foreach ($arch in @{ x64 = 'amd64'; arm64 = 'arm64' }.GetEnumerator()) {
-            wix build windows\usage-control.wxs -arch $arch.Key `
-              -d Version=$env:MSI_VERSION -d Bugfix=$env:BUGFIX -d Binary=dist\$($arch.Value)\usage-control.exe `
-              -d TrayBinary=dist\$($arch.Value)\usage-control-tray.exe -d AddOns=dist\$($arch.Value)\addons `
-              -d Icon=dist\usage-control.ico `
+            wix build windows\den-watcher.wxs -arch $arch.Key `
+              -d Version=$env:MSI_VERSION -d Bugfix=$env:BUGFIX -d Binary=dist\$($arch.Value)\den-watcher.exe `
+              -d TrayBinary=dist\$($arch.Value)\den-watcher-tray.exe -d AddOns=dist\$($arch.Value)\addons `
+              -d Icon=dist\den-watcher.ico `
               -ext WixToolset.Firewall.wixext -ext WixToolset.Util.wixext -ext WixToolset.UI.wixext `
-              -o "msi\usage-control-$env:VERSION-$($arch.Key).msi"
+              -o "msi\den-watcher-$env:VERSION-$($arch.Key).msi"
             if ($LASTEXITCODE -ne 0) { exit 1 }
           }
           Get-ChildItem msi
+
+      # 2.0.7a is the last release from before the rename to den-watcher; an
+      # installer with a higher version than it has to take it over.
+      - name: Update from before the rename
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download 2.0.7a --repo $env:GITHUB_REPOSITORY --pattern 'usage-control-2.0.7a-x64.msi' --dir old
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          wix build windows\den-watcher.wxs -arch x64 `
+            -d Version=255.0.0 -d Bugfix=0 -d Binary=dist\amd64\den-watcher.exe `
+            -d TrayBinary=dist\amd64\den-watcher-tray.exe -d AddOns=dist\amd64\addons `
+            -d Icon=dist\den-watcher.ico `
+            -ext WixToolset.Firewall.wixext -ext WixToolset.Util.wixext -ext WixToolset.UI.wixext `
+            -o "check\den-watcher-255.0.0-x64.msi"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          windows\check-rename-upgrade.ps1 -OldMsi "old\usage-control-2.0.7a-x64.msi" -Msi "check\den-watcher-255.0.0-x64.msi"
 
       # The check updates to a newer version, so it also gets an installer
       # with the next bugfix version, which is not published. A bugfix only
@@ -286,18 +303,18 @@ jobs:
           $version = [version]$env:MSI_VERSION
           $bugfix = [int]$env:BUGFIX + 1
           $newer = "$($version.Major).$($version.Minor).$($version.Build).$bugfix"
-          wix build windows\usage-control.wxs -arch x64 `
-            -d Version=$newer -d Bugfix=$bugfix -d Binary=dist\amd64\usage-control.exe `
-            -d TrayBinary=dist\amd64\usage-control-tray.exe -d AddOns=dist\amd64\addons `
-            -d Icon=dist\usage-control.ico `
+          wix build windows\den-watcher.wxs -arch x64 `
+            -d Version=$newer -d Bugfix=$bugfix -d Binary=dist\amd64\den-watcher.exe `
+            -d TrayBinary=dist\amd64\den-watcher-tray.exe -d AddOns=dist\amd64\addons `
+            -d Icon=dist\den-watcher.ico `
             -ext WixToolset.Firewall.wixext -ext WixToolset.Util.wixext -ext WixToolset.UI.wixext `
-            -o "check\usage-control-$newer-x64.msi"
+            -o "check\den-watcher-$newer-x64.msi"
           if ($LASTEXITCODE -ne 0) { exit 1 }
-          windows\check-installer.ps1 -Msi "msi\usage-control-$env:VERSION-x64.msi" -NewerMsi "check\usage-control-$newer-x64.msi"
+          windows\check-installer.ps1 -Msi "msi\den-watcher-$env:VERSION-x64.msi" -NewerMsi "check\den-watcher-$newer-x64.msi"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: usage-control-${{ env.VERSION }}-windows
+          name: den-watcher-${{ env.VERSION }}-windows
           path: msi/*.msi
           retention-days: 14
 
@@ -311,7 +328,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: usage-control-${{ needs.programs.outputs.version }}-windows
+          name: den-watcher-${{ needs.programs.outputs.version }}-windows
           path: msi
 
       # Creates the release for the tag if there is none yet (the other

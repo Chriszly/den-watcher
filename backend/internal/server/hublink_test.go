@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Chriszly/usage-control/backend/internal/hub"
+	"github.com/Chriszly/den-watcher/backend/internal/hub"
 )
 
 // askAsHub asks for the metrics like a hub does, from remoteAddr, telling

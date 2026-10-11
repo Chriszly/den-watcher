@@ -72,7 +72,7 @@ func run(systems []string, out string) error {
 	}
 
 	var text bytes.Buffer
-	fmt.Fprintf(&text, "The Go code compiled into usage-control (%s) and its license notices.\n", strings.Join(systems, ", "))
+	fmt.Fprintf(&text, "The Go code compiled into den-watcher (%s) and its license notices.\n", strings.Join(systems, ", "))
 	fmt.Fprintln(&text, "The website's own packages are listed in 3rdpartylicenses.txt.")
 	if err := writeLicenses(&text, "Go standard library "+version, goroot, []string{"LICENSE"}); err != nil {
 		return err

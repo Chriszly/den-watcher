@@ -1,0 +1,57 @@
+# The Bluetooth add-on of den-watcher: reads which Bluetooth devices are
+# connected and writes them to /run/den-watcher-addons, which den-watcher
+# shows. install.sh puts it in /etc/systemd/system when the add-on is picked.
+[Unit]
+Description=Den-Watcher Bluetooth add-on: reads which Bluetooth devices are connected, with their name, kind or battery; runs as a user without privileges
+Documentation=https://github.com/Chriszly/den-watcher
+PartOf=den-watcher.service
+After=den-watcher.service bluetooth.service
+
+[Service]
+ExecStart=/usr/local/bin/den-watcher-bluetooth
+# Unlike the other add-ons it asks BlueZ over the system D-Bus, where root
+# could have systemd and other services act for it, so it runs as a
+# throwaway user. That user may not write to the root-owned add-on folder, so
+# it writes to a folder of its own in it, and a link in the add-on folder,
+# made and removed by systemd as root ("+"), points den-watcher at its
+# report.
+DynamicUser=yes
+Environment=ADDONS_DIR=/run/den-watcher-addons/bluetooth
+RuntimeDirectory=den-watcher-addons/bluetooth
+RuntimeDirectoryMode=0755
+ExecStartPre=+/bin/ln -sfn bluetooth/bluetooth.json /run/den-watcher-addons/bluetooth.json
+ExecStopPost=+/bin/rm -f /run/den-watcher-addons/bluetooth.json
+Restart=on-failure
+RestartSec=5
+
+# It reads BlueZ's devices over D-Bus, which BlueZ lets any user do, and
+# where it cannot, /sys/class/bluetooth, which anyone may read. It needs no
+# network, only the Unix socket of the system D-Bus, and starts no other
+# program. BlueZ's D-Bus policy lets the same user also connect or remove
+# devices; the add-on only ever asks for the list (GetManagedObjects).
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+# Only pseudo devices such as /dev/null: no disks, input or other hardware.
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+# Without capabilities the clock cannot be set anyway; this also blocks the
+# calls that set it, as in the other add-ons' units.
+SystemCallFilter=~@clock
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=yes
+
+[Install]
+WantedBy=den-watcher.service

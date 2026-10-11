@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // fakeUPnPRouter answers a UPnP search on a UDP port of 127.0.0.1 with the

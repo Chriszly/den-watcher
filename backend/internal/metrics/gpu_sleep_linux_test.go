@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/sysfile"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 // writeSysFile writes a file below dir, making its folders.

@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/history"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/history"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // MinutesPath is where a device serves the averages it keeps of its own

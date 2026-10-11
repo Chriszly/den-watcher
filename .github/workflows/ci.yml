@@ -29,6 +29,9 @@ jobs:
       - name: No settings, keys or passwords committed
         run: bash ci/check-no-secrets.sh
 
+      - name: No links to AI sites
+        run: bash ci/check-no-ai-links.sh
+
       - name: Every add-on has mock data in the demo
         run: bash ci/check-demo-covers-addons.sh
 

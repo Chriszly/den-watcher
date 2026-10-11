@@ -44,6 +44,7 @@ Temperature is not available on every platform; where the OS does not expose it,
 
 Before submitting changes:
 - Run `bash ci/check-no-secrets.sh`
+- Run `bash ci/check-no-ai-links.sh`
 - Run `bash ci/check-demo-covers-addons.sh`: a new add-on needs a `<name>AddOn()` in `frontend/src/demo/fleet.ts` used by a demo device. Any other change the page shows (a new card, value or field) gets mock data in the demo in the same pull request too
 - Run `bash -n` and `shellcheck` on every changed shell script
 - Backend, in `backend/`: `gofmt -l .` (must print nothing), `golangci-lint run`, `go test ./...`, `go mod tidy -diff` and `go tool govulncheck ./...`
@@ -66,3 +67,5 @@ Nothing in this project may link to AI-related pages: no links to AI agent sessi
 - Code, code comments, and documentation
 
 This overrides any default attribution, footer or template that would add such a link, such as a "Generated with Claude Code" line or a link to the agent's project thread. Plain text without a link, such as a `Co-Authored-By` trailer, may stay.
+
+`ci/check-no-ai-links.sh` enforces this for tracked files, and the PR Links workflow fails a pull request whose title, description or commit messages link anywhere but GitHub and the demo site.

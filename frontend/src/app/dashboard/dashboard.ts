@@ -45,10 +45,18 @@ export function coreColumns(cores: number): number {
 /** The groups of extras whose values are shown largest first, such as what each part draws. */
 const LARGEST_FIRST = new Set(['power']);
 
+/**
+ * A value as the card shows it, to a tenth, so values that look the same compare equal and keep
+ * their places by name instead of swapping as they wobble below what is shown.
+ */
+export function shown(value: number): number {
+  return Math.round(value * 10);
+}
+
 /** The temperatures, hottest first; equal ones by name, so they keep their places. */
 export function hottestFirst(temperatures: readonly Temperature[]): Temperature[] {
   return [...temperatures].sort(
-    (a, b) => b.celsius - a.celsius || a.sensor.localeCompare(b.sensor),
+    (a, b) => shown(b.celsius) - shown(a.celsius) || a.sensor.localeCompare(b.sensor),
   );
 }
 
@@ -66,7 +74,9 @@ export interface ExtraSection {
 export function extraSections(group: Extra): ExtraSection[] {
   const items = LARGEST_FIRST.has(group.id)
     ? [...group.items].sort(
-        (a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity) || a.id.localeCompare(b.id),
+        (a, b) =>
+          (b.value === undefined ? -Infinity : shown(b.value)) -
+            (a.value === undefined ? -Infinity : shown(a.value)) || a.id.localeCompare(b.id),
       )
     : group.items;
   const sections = new Map<string | undefined, ExtraItem[]>();

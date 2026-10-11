@@ -1,7 +1,7 @@
 <button
   type="button"
   class="info"
-  [attr.aria-label]="i18n.t('dashboard.cardInfo')"
+  [attr.aria-label]="i18n.t('dashboard.cardInfo', { title: title() })"
   [attr.aria-describedby]="id"
   [attr.aria-expanded]="open()"
   (click)="toggle()"
@@ -13,6 +13,12 @@
     />
   </svg>
 </button>
-<span class="tip" role="tooltip" [id]="id" [class.open]="open()" [class.dismissed]="dismissed()">{{
-  text()
-}}</span>
+<span
+  class="tip"
+  role="tooltip"
+  aria-hidden="true"
+  [id]="id"
+  [class.open]="open()"
+  [class.dismissed]="dismissed()"
+  >{{ text() }}</span
+>

@@ -127,6 +127,14 @@ export class ScrollRows {
     const list = this.list().nativeElement;
     this.more.set(this.scrolls() && moreBelow(list));
     this.above.set(this.scrolls() && moreAbove(list));
+    // An arrow that hides at its end would drop the keyboard focus to the page; the list takes it.
+    const focused = this.host.querySelector(':focus');
+    if (
+      (focused?.classList.contains('more') && !this.more()) ||
+      (focused?.classList.contains('less') && !this.above())
+    ) {
+      list.focus({ preventScroll: true });
+    }
   }
 
   protected scrollDown(): void {

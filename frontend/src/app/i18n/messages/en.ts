@@ -235,7 +235,7 @@ export const en = {
   'format.dayMonthYear': 'd MMM y',
   'format.dateTimeYear': 'EEE d MMM y, HH:mm',
   'format.dateTimeSecondsYear': 'EEE d MMM y, HH:mm:ss',
-  'dashboard.cardInfo': 'About this card',
+  'dashboard.cardInfo': 'About {title}',
   'dashboard.info.cpu':
     'How busy the processor is: in total and per core, with its clock speed, the load average and the processes.',
   'dashboard.info.memory':

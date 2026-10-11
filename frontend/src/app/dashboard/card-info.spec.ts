@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { CardInfo } from './card-info';
+import { CardInfo, headingTitle } from './card-info';
 
 @Component({
   imports: [CardInfo],
@@ -29,7 +29,10 @@ describe('CardInfo', () => {
 
   it('names the button and describes it with the text, for screen readers', () => {
     const { button, tip } = render();
-    expect(button.getAttribute('aria-label')).toBe('About this card');
+    expect(button.getAttribute('aria-label')).toBe('About CPU');
+    // The heading keeps its title as its name, without the button's.
+    expect(button.closest('h2')!.getAttribute('aria-label')).toBe('CPU');
+    expect(tip.getAttribute('aria-hidden')).toBe('true');
     expect(tip.getAttribute('role')).toBe('tooltip');
     expect(button.getAttribute('aria-describedby')).toBe(tip.id);
     expect(tip.textContent).toBe('How busy the processor is.');
@@ -95,5 +98,17 @@ describe('CardInfo', () => {
     fixture.detectChanges();
     expect(tip.classList).toContain('open');
     expect(tip.classList).not.toContain('dismissed');
+  });
+});
+
+describe('headingTitle', () => {
+  it('reads the heading without the element in it', () => {
+    const heading = document.createElement('h2');
+    heading.append('  Disks ');
+    const info = document.createElement('app-card-info');
+    info.textContent = 'About Disks';
+    heading.append(info);
+    expect(headingTitle(info)).toBe('Disks');
+    expect(headingTitle(document.createElement('span'))).toBe('');
   });
 });

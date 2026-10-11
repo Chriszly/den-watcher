@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, input, signal } from '@angular/core';
+import { Component, ElementRef, afterEveryRender, inject, input, signal } from '@angular/core';
 
 import { I18n } from '../i18n/i18n';
 
@@ -35,7 +35,21 @@ export class CardInfo {
    */
   protected readonly dismissed = signal(false);
 
+  /** The card's title, for the button's name, as the heading the (i) stands in shows it. */
+  protected readonly title = signal('');
+
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
+
+  constructor() {
+    // The heading is named by its title alone, without the (i)'s name after it.
+    afterEveryRender(() => {
+      const title = headingTitle(this.host);
+      this.title.set(title);
+      if (this.host.parentElement?.getAttribute('aria-label') !== title) {
+        this.host.parentElement?.setAttribute('aria-label', title);
+      }
+    });
+  }
 
   protected toggle(): void {
     this.dismissed.set(false);
@@ -52,4 +66,17 @@ export class CardInfo {
       this.open.set(false);
     }
   }
+}
+
+/** The text of the heading an element stands in, without the element's own text. */
+export function headingTitle(element: Element): string {
+  const heading = element.parentElement;
+  if (heading === null) {
+    return '';
+  }
+  return [...heading.childNodes]
+    .filter((node) => node !== element)
+    .map((node) => node.textContent ?? '')
+    .join('')
+    .trim();
 }

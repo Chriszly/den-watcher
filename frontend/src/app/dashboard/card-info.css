@@ -48,7 +48,8 @@
 
 /* Only where the pointer can hover: on touch a tap would leave the hover behind after the text closed. */
 @media (hover: hover) {
-  .info:hover + .tip:not(.dismissed) {
+  /* Also while the mouse is on the text, which it reaches from the (i) over the host. */
+  :host(:hover) .tip:not(.dismissed) {
     display: block;
   }
 }

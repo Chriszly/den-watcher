@@ -253,6 +253,15 @@ describe('ScrollRows', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it('gives the focus to the list when the arrow that has it hides at the end', () => {
+    const { fixture, list, arrow } = render(12);
+    arrow()!.focus();
+    scrollTop = 80;
+    list.dispatchEvent(new Event('scroll'));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(list);
+  });
+
   it('lets the list grow again when rows go', () => {
     const { fixture, list, arrow } = render(12);
     fixture.componentInstance.names.set(['cpu_thermal', 'nvme Composite']);

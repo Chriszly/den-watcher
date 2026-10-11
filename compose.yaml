@@ -175,7 +175,9 @@ services:
   # where BlueZ cannot be asked, it counts the connections in the host's
   # /sys/class/bluetooth. BlueZ lets any user read its devices, so it runs as
   # the image's user, without any capability and without network: the D-Bus
-  # socket is a file, not a network connection.
+  # socket is a file, not a network connection. BlueZ's D-Bus policy lets the
+  # same user also connect or remove devices; the add-on only ever asks for
+  # the list (GetManagedObjects).
   bluetooth:
     image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
     profiles: [bluetooth]

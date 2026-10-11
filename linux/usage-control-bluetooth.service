@@ -27,7 +27,8 @@ RestartSec=5
 # It reads BlueZ's devices over D-Bus, which BlueZ lets any user do, and
 # where it cannot, /sys/class/bluetooth, which anyone may read. It needs no
 # network, only the Unix socket of the system D-Bus, and starts no other
-# program.
+# program. BlueZ's D-Bus policy lets the same user also connect or remove
+# devices; the add-on only ever asks for the list (GetManagedObjects).
 NoNewPrivileges=yes
 CapabilityBoundingSet=
 ProtectSystem=strict

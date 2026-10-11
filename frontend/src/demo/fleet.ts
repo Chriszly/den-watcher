@@ -405,6 +405,46 @@ function kernelValues(t: number, step: number, seed: number, cpu: number, size: 
 }
 
 /**
+ * What the Bluetooth add-on reports: how many devices are connected, from values() as "extra:bluetooth/connected", and
+ * a row per connected device with its battery, or its kind where it tells no battery, whose id is a checksum of its address.
+ */
+function bluetoothAddOn(): Extra[] {
+  return [
+    {
+      id: 'bluetooth',
+      title: 'Bluetooth',
+      items: [
+        {
+          id: 'connected',
+          label: 'Connected devices',
+          labels: {
+            de: 'Verbundene Geräte',
+            fr: 'Appareils connectés',
+            es: 'Dispositivos conectados',
+          },
+          unit: 'number',
+          history: true,
+        },
+        {
+          id: 'device-3f9a61c2',
+          label: 'JBL Flip 6',
+          unit: 'text',
+          text: 'Battery 55%',
+          texts: { de: 'Akku 55 %', fr: 'Batterie 55 %', es: 'Batería 55 %' },
+        },
+        {
+          id: 'device-a40c7e19',
+          label: 'Keychron K3',
+          unit: 'text',
+          text: 'Keyboard',
+          texts: { de: 'Tastatur', fr: 'Clavier', es: 'Teclado' },
+        },
+      ],
+    },
+  ];
+}
+
+/**
  * What the Wi-Fi add-on reports for the interface name: on Linux its name, which is its id too, on Windows the
  * adapter's description, with the interface's GUID as id. Its values come from values() as "extra:wifi/<id>-quality"
  * and "-signal"; only the quality keeps its history, as the signal is below 0.
@@ -969,6 +1009,7 @@ const piHub: DemoMachine = {
     ...pressureAddOn(),
     ...kernelAddOn(),
     ...memoryAddOn(),
+    ...bluetoothAddOn(),
     ...portsAddOn([
       ['tcp', 22, '0.0.0.0, ::'],
       ['tcp', 9393, '0.0.0.0'],
@@ -1046,6 +1087,8 @@ const piHub: DemoMachine = {
       ...ioPressure(vary(t, step, 301, 1.5, [[2, 120]]), 0.5),
       ...kernelValues(t, step, 900, cpu, 1),
       ...memoryValues(t, step, 140, 8 * GB, cpu / 100),
+      // The keyboard stays connected; the speaker comes and goes.
+      'extra:bluetooth/connected': 1 + Math.round(hash(Math.floor(t / 1800), 140)),
       'extra:ports/count': 4,
       ...processValues(
         cpu,

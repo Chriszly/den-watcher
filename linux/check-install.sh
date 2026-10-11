@@ -20,7 +20,7 @@ remove_check() {
 
 trap 'if [[ "$docker_check" == true ]]; then remove_check; fi; rm -rf "$work"' EXIT
 # A failing step shows what the services logged.
-trap 'journalctl -u usage-control -u usage-control-power -u usage-control-pressure -u usage-control-kernel -u usage-control-gpu -u usage-control-inodes -u usage-control-wifi -u usage-control-memory -u usage-control-ports -u usage-control-smart -u usage-control-containers -u usage-control-processes --no-pager | tail -40 >&2' ERR
+trap 'journalctl -u usage-control -u usage-control-power -u usage-control-pressure -u usage-control-kernel -u usage-control-gpu -u usage-control-inodes -u usage-control-wifi -u usage-control-memory -u usage-control-ports -u usage-control-smart -u usage-control-containers -u usage-control-processes -u usage-control-bluetooth --no-pager | tail -40 >&2' ERR
 tar -xzf "$archive" -C "$work"
 folder="$(find "$work" -mindepth 1 -maxdepth 1 -type d)"
 
@@ -124,9 +124,11 @@ answer /api/metrics > /dev/null
 # stall information lacks; it then runs but reports nothing. The kernel add-on
 # reads /proc, which every runner has. The Wi-Fi add-on runs too; a runner
 # without Wi-Fi gets a report without values. The ports add-on reads the
-# host's socket tables, which every runner has. All six add-ons are
+# host's socket tables, which every runner has. The Bluetooth add-on runs
+# too; a runner without Bluetooth gets a report without values, through the
+# link to the folder its throwaway user writes to. All seven add-ons are
 # installed, so --addons= below has to remove them all.
-"$folder/install.sh" --addons=power,pressure,kernel,wifi,ports,containers
+"$folder/install.sh" --addons=power,pressure,kernel,wifi,ports,containers,bluetooth
 systemctl is-active --quiet usage-control-pressure || { journalctl -u usage-control-pressure --no-pager | tail -20 >&2; echo "the pressure add-on is not running" >&2; exit 1; }
 if [[ -f /proc/pressure/cpu ]]; then
   for _ in $(seq 1 10); do
@@ -153,6 +155,12 @@ for _ in $(seq 1 10); do
   sleep 1
 done
 grep -qs '"id":"ports"' /run/usage-control-addons/ports.json || { echo "the ports add-on wrote no ports" >&2; exit 1; }
+systemctl is-active --quiet usage-control-bluetooth || { journalctl -u usage-control-bluetooth --no-pager | tail -20 >&2; echo "the Bluetooth add-on is not running" >&2; exit 1; }
+for _ in $(seq 1 10); do
+  grep -qs '"extras"' /run/usage-control-addons/bluetooth.json && break
+  sleep 1
+done
+grep -qs '"extras"' /run/usage-control-addons/bluetooth.json || { echo "the Bluetooth add-on wrote no report" >&2; exit 1; }
 "$folder/install.sh" --addons=
 if systemctl cat usage-control-power > /dev/null 2>&1 || [[ -e /usr/local/bin/usage-control-power ]]; then
   echo "--addons= left the power add-on behind" >&2
@@ -178,13 +186,17 @@ if systemctl cat usage-control-containers > /dev/null 2>&1 || [[ -e /usr/local/b
   echo "--addons= left the containers add-on behind" >&2
   exit 1
 fi
+if systemctl cat usage-control-bluetooth > /dev/null 2>&1 || [[ -e /usr/local/bin/usage-control-bluetooth || -L /run/usage-control-addons/bluetooth.json ]]; then
+  echo "--addons= left the Bluetooth add-on behind" >&2
+  exit 1
+fi
 
 # --addons=cub installs the Cub edition: the lightweight add-ons, and only those.
 "$folder/install.sh" --addons=cub
 for addon in kernel memory pressure wifi inodes; do
   systemctl is-enabled --quiet "usage-control-$addon" || { echo "--addons=cub did not install the $addon add-on" >&2; exit 1; }
 done
-for addon in power gpu processes ports smart containers; do
+for addon in power gpu processes ports smart containers bluetooth; do
   if systemctl cat "usage-control-$addon" > /dev/null 2>&1; then
     echo "--addons=cub installed the $addon add-on" >&2
     exit 1

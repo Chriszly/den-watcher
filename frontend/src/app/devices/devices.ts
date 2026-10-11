@@ -40,6 +40,11 @@ export interface Device {
    * den-watcher; it is set in HUB_ROUTERS.
    */
   router?: boolean;
+  /**
+   * Set for a thing the hub only checks for whether it answers, such as a printer, as it runs no
+   * den-watcher; it is set in HUB_CHECKS.
+   */
+  checked?: boolean;
 }
 
 /** The body of GET /api/availability: how long another device did not answer since it was added. */

@@ -14,6 +14,8 @@ export const en = {
     '{device} has not answered recently. Is Den-Watcher running on it?',
   'dashboard.routerUnreachable':
     '{device} has not answered recently. Is it on, and are its address and login right?',
+  'dashboard.checkUnreachable':
+    '{device} has not answered recently. Is it on, and are its address and port right?',
   'dashboard.deviceRefused':
     '{device} is at an address of the hub itself, which the hub does not connect to for a device added on the page. Remove it with “Keep its history” ticked and list it in HUB_DEVICES under the same name.',
   'dashboard.deviceNotInUse':

@@ -8,6 +8,8 @@ This page walks through a typical setup: a Raspberry Pi as the hub that shows ev
 - [2. Add a Windows PC](#2-add-a-windows-pc)
 - [3. Add another Linux machine](#3-add-another-linux-machine)
 - [4. Add the devices on the hub](#4-add-the-devices-on-the-hub)
+- [5. Show the router](#5-show-the-router)
+- [6. Check other things on the network](#6-check-other-things-on-the-network)
 - [Run from source](#run-from-source)
 - [Settings](#settings)
 - [Updating](#updating)
@@ -174,6 +176,7 @@ msiexec /i den-watcher-<version>-x64.msi PORT=8090 WEBSITE=1 RETENTION_DAYS=90
 | `WEBSITE` | the wizard's choice: `1` to show the website on this PC too and keep its history in `C:\ProgramData\Usage Control`, which uninstalling keeps unless asked to delete it (`DELETE_HISTORY`); `0` to only collect (default `0`) |
 | `DEVICE_NAME` | how this PC names itself: on its page with `WEBSITE=1` (default *Host Hub*), and as the name a hub offers when the PC is added from its browser (default: the PC's name), so it counts without `WEBSITE=1` too |
 | `HUB_DEVICES` | with `WEBSITE=1`, other devices this PC collects from |
+| `HUB_CHECKS` | with `WEBSITE=1`, things this PC checks for whether they answer; see [Check other things on the network](#6-check-other-things-on-the-network) |
 | `RETENTION_DAYS` | with `WEBSITE=1`, days of history to keep (default 30) |
 | `HISTORY_MAX_ENTRIES` | with `WEBSITE=1`, how many disks, sensors, network cards and GPUs each the history keeps per device (default 64) |
 | `BUFFER_HOURS` | without `WEBSITE=1`, hours of usage kept for a hub that cannot reach this PC, from 1 to 168 (default 24) |
@@ -258,6 +261,21 @@ HUB_ROUTERS=Router=upnp:192.168.1.1,Office router=asus:admin@192.168.2.1,Box=fri
 
 The router shows as *Router* in the *Devices* dialog and is removed only where it is set. Its page shows only what the router tells: over UPnP the network card (*WAN*) and the internet connection, with an ASUS login the CPU, memory and temperatures too, from a FRITZ!Box the line and the clients, over SNMP every port. A router that does not answer is an outage, as for a server. Routers that pass traffic in hardware (NAT acceleration) may count less traffic than goes through them; the page shows what the router counts.
 
+## 6. Check other things on the network
+
+Things that cannot run den-watcher, such as a printer, a NAS, an IP camera or a smart TV, can still show on the hub as devices of their own: the hub checks every 15 seconds whether each one answers, and how long the answer took. The page shows the response time with its chart, and the time it did not answer as outages in its availability, like any device. Set a thing that is switched off when not in use, such as a TV, to *PC or laptop* in the *Devices* dialog, so that time counts as not in use instead.
+
+List them in `HUB_CHECKS`, each as `name=address:port` to connect to a TCP port, or `name=address` to ping:
+
+```bash
+HUB_CHECKS=Printer=192.168.1.50:631,NAS=192.168.1.10,Camera=192.168.1.60:554
+```
+
+- **A port** checks that the service on it runs, not just the machine: the hub opens a connection and closes it right away, without sending anything. A closed port counts as not answering. Common ones: 631 (printers, IPP), 9100 (printers), 445 (Windows shares, NAS), 554 (cameras, RTSP), 80 or 443 (web interfaces), 22 (SSH).
+- **A ping** works for anything that answers one, with IPv4 only. It needs no privileges: Windows lets any program ping, and on Linux the system must allow ping sockets for the service's group in `net.ipv4.ping_group_range`, which most distributions (Debian, Raspberry Pi OS, Ubuntu, Fedora) and Docker do; `compose.yaml` sets it for the container too. Where it is not allowed, the device shows as not answering and the log says why; give a port instead.
+
+Only addresses on the local network are checked; a name that resolves elsewhere is refused. On Windows, set it with `HUB_CHECKS` on the command line of the installer, with `WEBSITE=1`. A check shows the address it uses in the *Devices* dialog and is removed only where it is set. A wrong entry leaves out the checks, not this device's own monitoring, and the log says why.
+
 ## Run from source
 
 To run den-watcher on a computer without Docker or an installer, such as a Mac, build the website once and then the binary. You need Node.js (version in `frontend/.nvmrc`) and Go (version in `backend/go.mod`). In PowerShell on Windows:
@@ -289,6 +307,7 @@ Settings are environment variables. In Docker they go in `.env` next to `compose
 | `HISTORY_MAX_ENTRIES` | `64` | disks, sensors, network cards and GPUs each that the history keeps per device, and 8 times as many values of extras, 1 to 10000 |
 | `DEVICE_NAME` | *Host Hub* | how the page names this device |
 | `HUB_DEVICES` | none | other devices to collect from, as `name=address:port`, comma-separated |
+| `HUB_CHECKS` | none | things that run no den-watcher, such as a printer, to show as devices the hub checks for whether they answer, as `name=address:port` to connect to a TCP port or `name=address` to ping, comma-separated; see [Check other things on the network](#6-check-other-things-on-the-network) |
 | `HUB_ROUTERS` | none | routers to show as devices, as `name=upnp:address`, `name=snmp:address`, or `name=asus:user@address`, `name=fritzbox:user@address` or `name=snmpv3:user@address`, comma-separated; see [Show the router](#5-show-the-router) |
 | `ROUTER_PASSWORDS_FILE` | `router-passwords` in systemd's credentials folder; set by `compose.yaml`; on Windows, without it, the passwords the installer stored (see [Show the router](#5-show-the-router)) | the file with the passwords of routers that need a login, and SNMP communities other than `public`, one `name=password` per line |
 | `DATA_ONLY` | `false` | `true` serves only the usage for a hub, with no website and no history of its own |

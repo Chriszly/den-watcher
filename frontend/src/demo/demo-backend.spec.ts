@@ -35,9 +35,11 @@ describe('DemoBackend', () => {
       expect(s.cpu.usagePercent).toBeGreaterThanOrEqual(0);
       expect(s.cpu.usagePercent).toBeLessThanOrEqual(100);
       expect(s.disks.map((d) => d.path)).toEqual(machine.disks.map((d) => d.path));
-      // Windows and routers have no load average; Windows no temperature sensors the backend reads.
-      expect(s.cpu.loadAverage === undefined).toBe(machine.os === 'windows' || !!machine.router);
-      expect(s.temperatures.length === 0).toBe(machine.os === 'windows');
+      // Windows, routers and checks have no load average; Windows and checks no temperature sensors.
+      expect(s.cpu.loadAverage === undefined).toBe(
+        machine.os === 'windows' || !!machine.router || !!machine.checked,
+      );
+      expect(s.temperatures.length === 0).toBe(machine.os === 'windows' || !!machine.checked);
     }
   });
 
@@ -48,6 +50,15 @@ describe('DemoBackend', () => {
     expect(s.disks).toEqual([]);
     expect(s.version).toBeUndefined();
     expect(s.network.map((n) => n.name)).toEqual(['WAN', 'LAN', 'Wi-Fi 2.4 GHz', 'Wi-Fi 5 GHz']);
+    expect(s.extras?.[0].items[0].value).toBeGreaterThan(0);
+  });
+
+  it('shows a check with only how long it took to answer', async () => {
+    const check = FLEET.find((m) => m.checked)!;
+    expect(check.device.checked).toBe(true);
+    const s = await firstValueFrom(metrics.current(check.device.id));
+    expect(s.network).toEqual([]);
+    expect(s.extras?.map((g) => g.id)).toEqual(['reachability']);
     expect(s.extras?.[0].items[0].value).toBeGreaterThan(0);
   });
 

@@ -40,6 +40,8 @@ export interface DemoMachine {
    * and Wi-Fi band, temperatures and clients, but no disks, clock, load, version or time zone.
    */
   router?: boolean;
+  /** A thing the hub only checks for whether it answers, such as a printer: no usage at all. */
+  checked?: boolean;
   bootedDaysAgo: number;
   /** For a device that answers only part of the day, such as a laptop that sleeps at night. */
   online?: (t: number) => boolean;
@@ -1876,6 +1878,51 @@ const homeRouter: DemoMachine = {
   },
 };
 
+const printer: DemoMachine = {
+  device: {
+    id: 'printer',
+    kind: 'server',
+    name: 'Printer',
+    address: '192.168.1.50:631',
+    checked: true,
+  },
+  os: 'linux',
+  checked: true,
+  cores: 0,
+  maxClockMHz: 0,
+  memoryBytes: 0,
+  disks: [],
+  network: [],
+  extras: [
+    {
+      id: 'reachability',
+      title: 'Reachability',
+      titles: { de: 'Erreichbarkeit', fr: 'Accessibilité', es: 'Accesibilidad' },
+      items: [
+        {
+          id: 'response-time',
+          label: 'Response time',
+          labels: { de: 'Antwortzeit', fr: 'Temps de réponse', es: 'Tiempo de respuesta' },
+          unit: 'milliseconds',
+          history: true,
+        },
+        {
+          id: 'method',
+          label: 'Checked with',
+          labels: { de: 'Geprüft mit', fr: 'Vérifié par', es: 'Comprobado con' },
+          unit: 'text',
+          text: 'TCP port 631',
+          texts: { de: 'TCP-Port 631', fr: 'Port TCP 631', es: 'Puerto TCP 631' },
+        },
+      ],
+    },
+  ],
+  bootedDaysAgo: 0,
+  values: (t, step) => ({
+    'extra:reachability/response-time': vary(t, step, 151, 2.4, [[1.2, 60]], 0.6, 40),
+  }),
+};
+
 export const FLEET: readonly DemoMachine[] = [
   piHub,
   windowsPc,
@@ -1886,6 +1933,7 @@ export const FLEET: readonly DemoMachine[] = [
   linuxServer,
   linuxLaptop,
   homeRouter,
+  printer,
 ];
 
 /** The values whose names start with kind and a colon, by what follows the colon. */
@@ -1965,6 +2013,20 @@ export function snapshotOf(machine: DemoMachine, t: number, version: string): Sn
       items: group.id.startsWith('processes-') ? busiestFirst(items) : items,
     };
   });
+
+  if (machine.checked) {
+    return {
+      time: new Date(t * 1000).toISOString(),
+      uptimeSeconds: 0,
+      cpu: { usagePercent: 0, cores: 0 },
+      memory: { totalBytes: 0, usedBytes: 0, usedPercent: 0 },
+      temperatures: [],
+      disks: [],
+      network: [],
+      gpus: [],
+      extras,
+    };
+  }
 
   if (machine.router) {
     return {

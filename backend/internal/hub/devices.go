@@ -37,6 +37,10 @@ type Device struct {
 	// den-watcher at Address: a router, which the hub reads in a language
 	// it speaks. Routers come from HUB_ROUTERS.
 	Source Usage
+	// Checked is set for a thing that is only checked for whether it
+	// answers, such as a printer, whose Source does that. Checks come from
+	// HUB_CHECKS.
+	Checked bool
 }
 
 // ParseDevices reads the devices from a comma-separated list of entries such
@@ -115,6 +119,14 @@ func NewRouter(name, address string, reader Usage) (Device, error) {
 	return Device{ID: id, Name: name, Address: address, Source: reader}, nil
 }
 
+// NewCheck returns a thing that is only checked for whether it answers as a
+// device, named name, at address, which reader checks.
+func NewCheck(name, address string, reader Usage) (Device, error) {
+	device, err := NewRouter(name, address, reader)
+	device.Checked = err == nil
+	return device, err
+}
+
 // checkName checks a device's name and returns its ID.
 func checkName(name string) (string, error) {
 	if name == "" || utf8.RuneCountInString(name) > maxNameLength {
@@ -130,13 +142,13 @@ func checkName(name string) (string, error) {
 	return id, nil
 }
 
-// CheckFixed refuses devices, from HUB_DEVICES and HUB_ROUTERS together,
-// of which two have the same name.
+// CheckFixed refuses devices, from HUB_DEVICES, HUB_ROUTERS and HUB_CHECKS
+// together, of which two have the same name.
 func CheckFixed(devices []Device) error {
 	ids := map[string]bool{}
 	for _, device := range devices {
 		if ids[device.ID] {
-			return fmt.Errorf("%q: another device or router has the same name; give each its own name", device.Name)
+			return fmt.Errorf("%q: another device, router or check has the same name; give each its own name", device.Name)
 		}
 		ids[device.ID] = true
 	}

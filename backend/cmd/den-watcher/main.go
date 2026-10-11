@@ -21,6 +21,12 @@
 //	                Router=upnp:192.168.1.1, Router=asus:admin@192.168.1.1,
 //	                Router=snmp:192.168.1.1, Router=snmpv3:user@192.168.1.1
 //	                or Router=fritzbox:user@192.168.178.1 (default none)
+//	HUB_CHECKS      things that run no den-watcher, such as a printer or NAS,
+//	                which the hub only checks for whether they answer and
+//	                shows as devices: comma-separated name=host:port entries
+//	                to connect to a TCP port, or name=host to ping, such as
+//	                Printer=192.168.1.50:631 or NAS=192.168.1.10 (default
+//	                none)
 //	ROUTER_PASSWORDS_FILE  file with the passwords of the routers that need a
 //	                login, and the SNMPv2c community where it is not public,
 //	                one name=password per line (default the file
@@ -67,6 +73,7 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 	"github.com/Chriszly/den-watcher/backend/internal/password"
+	"github.com/Chriszly/den-watcher/backend/internal/reach"
 	"github.com/Chriszly/den-watcher/backend/internal/router"
 	"github.com/Chriszly/den-watcher/backend/internal/server"
 	"github.com/Chriszly/den-watcher/backend/internal/update"
@@ -136,8 +143,15 @@ func run(ctx context.Context) error {
 		routers = nil
 	}
 	remotes = append(remotes, routers...)
+	checks, err := checkDevices()
+	if err != nil {
+		// As with the routers, this device's own monitoring runs on.
+		slog.Error("the checks in HUB_CHECKS are left out", "error", err)
+		checks = nil
+	}
+	remotes = append(remotes, checks...)
 	if err := hub.CheckFixed(remotes); err != nil {
-		return fmt.Errorf("check HUB_DEVICES and HUB_ROUTERS: %w", err)
+		return fmt.Errorf("check HUB_DEVICES, HUB_ROUTERS and HUB_CHECKS: %w", err)
 	}
 
 	dataOnly, err := boolSettingOr("DATA_ONLY", false)
@@ -145,7 +159,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 	if dataOnly && len(remotes) > 0 {
-		return errors.New("HUB_DEVICES or HUB_ROUTERS is set, but DATA_ONLY turns off the website that would show them; unset one of the two")
+		return errors.New("HUB_DEVICES, HUB_ROUTERS or HUB_CHECKS is set, but DATA_ONLY turns off the website that would show them; unset one of the two")
 	}
 
 	bufferSpan, err := bufferHours()
@@ -379,6 +393,7 @@ func (d hubDevices) List() []server.Device {
 			UnreachableSince: unreachableSince,
 			Refused:          remote.Refused(),
 			Router:           remote.Router(),
+			Checked:          remote.Checked,
 			Metrics:          remote.Agent.Latest(),
 			History:          remote.Reader,
 			Availability:     remote,
@@ -449,6 +464,24 @@ func routerDevices() ([]hub.Device, error) {
 			return nil, fmt.Errorf("the SNMPv3 password of the router %q is shorter than 8 characters; run the installer again to enter it", config.Name)
 		}
 		device.Source = router.New(config, password)
+		devices = append(devices, device)
+	}
+	return devices, nil
+}
+
+// checkDevices returns the things in HUB_CHECKS as devices, each checked
+// for whether it answers.
+func checkDevices() ([]hub.Device, error) {
+	configs, err := reach.ParseConfigs(os.Getenv("HUB_CHECKS"))
+	if err != nil {
+		return nil, fmt.Errorf("check HUB_CHECKS: %w", err)
+	}
+	var devices []hub.Device
+	for _, config := range configs {
+		device, err := hub.NewCheck(config.Name, config.Address(), reach.New(config))
+		if err != nil {
+			return nil, fmt.Errorf("check HUB_CHECKS: %w", err)
+		}
 		devices = append(devices, device)
 	}
 	return devices, nil

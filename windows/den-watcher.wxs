@@ -69,6 +69,11 @@
     HUB_ROUTERS     with WEBSITE=1, routers to show as devices, each as
                     name=protocol:address, such as Router=upnp:192.168.1.1 or
                     Box=fritzbox:monitor@192.168.178.1 (see docs/setup.md)
+    HUB_CHECKS      with WEBSITE=1, things that run no den-watcher, such as
+                    a printer, to show as devices the hub only checks for
+                    whether they answer, each as name=address:port to connect
+                    to a TCP port or name=address to ping, such as
+                    Printer=192.168.1.50:631 or NAS=192.168.1.10
     ROUTER_PASSWORDS  the passwords of those routers that need a login, and
                     SNMP communities other than public, as name=password; not
                     remembered: the service encrypts them with DPAPI into
@@ -122,7 +127,7 @@
   An update keeps the options of the installed version, except RESET_PASSWORD;
   options given to the update replace them. An option given empty counts as
   not given, so to clear a remembered PORT, DEVICE_NAME, HUB_DEVICES,
-  HUB_ROUTERS, RETENTION_DAYS, HISTORY_MAX_ENTRIES, BUFFER_HOURS, ALLOWED_HOSTS,
+  HUB_ROUTERS, HUB_CHECKS, RETENTION_DAYS, HISTORY_MAX_ENTRIES, BUFFER_HOURS, ALLOWED_HOSTS,
   DISK_PATHS or UPDATE_CHECK, give it a single space, such as DISK_PATHS=" ",
   which means its default. WEBSITE and the add-ons take 0 to turn them off.
 -->
@@ -165,7 +170,7 @@
       value, which would overwrite one given on the command line, so that one
       is saved before and put back after, in both the UI and the install.
     -->
-    <?foreach Setting in PORT;WEBSITE;DEVICE_NAME;HUB_DEVICES;HUB_ROUTERS;RETENTION_DAYS;HISTORY_MAX_ENTRIES;BUFFER_HOURS;ALLOWED_HOSTS;DISK_PATHS;UPDATE_CHECK;POWER;GPU;PRESSURE;KERNEL;WIFI;MEMORY;PORTS;SMART;PROCESSES;BLUETOOTH ?>
+    <?foreach Setting in PORT;WEBSITE;DEVICE_NAME;HUB_DEVICES;HUB_ROUTERS;HUB_CHECKS;RETENTION_DAYS;HISTORY_MAX_ENTRIES;BUFFER_HOURS;ALLOWED_HOSTS;DISK_PATHS;UPDATE_CHECK;POWER;GPU;PRESSURE;KERNEL;WIFI;MEMORY;PORTS;SMART;PROCESSES;BLUETOOTH ?>
     <Property Id="$(Setting)" Secure="yes">
       <RegistrySearch Id="Remembered$(Setting)" Root="HKLM" Key="SOFTWARE\Usage Control" Name="$(Setting)" Type="raw" />
     </Property>
@@ -204,8 +209,8 @@
 
     <!--
       Derived from the options, once all of them are known. Without WEBSITE=1
-      the service only serves the usage to a hub, and ignores HUB_DEVICES and
-      HUB_ROUTERS. DataOnly, ServiceHubDevices and ServiceHubRouters are private (mixed case), so the setup
+      the service only serves the usage to a hub, and ignores HUB_DEVICES,
+      HUB_ROUTERS and HUB_CHECKS. DataOnly, ServiceHubDevices, ServiceHubRouters and ServiceHubChecks are private (mixed case), so the setup
       wizard does not pass them on to the install: they are worked out there
       from WEBSITE as the wizard left it, also when the wizard switched it
       from the remembered 1 to 0.
@@ -216,6 +221,7 @@
     <SetProperty Action="WebsiteOn" Id="DataOnly" Value="false" After="DefaultWEBSITE" Sequence="execute" Condition='WEBSITE = "1"' />
     <SetProperty Action="WebsiteHubDevices" Id="ServiceHubDevices" Value="[HUB_DEVICES]" After="DefaultWEBSITE" Sequence="execute" Condition='WEBSITE = "1"' />
     <SetProperty Action="WebsiteHubRouters" Id="ServiceHubRouters" Value="[HUB_ROUTERS]" After="DefaultWEBSITE" Sequence="execute" Condition='WEBSITE = "1"' />
+    <SetProperty Action="WebsiteHubChecks" Id="ServiceHubChecks" Value="[HUB_CHECKS]" After="DefaultWEBSITE" Sequence="execute" Condition='WEBSITE = "1"' />
 
     <!--
       The router passwords are not remembered with the other options: the
@@ -395,6 +401,7 @@
         <MultiStringValue Value="DEVICE_NAME=[DEVICE_NAME]" />
         <MultiStringValue Value="HUB_DEVICES=[ServiceHubDevices]" />
         <MultiStringValue Value="HUB_ROUTERS=[ServiceHubRouters]" />
+        <MultiStringValue Value="HUB_CHECKS=[ServiceHubChecks]" />
         <MultiStringValue Value="RETENTION_DAYS=[RETENTION_DAYS]" />
         <MultiStringValue Value="HISTORY_MAX_ENTRIES=[HISTORY_MAX_ENTRIES]" />
         <MultiStringValue Value="BUFFER_HOURS=[BUFFER_HOURS]" />
@@ -417,7 +424,7 @@
 
       <!-- The options, read back by the next update, and the bugfix number (see Upgrade). -->
       <RegistryValue Root="HKLM" Key="SOFTWARE\Usage Control" Name="Bugfix" Type="string" Value="$(Bugfix)" />
-      <?foreach Setting in PORT;WEBSITE;DEVICE_NAME;HUB_DEVICES;HUB_ROUTERS;RETENTION_DAYS;HISTORY_MAX_ENTRIES;BUFFER_HOURS;ALLOWED_HOSTS;DISK_PATHS;UPDATE_CHECK;POWER;GPU;PRESSURE;KERNEL;WIFI;MEMORY;PORTS;SMART;PROCESSES;BLUETOOTH ?>
+      <?foreach Setting in PORT;WEBSITE;DEVICE_NAME;HUB_DEVICES;HUB_ROUTERS;HUB_CHECKS;RETENTION_DAYS;HISTORY_MAX_ENTRIES;BUFFER_HOURS;ALLOWED_HOSTS;DISK_PATHS;UPDATE_CHECK;POWER;GPU;PRESSURE;KERNEL;WIFI;MEMORY;PORTS;SMART;PROCESSES;BLUETOOTH ?>
       <RegistryValue Root="HKLM" Key="SOFTWARE\Usage Control" Name="$(Setting)" Type="string" Value="[$(Setting)]" />
       <?endforeach?>
 

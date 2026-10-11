@@ -100,8 +100,8 @@ type Hub struct {
 // Remote is another device the hub collects from.
 type Remote struct {
 	Device
-	// Fixed is set for a device from HUB_DEVICES or HUB_ROUTERS, which the
-	// page cannot remove.
+	// Fixed is set for a device from HUB_DEVICES, HUB_ROUTERS or
+	// HUB_CHECKS, which the page cannot remove.
 	Fixed  bool
 	Agent  *Agent
 	Reader history.Reader
@@ -731,7 +731,7 @@ func (r *Remote) Refused() bool {
 // Router reports whether the device is a router, which the hub reads in a
 // language it speaks.
 func (r *Remote) Router() bool {
-	return r.Source != nil
+	return r.Source != nil && !r.Checked
 }
 
 // Kind tells what the device is used as.
@@ -814,8 +814,8 @@ func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
 		kind:     kind,
 	}
 	recorder := &history.Recorder{Store: h.store, Recent: recent, Device: device.ID, Collector: watched, MaxEntries: h.historyEntries}
-	// A router keeps no minutes to fetch; the hub stores the average of its
-	// own readings.
+	// A router or check keeps no minutes to fetch; the hub stores the
+	// average of its own readings.
 	if device.Source == nil {
 		fetcher := &fetcher{agent: agent, store: h.store, device: device.ID, maxEntries: h.historyEntries, retention: h.retention}
 		recorder.Fetch = fetcher.fetch

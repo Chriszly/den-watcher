@@ -89,6 +89,10 @@
   <p class="warning" role="alert">
     {{ i18n.t('dashboard.routerUnreachable', { device: deviceName() }) }}
   </p>
+} @else if (problem() === 'device' && isChecked()) {
+  <p class="warning" role="alert">
+    {{ i18n.t('dashboard.checkUnreachable', { device: deviceName() }) }}
+  </p>
 } @else if (problem() === 'device') {
   <p class="warning" role="alert">
     {{ i18n.t('dashboard.deviceUnreachable', { device: deviceName() }) }}
@@ -97,7 +101,7 @@
 
 @if (snapshot(); as s) {
   <div class="cards" appEvenColumns [class.stale]="connection.lost()">
-    @if (!isRouter() || s.cpu.cores > 0) {
+    @if (!readsLess() || s.cpu.cores > 0) {
       <div class="card">
         <h2>
           {{ i18n.t('dashboard.cpu') }}
@@ -164,7 +168,7 @@
       </div>
     }
 
-    @if (!isRouter() || s.memory.totalBytes > 0) {
+    @if (!readsLess() || s.memory.totalBytes > 0) {
       <div class="card">
         <h2>
           {{ i18n.t('dashboard.memory') }}
@@ -223,7 +227,7 @@
       </div>
     }
 
-    @if (!isRouter() || s.disks.length > 0) {
+    @if (!readsLess() || s.disks.length > 0) {
       <div class="card" [appFitLabels]="s.disks">
         <h2>
           {{ i18n.t('dashboard.disks') }}
@@ -289,39 +293,43 @@
     }
 
     @let network = activeInterfaces(s);
-    <div class="card" [appFitLabels]="network.shown">
-      <h2>
-        {{ i18n.t('dashboard.network') }}
-        <app-card-info [text]="i18n.t('dashboard.info.network')" />
-      </h2>
-      <app-scroll-rows>
-        @for (n of network.shown; track n.name) {
-          <div class="interface">
-            <span class="label" [title]="n.name">{{ n.name }}</span>
-            <span class="rate">↓ {{ n.receiveBytesPerSecond | bytes: i18n.language() }}/s</span>
-            <span class="rate">↑ {{ n.sendBytesPerSecond | bytes: i18n.language() }}/s</span>
-            @if (n.addresses?.length || n.linkMbps) {
-              <span class="link">{{ linkDetails(n) }}</span>
-            }
-            @if (n.errors || n.dropped) {
-              <span class="problems" [title]="i18n.t('dashboard.networkProblemsHint')">{{
-                i18n.t('dashboard.networkProblems', {
-                  errors: n.errors ?? 0,
-                  dropped: n.dropped ?? 0,
-                })
-              }}</span>
-            }
-          </div>
-        } @empty {
-          <p class="detail">{{ i18n.t('dashboard.noNetwork') }}</p>
+    @if (!isChecked() || s.network.length > 0) {
+      <div class="card" [appFitLabels]="network.shown">
+        <h2>
+          {{ i18n.t('dashboard.network') }}
+          <app-card-info [text]="i18n.t('dashboard.info.network')" />
+        </h2>
+        <app-scroll-rows>
+          @for (n of network.shown; track n.name) {
+            <div class="interface">
+              <span class="label" [title]="n.name">{{ n.name }}</span>
+              <span class="rate">↓ {{ n.receiveBytesPerSecond | bytes: i18n.language() }}/s</span>
+              <span class="rate">↑ {{ n.sendBytesPerSecond | bytes: i18n.language() }}/s</span>
+              @if (n.addresses?.length || n.linkMbps) {
+                <span class="link">{{ linkDetails(n) }}</span>
+              }
+              @if (n.errors || n.dropped) {
+                <span class="problems" [title]="i18n.t('dashboard.networkProblemsHint')">{{
+                  i18n.t('dashboard.networkProblems', {
+                    errors: n.errors ?? 0,
+                    dropped: n.dropped ?? 0,
+                  })
+                }}</span>
+              }
+            </div>
+          } @empty {
+            <p class="detail">{{ i18n.t('dashboard.noNetwork') }}</p>
+          }
+        </app-scroll-rows>
+        @if (network.idle > 0) {
+          <p class="detail">
+            {{
+              i18n.plural(network.idle, 'dashboard.idleHidden.one', 'dashboard.idleHidden.other')
+            }}
+          </p>
         }
-      </app-scroll-rows>
-      @if (network.idle > 0) {
-        <p class="detail">
-          {{ i18n.plural(network.idle, 'dashboard.idleHidden.one', 'dashboard.idleHidden.other') }}
-        </p>
-      }
-    </div>
+      </div>
+    }
 
     @if (s.gpus?.length) {
       <div class="card" [appFitLabels]="s.gpus">
@@ -360,7 +368,7 @@
       </div>
     }
 
-    @if (!isRouter() || s.temperatures.length > 0) {
+    @if (!readsLess() || s.temperatures.length > 0) {
       <div class="card" [appFitLabels]="s.temperatures">
         <h2>
           {{ i18n.t('dashboard.temperature') }}

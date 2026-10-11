@@ -174,6 +174,10 @@ A router in `HUB_ROUTERS` runs no den-watcher, so its agent does not ask `/api/m
 
 All of them only read: a test lists every action, page and kind of request a reader may send, and none changes a setting. The same rules apply as for an agent: 4 seconds per request, 1 MiB per answer, no proxy, no redirects, local network only. Logins come from the passwords file, never from the page, and are neither shown nor logged.
 
+### Checks
+
+A thing in `HUB_CHECKS` runs no den-watcher either: a reader in `backend/internal/reach` connects to its TCP port and closes the connection at once, or sends one ICMP echo request to it, and turns the time the answer took into a snapshot with one group of extras, *reachability*, whose response time keeps its history. A thing that does not answer within 4 seconds, or whose port is closed, is not answering, so the availability records it as an outage, or as time not in use for a PC. One that answered is checked again after 15 seconds; one that did not, at the next reading. The ping goes over an ICMP datagram socket on Linux and macOS, which needs no capability, and through `IcmpSendEcho` on Windows; IPv4 only. Every address is checked against the local network before it is connected to or pinged, after a host name is resolved.
+
 ## While the hub is away
 
 When the hub cannot reach a device for a while, because the hub is updated or switched off or the network is down, the device keeps its usage, and the hub fetches it once it reaches the device again. The hub's history then has no gap for the time the device was running, apart from a minute when its program crashed and was started again within seconds, or was stopped for more than about 40 seconds.

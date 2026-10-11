@@ -285,4 +285,13 @@ export const es: Messages = {
   'alerts.since': 'desde {since}',
   'alerts.fromTo': 'del {from} al {to}',
   'alerts.onCard': 'Requiere atención',
+  'categories.system': 'Sistema',
+  'categories.storage': 'Almacenamiento',
+  'categories.network': 'Red',
+  'categories.temperature': 'Temperatura y energía',
+  'categories.programs': 'Programas y contenedores',
+  'categories.other': 'Más',
+  'categories.device': 'Hora y actividad',
+  'categories.cards.one': '{count} tarjeta',
+  'categories.cards.other': '{count} tarjetas',
 };

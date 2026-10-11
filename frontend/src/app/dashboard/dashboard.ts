@@ -25,6 +25,7 @@ import {
 } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
 import { CardInfo } from './card-info';
+import { Category, FoldedCategories, byCategory, extraCategory } from './categories';
 import { FitLabels } from './fit-labels';
 
 /** How often the dashboard asks the backend for new values. */
@@ -90,6 +91,47 @@ export function extraSections(group: Extra): ExtraSection[] {
   return [...sections].map(([section, items]) => ({ section, items }));
 }
 
+/** A card of the dashboard: one of the fixed ones, or the card of a group of extras. */
+export type Card =
+  | {
+      id: string;
+      kind:
+        | 'cpu'
+        | 'memory'
+        | 'disks'
+        | 'network'
+        | 'gpus'
+        | 'temperatures'
+        | 'fans'
+        | 'battery'
+        | 'throttling'
+        | 'time'
+        | 'uptime';
+      category: Category;
+    }
+  | { id: string; kind: 'extra'; category: Category; group: Extra };
+
+/** What the alerts of each kind are shown on, besides the strip above the cards. */
+const ALERT_CARDS: Partial<Record<AlertKind, string>> = {
+  cpu: 'cpu',
+  memory: 'memory',
+  disk: 'disks',
+  temperature: 'temperatures',
+  throttling: 'throttling',
+  smart: 'extra:smart-checks',
+};
+
+/** The message of the title of each category of cards. */
+const CATEGORY_TITLES = {
+  system: 'categories.system',
+  storage: 'categories.storage',
+  network: 'categories.network',
+  temperature: 'categories.temperature',
+  programs: 'categories.programs',
+  other: 'categories.other',
+  device: 'categories.device',
+} as const satisfies Record<Category, string>;
+
 /** Why no new values arrived: the backend did not answer, or the device it collects from did not. */
 type Problem = 'backend' | 'device';
 
@@ -141,6 +183,13 @@ export class Dashboard {
   protected readonly shownAvailability = computed(() =>
     this.refused() ? null : this.availability(),
   );
+  /** The cards of the picked device by category, in the order the page shows them. */
+  protected readonly cardGroups = computed(() => {
+    const s = this.snapshot();
+    return s ? byCategory(this.cards(s), (card) => card.category) : [];
+  });
+  protected readonly foldedCategories = inject(FoldedCategories);
+  protected readonly categoryTitle = CATEGORY_TITLES;
   protected readonly coreColumns = coreColumns;
   protected readonly hottestFirst = hottestFirst;
   protected readonly extraSections = extraSections;
@@ -192,6 +241,38 @@ export class Dashboard {
         takeUntilDestroyed(),
       )
       .subscribe((availability) => this.availability.set(availability));
+  }
+
+  /** The cards the device's values fill, in the order the page shows them within a category. */
+  private cards(s: Snapshot): Card[] {
+    const readsLess = this.readsLess();
+    const fixed = (kind: Exclude<Card['kind'], 'extra'>, category: Category, shows: unknown) =>
+      shows ? [{ id: kind, kind, category }] : [];
+    return [
+      ...fixed('cpu', 'system', !readsLess || s.cpu.cores > 0),
+      ...fixed('memory', 'system', !readsLess || s.memory.totalBytes > 0),
+      ...fixed('disks', 'storage', !readsLess || s.disks.length > 0),
+      ...fixed('network', 'network', !this.isChecked() || s.network.length > 0),
+      ...fixed('gpus', 'system', s.gpus?.length),
+      ...fixed('temperatures', 'temperature', !readsLess || s.temperatures.length > 0),
+      ...fixed('fans', 'temperature', s.fans?.length),
+      ...fixed('battery', 'temperature', s.battery),
+      ...fixed('throttling', 'temperature', s.throttling),
+      ...(s.extras ?? []).map((group): Card => ({
+        id: 'extra:' + group.id,
+        kind: 'extra',
+        category: extraCategory(group.id),
+        group,
+      })),
+      ...fixed('time', 'device', s.timeZone),
+      ...fixed('uptime', 'device', this.showsUptime(s) || this.shownAvailability()),
+    ];
+  }
+
+  /** The level of the alerts on the cards of a folded category, for the sign at its title. */
+  protected categoryAlert(cards: readonly Card[]): AlertLevel | null {
+    const ids = new Set(cards.map((card) => card.id));
+    return worstLevel(this.deviceAlerts().filter((a) => ids.has(ALERT_CARDS[a.kind] ?? '')));
   }
 
   /** The level of the picked device's alerts of a kind, for the sign on its card; null for none. */

@@ -1,14 +1,21 @@
-import { DestroyRef, Directive, ElementRef, inject } from '@angular/core';
+import { DestroyRef, Directive, ElementRef, booleanAttribute, inject, input } from '@angular/core';
 
 /**
  * How many columns `cards` cards get in a grid `width` pixels wide: as many as fit, but no more
  * than keep the rows even, so a card never wraps onto a row of its own (7 that fit 6 per row
- * become 4 + 3, 8 that fit 7 become 4 + 4).
+ * become 4 + 3, 8 that fit 7 become 4 + 4). With `keepWidth`, cards that fit in one row keep the
+ * width they have when the row is full, so a grid of a few cards matches the grids around it.
  */
-export function evenColumns(cards: number, width: number, minCard: number, gap: number): number {
+export function evenColumns(
+  cards: number,
+  width: number,
+  minCard: number,
+  gap: number,
+  keepWidth = false,
+): number {
   const fit = Math.max(1, Math.floor((width + gap) / (minCard + gap)));
   const rows = Math.max(1, Math.ceil(cards / fit));
-  return Math.max(1, Math.ceil(cards / rows));
+  return keepWidth && rows === 1 ? fit : Math.max(1, Math.ceil(cards / rows));
 }
 
 /** The narrowest a card gets in pixels, from the grid's `--min-card` in rem, as its CSS sets it. */
@@ -26,6 +33,8 @@ export function minCardWidth(minCard: string, rem: number): number {
  */
 @Directive({ selector: '[appEvenColumns]' })
 export class EvenColumns {
+  /** Whether cards that fit in one row keep the width of a full row; see evenColumns. */
+  readonly keepCardWidth = input(false, { transform: booleanAttribute });
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private width = 0;
 
@@ -61,6 +70,7 @@ export class EvenColumns {
       this.width,
       minCardWidth(style.getPropertyValue('--min-card'), rem),
       gap,
+      this.keepCardWidth(),
     );
     this.host.style.setProperty('--columns', String(columns));
   }

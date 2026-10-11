@@ -283,4 +283,13 @@ export const fr: Messages = {
   'alerts.since': 'depuis le {since}',
   'alerts.fromTo': 'du {from} au {to}',
   'alerts.onCard': 'Demande votre attention',
+  'categories.system': 'Système',
+  'categories.storage': 'Stockage',
+  'categories.network': 'Réseau',
+  'categories.temperature': 'Température et alimentation',
+  'categories.programs': 'Programmes et conteneurs',
+  'categories.other': 'Autres',
+  'categories.device': 'Heure et fonctionnement',
+  'categories.cards.one': '{count} carte',
+  'categories.cards.other': '{count} cartes',
 };

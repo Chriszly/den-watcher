@@ -7,10 +7,10 @@
 <ng-template #uptimeCard let-s let-a="availability">
   <div class="card">
     @if (s) {
-      <h2>
+      <h3>
         {{ i18n.t('dashboard.uptime') }}
         <app-card-info [text]="uptimeInfo(a)" />
-      </h2>
+      </h3>
       <p class="value">{{ formatUptime(s.uptimeSeconds) }}</p>
       @if (s.version) {
         <p class="detail">{{ i18n.t('dashboard.version', { version: s.version }) }}</p>
@@ -23,14 +23,14 @@
           ><span>{{ availablePercent(a) | number: '1.0-2' : i18n.language() }} %</span>
         </p>
       } @else {
-        <h2>
+        <h3>
           {{ i18n.t(a.kind === 'pc' ? 'dashboard.usage' : 'dashboard.availability') }}
           <app-card-info
             [text]="
               i18n.t(a.kind === 'pc' ? 'dashboard.info.usage' : 'dashboard.info.availability')
             "
           />
-        </h2>
+        </h3>
         <p class="value">{{ availablePercent(a) | number: '1.0-2' : i18n.language() }} %</p>
       }
       <p class="detail">
@@ -111,472 +111,560 @@
 }
 
 @if (snapshot(); as s) {
-  <div class="cards" appEvenColumns [class.stale]="connection.lost()">
-    @if (!readsLess() || s.cpu.cores > 0) {
-      <div class="card" [class.alerting]="alertOn('cpu')">
-        <h2>
-          {{ i18n.t('dashboard.cpu') }}
-          @if (alertOn('cpu'); as level) {
-            <app-alert-icon
-              [level]="level"
-              role="img"
-              [attr.aria-label]="i18n.t('alerts.onCard')"
-              [title]="alertTitle('cpu')"
-            />
-          }
-          <app-card-info [text]="i18n.t('dashboard.info.cpu')" />
-        </h2>
-        <p class="value">{{ s.cpu.usagePercent | number: '1.0-1' : i18n.language() }} %</p>
-        <progress
-          max="100"
-          [value]="s.cpu.usagePercent"
-          [attr.aria-label]="i18n.t('dashboard.cpuUsage')"
-        ></progress>
-        @if (s.cpu.coreUsagePercent?.length) {
-          <div
-            class="cores"
-            role="img"
-            [attr.aria-label]="coresLabel(s.cpu.coreUsagePercent!)"
-            [style.--core-columns]="coreColumns(s.cpu.coreUsagePercent!.length)"
+  <div class="categories" [class.stale]="connection.lost()">
+    @for (category of cardGroups(); track category.category) {
+      @let folded = foldedCategories.folded().has(category.category);
+      <section class="category" [attr.aria-labelledby]="'category-' + category.category">
+        <h2 class="category-title" [id]="'category-' + category.category">
+          <button
+            type="button"
+            class="fold"
+            [attr.aria-expanded]="!folded"
+            (click)="foldedCategories.toggle(category.category)"
           >
-            @for (usage of s.cpu.coreUsagePercent; track $index) {
-              <span
-                class="core"
-                [title]="
-                  i18n.t('dashboard.coreUsage', {
-                    core: $index + 1,
-                    usage: decimal(usage, '1.0-0'),
-                  })
-                "
-                ><span class="core-usage" [style.height.%]="usage"></span
-              ></span>
+            <span class="chevron" aria-hidden="true"></span
+            >{{ i18n.t(categoryTitle[category.category]) }}
+            @if (folded) {
+              @let alerting = categoryAlert(category.items);
+              @if (alerting) {
+                <app-alert-icon
+                  [level]="alerting"
+                  role="img"
+                  [attr.aria-label]="i18n.t('alerts.onCard')"
+                />
+              }
+              <span class="count">{{
+                i18n.plural(category.items.length, 'categories.cards.one', 'categories.cards.other')
+              }}</span>
+            }
+          </button>
+        </h2>
+        @if (!folded) {
+          <div class="cards" appEvenColumns keepCardWidth>
+            @for (card of category.items; track card.id) {
+              @switch (card.kind) {
+                @case ('cpu') {
+                  <div class="card" [class.alerting]="alertOn('cpu')">
+                    <h3>
+                      {{ i18n.t('dashboard.cpu') }}
+                      @if (alertOn('cpu'); as level) {
+                        <app-alert-icon
+                          [level]="level"
+                          role="img"
+                          [attr.aria-label]="i18n.t('alerts.onCard')"
+                          [title]="alertTitle('cpu')"
+                        />
+                      }
+                      <app-card-info [text]="i18n.t('dashboard.info.cpu')" />
+                    </h3>
+                    <p class="value">
+                      {{ s.cpu.usagePercent | number: '1.0-1' : i18n.language() }} %
+                    </p>
+                    <progress
+                      max="100"
+                      [value]="s.cpu.usagePercent"
+                      [attr.aria-label]="i18n.t('dashboard.cpuUsage')"
+                    ></progress>
+                    @if (s.cpu.coreUsagePercent?.length) {
+                      <div
+                        class="cores"
+                        role="img"
+                        [attr.aria-label]="coresLabel(s.cpu.coreUsagePercent!)"
+                        [style.--core-columns]="coreColumns(s.cpu.coreUsagePercent!.length)"
+                      >
+                        @for (usage of s.cpu.coreUsagePercent; track $index) {
+                          <span
+                            class="core"
+                            [title]="
+                              i18n.t('dashboard.coreUsage', {
+                                core: $index + 1,
+                                usage: decimal(usage, '1.0-0'),
+                              })
+                            "
+                            ><span class="core-usage" [style.height.%]="usage"></span
+                          ></span>
+                        }
+                      </div>
+                    }
+                    <p class="detail">
+                      {{ i18n.plural(s.cpu.cores, 'dashboard.cores.one', 'dashboard.cores.other') }}
+                      @if (s.cpu.clockMHz) {
+                        · {{ s.cpu.clockMHz / 1000 | number: '1.1-1' : i18n.language() }} GHz
+                      }
+                    </p>
+                    @if (s.cpu.loadAverage; as load) {
+                      <p class="detail" [title]="i18n.t('dashboard.loadAverageHint')">
+                        {{
+                          i18n.t('dashboard.loadAverage', {
+                            one: decimal(load.one, '1.2-2'),
+                            five: decimal(load.five, '1.2-2'),
+                            fifteen: decimal(load.fifteen, '1.2-2'),
+                          })
+                        }}
+                      </p>
+                    }
+                    @if (s.cpu.processes; as p) {
+                      <p class="detail">
+                        {{ i18n.t('dashboard.processes', { total: p.total, running: p.running }) }}
+                      </p>
+                    }
+                    @if (s.cpu.ioWaitPercent !== undefined) {
+                      <p class="detail" [title]="i18n.t('dashboard.ioWaitHint')">
+                        {{
+                          i18n.t('dashboard.ioWait', {
+                            percent: decimal(s.cpu.ioWaitPercent, '1.1-1'),
+                          })
+                        }}
+                        @if (s.cpu.stealPercent) {
+                          ·
+                          {{
+                            i18n.t('dashboard.steal', {
+                              percent: decimal(s.cpu.stealPercent, '1.1-1'),
+                            })
+                          }}
+                        }
+                      </p>
+                    }
+                  </div>
+                }
+                @case ('memory') {
+                  <div class="card" [class.alerting]="alertOn('memory')">
+                    <h3>
+                      {{ i18n.t('dashboard.memory') }}
+                      @if (alertOn('memory'); as level) {
+                        <app-alert-icon
+                          [level]="level"
+                          role="img"
+                          [attr.aria-label]="i18n.t('alerts.onCard')"
+                          [title]="alertTitle('memory')"
+                        />
+                      }
+                      <app-card-info [text]="i18n.t('dashboard.info.memory')" />
+                    </h3>
+                    <p class="value">
+                      {{ s.memory.usedPercent | number: '1.0-1' : i18n.language() }} %
+                    </p>
+                    <progress
+                      max="100"
+                      [value]="s.memory.usedPercent"
+                      [attr.aria-label]="i18n.t('dashboard.memoryUsage')"
+                    ></progress>
+                    <p class="detail">
+                      {{
+                        i18n.t('dashboard.usedOfTotal', {
+                          used: (s.memory.usedBytes | bytes: i18n.language()),
+                          total: (s.memory.totalBytes | bytes: i18n.language()),
+                        })
+                      }}
+                    </p>
+                    @if (s.memory.availableBytes) {
+                      <p class="detail">
+                        {{
+                          i18n.t('dashboard.available', {
+                            available: (s.memory.availableBytes | bytes: i18n.language()),
+                          })
+                        }}
+                        @if (s.memory.cachedBytes) {
+                          ·
+                          {{
+                            i18n.t('dashboard.cache', {
+                              cache: (s.memory.cachedBytes | bytes: i18n.language()),
+                            })
+                          }}
+                        }
+                      </p>
+                    }
+                    @if (s.memory.swap; as swap) {
+                      <p class="sensor swap">
+                        <span>{{ i18n.t('dashboard.swap') }}</span
+                        ><span>{{ swap.usedPercent | number: '1.0-1' : i18n.language() }} %</span>
+                      </p>
+                      <progress
+                        max="100"
+                        [value]="swap.usedPercent"
+                        [attr.aria-label]="i18n.t('dashboard.swapUsage')"
+                      ></progress>
+                      <p class="detail">
+                        {{
+                          i18n.t('dashboard.usedOfTotal', {
+                            used: (swap.usedBytes | bytes: i18n.language()),
+                            total: (swap.totalBytes | bytes: i18n.language()),
+                          })
+                        }}
+                      </p>
+                    }
+                  </div>
+                }
+                @case ('disks') {
+                  <div class="card" [class.alerting]="alertOn('disk')" [appFitLabels]="s.disks">
+                    <h3>
+                      {{ i18n.t('dashboard.disks') }}
+                      @if (alertOn('disk'); as level) {
+                        <app-alert-icon
+                          [level]="level"
+                          role="img"
+                          [attr.aria-label]="i18n.t('alerts.onCard')"
+                          [title]="alertTitle('disk')"
+                        />
+                      }
+                      <app-card-info [text]="i18n.t('dashboard.info.disks')" />
+                    </h3>
+                    <app-scroll-rows>
+                      @for (d of s.disks; track d.path) {
+                        <div class="disk">
+                          <p class="sensor">
+                            <span class="label" [title]="d.path">{{ d.path }}</span
+                            ><span>{{ d.usedPercent | number: '1.0-1' : i18n.language() }} %</span>
+                          </p>
+                          <progress
+                            max="100"
+                            [value]="d.usedPercent"
+                            [attr.aria-label]="i18n.t('dashboard.diskUsage', { path: d.path })"
+                          ></progress>
+                          <p class="detail">
+                            {{
+                              i18n.t('dashboard.usedOfTotal', {
+                                used: (d.usedBytes | bytes: i18n.language()),
+                                total: (d.totalBytes | bytes: i18n.language()),
+                              })
+                            }}
+                          </p>
+                          @if (
+                            d.readBytesPerSecond !== undefined &&
+                            d.writeBytesPerSecond !== undefined
+                          ) {
+                            <p class="detail speeds">
+                              <span>{{
+                                i18n.t('dashboard.diskRead', {
+                                  speed: (d.readBytesPerSecond | bytes: i18n.language()),
+                                })
+                              }}</span>
+                              <span>{{
+                                i18n.t('dashboard.diskWrite', {
+                                  speed: (d.writeBytesPerSecond | bytes: i18n.language()),
+                                })
+                              }}</span>
+                            </p>
+                          }
+                          @if (d.operationsPerSecond !== undefined) {
+                            <p class="detail speeds">
+                              <span>{{
+                                i18n.t('dashboard.diskOperations', {
+                                  count: decimal(d.operationsPerSecond, '1.0-0'),
+                                })
+                              }}</span>
+                              @if (d.busyPercent !== undefined && d.latencyMs !== undefined) {
+                                <span>{{
+                                  i18n.t('dashboard.diskBusy', {
+                                    percent: decimal(d.busyPercent, '1.0-0'),
+                                  })
+                                }}</span>
+                                <span [title]="i18n.t('dashboard.diskLatencyHint')">{{
+                                  i18n.t('dashboard.diskLatency', {
+                                    ms: decimal(d.latencyMs, '1.1-1'),
+                                  })
+                                }}</span>
+                              }
+                            </p>
+                          }
+                        </div>
+                      } @empty {
+                        <p class="detail">{{ i18n.t('dashboard.noDisk') }}</p>
+                      }
+                    </app-scroll-rows>
+                  </div>
+                }
+                @case ('network') {
+                  @let network = activeInterfaces(s);
+                  <div class="card" [appFitLabels]="network.shown">
+                    <h3>
+                      {{ i18n.t('dashboard.network') }}
+                      <app-card-info [text]="i18n.t('dashboard.info.network')" />
+                    </h3>
+                    <app-scroll-rows>
+                      @for (n of network.shown; track n.name) {
+                        <div class="interface">
+                          <span class="label" [title]="n.name">{{ n.name }}</span>
+                          <span class="rate"
+                            >↓ {{ n.receiveBytesPerSecond | bytes: i18n.language() }}/s</span
+                          >
+                          <span class="rate"
+                            >↑ {{ n.sendBytesPerSecond | bytes: i18n.language() }}/s</span
+                          >
+                          @if (n.addresses?.length || n.linkMbps) {
+                            <span class="link">{{ linkDetails(n) }}</span>
+                          }
+                          @if (n.errors || n.dropped) {
+                            <span
+                              class="problems"
+                              [title]="i18n.t('dashboard.networkProblemsHint')"
+                              >{{
+                                i18n.t('dashboard.networkProblems', {
+                                  errors: n.errors ?? 0,
+                                  dropped: n.dropped ?? 0,
+                                })
+                              }}</span
+                            >
+                          }
+                        </div>
+                      } @empty {
+                        <p class="detail">{{ i18n.t('dashboard.noNetwork') }}</p>
+                      }
+                    </app-scroll-rows>
+                    @if (network.idle > 0) {
+                      <p class="detail">
+                        {{
+                          i18n.plural(
+                            network.idle,
+                            'dashboard.idleHidden.one',
+                            'dashboard.idleHidden.other'
+                          )
+                        }}
+                      </p>
+                    }
+                  </div>
+                }
+                @case ('gpus') {
+                  <div class="card" [appFitLabels]="s.gpus">
+                    <h3>
+                      {{ i18n.t('dashboard.gpu') }}
+                      <app-card-info [text]="i18n.t('dashboard.info.gpu')" />
+                    </h3>
+                    <app-scroll-rows>
+                      @for (g of s.gpus; track g.name) {
+                        <div class="gpu">
+                          <p class="label" [title]="g.name">{{ g.name }}</p>
+                          <p class="sensor">
+                            <span>{{ g.usagePercent | number: '1.0-1' : i18n.language() }} %</span>
+                            @if (g.celsius !== undefined) {
+                              <span>{{ g.celsius | number: '1.0-1' : i18n.language() }} °C</span>
+                            }
+                          </p>
+                          <progress
+                            max="100"
+                            [value]="g.usagePercent"
+                            [attr.aria-label]="i18n.t('dashboard.gpuUsage', { name: g.name })"
+                          ></progress>
+                          @if (g.memoryTotalBytes) {
+                            <p class="detail">
+                              {{
+                                i18n.t('dashboard.gpuMemory', {
+                                  used: (g.memoryUsedBytes ?? 0 | bytes: i18n.language()),
+                                  total: (g.memoryTotalBytes | bytes: i18n.language()),
+                                })
+                              }}
+                            </p>
+                          }
+                        </div>
+                      }
+                    </app-scroll-rows>
+                  </div>
+                }
+                @case ('temperatures') {
+                  <div
+                    class="card"
+                    [class.alerting]="alertOn('temperature')"
+                    [appFitLabels]="s.temperatures"
+                  >
+                    <h3>
+                      {{ i18n.t('dashboard.temperature') }}
+                      @if (alertOn('temperature'); as level) {
+                        <app-alert-icon
+                          [level]="level"
+                          role="img"
+                          [attr.aria-label]="i18n.t('alerts.onCard')"
+                          [title]="alertTitle('temperature')"
+                        />
+                      }
+                      <app-card-info [text]="i18n.t('dashboard.info.temperature')" />
+                    </h3>
+                    <app-scroll-rows>
+                      @for (t of hottestFirst(s.temperatures); track t.sensor) {
+                        <p class="sensor">
+                          <span class="label" [title]="t.sensor">{{ t.sensor }}</span
+                          ><span>{{ t.celsius | number: '1.0-1' : i18n.language() }} °C</span>
+                        </p>
+                      } @empty {
+                        <p class="detail">{{ i18n.t('dashboard.noTemperature') }}</p>
+                      }
+                    </app-scroll-rows>
+                  </div>
+                }
+                @case ('fans') {
+                  <div class="card" [appFitLabels]="s.fans">
+                    <h3>
+                      {{ i18n.t('dashboard.fans') }}
+                      <app-card-info [text]="i18n.t('dashboard.info.fans')" />
+                    </h3>
+                    <app-scroll-rows>
+                      @for (f of s.fans; track f.name) {
+                        <p class="sensor">
+                          <span class="label" [title]="f.name">{{ f.name }}</span
+                          ><span>{{
+                            i18n.t('dashboard.rpm', { rpm: decimal(f.rpm, '1.0-0') })
+                          }}</span>
+                        </p>
+                      }
+                    </app-scroll-rows>
+                  </div>
+                }
+                @case ('battery') {
+                  @if (s.battery; as b) {
+                    <div class="card">
+                      <h3>
+                        {{ i18n.t('dashboard.battery') }}
+                        <app-card-info [text]="i18n.t('dashboard.info.battery')" />
+                      </h3>
+                      <p class="value">{{ b.percent | number: '1.0-0' : i18n.language() }} %</p>
+                      <progress
+                        max="100"
+                        [value]="b.percent"
+                        [attr.aria-label]="i18n.t('dashboard.batteryCharge')"
+                      ></progress>
+                      <p class="detail">
+                        {{ i18n.t(b.pluggedIn ? 'dashboard.pluggedIn' : 'dashboard.onBattery') }}
+                      </p>
+                      @if (b.watts) {
+                        <p class="detail">
+                          {{
+                            i18n.t(
+                              b.pluggedIn
+                                ? 'dashboard.batteryCharging'
+                                : 'dashboard.batteryDrawing',
+                              {
+                                watts: decimal(b.watts, '1.1-1'),
+                              }
+                            )
+                          }}
+                        </p>
+                      }
+                      @if (b.healthPercent !== undefined) {
+                        <p class="detail" [title]="i18n.t('dashboard.batteryHealthHint')">
+                          {{
+                            i18n.t('dashboard.batteryHealth', {
+                              percent: decimal(b.healthPercent, '1.0-0'),
+                            })
+                          }}
+                        </p>
+                      }
+                    </div>
+                  }
+                }
+                @case ('throttling') {
+                  @if (s.throttling; as t) {
+                    <div class="card" [class.alerting]="alertOn('throttling')">
+                      <h3>
+                        {{ i18n.t('dashboard.power') }}
+                        @if (alertOn('throttling'); as level) {
+                          <app-alert-icon
+                            [level]="level"
+                            role="img"
+                            [attr.aria-label]="i18n.t('alerts.onCard')"
+                            [title]="alertTitle('throttling')"
+                          />
+                        }
+                        <app-card-info [text]="i18n.t('dashboard.info.power')" />
+                      </h3>
+                      @let earlier = earlierConditions(t);
+                      @if (t.now.length > 0 || earlier.length > 0) {
+                        <p class="value" [class.problem]="t.now.length > 0">
+                          {{ i18n.t('dashboard.powerWarning') }}
+                        </p>
+                        @if (t.now.length > 0) {
+                          <p class="detail problem">
+                            {{
+                              i18n.t('dashboard.throttlingNow', {
+                                conditions: conditionList(t.now),
+                              })
+                            }}
+                          </p>
+                        }
+                        @if (earlier.length > 0) {
+                          <p class="detail">
+                            {{
+                              i18n.t('dashboard.throttlingEarlier', {
+                                conditions: conditionList(earlier),
+                              })
+                            }}
+                          </p>
+                        }
+                      } @else {
+                        <p class="value">{{ i18n.t('dashboard.powerOk') }}</p>
+                        <p class="detail">{{ i18n.t('dashboard.powerNoProblems') }}</p>
+                      }
+                    </div>
+                  }
+                }
+                @case ('extra') {
+                  @let group = card.group;
+                  @let groupAlert = group.id === 'smart-checks' ? alertOn('smart') : null;
+                  <div class="card" [class.alerting]="groupAlert" [appFitLabels]="group.items">
+                    <h3>
+                      {{ extraText(group.title, group.titles) }}
+                      @if (groupAlert; as level) {
+                        <app-alert-icon
+                          [level]="level"
+                          role="img"
+                          [attr.aria-label]="i18n.t('alerts.onCard')"
+                          [title]="alertTitle('smart')"
+                        />
+                      }
+                      @if (group.description) {
+                        <app-card-info [text]="extraText(group.description, group.descriptions)" />
+                      }
+                    </h3>
+                    <!-- Texts, such as the addresses of a port, can be long, so they fit like the names. -->
+                    <app-scroll-rows>
+                      @for (part of extraSections(group); track part.section) {
+                        @if (part.section) {
+                          <p class="section label" [title]="part.section">{{ part.section }}</p>
+                        }
+                        @for (item of part.items; track item.id) {
+                          <p class="sensor">
+                            <span class="label" [title]="extraText(item.label, item.labels)">{{
+                              extraLabel(item)
+                            }}</span
+                            ><span
+                              [class.label]="item.unit === 'text'"
+                              [attr.title]="item.unit === 'text' ? extraValue(item) : null"
+                              >{{ extraValue(item) }}</span
+                            >
+                          </p>
+                        }
+                      }
+                    </app-scroll-rows>
+                  </div>
+                }
+                @case ('time') {
+                  @if (s.timeZone; as zone) {
+                    <div class="card">
+                      <h3>
+                        {{ i18n.t('dashboard.time') }}
+                        <app-card-info [text]="i18n.t('dashboard.info.time')" />
+                      </h3>
+                      <p class="value">{{ deviceTime(s.time, zone, 'shortTime') }}</p>
+                      <p class="detail">
+                        {{ deviceTime(s.time, zone, 'fullDate') }} · {{ zoneLabel(zone) }}
+                      </p>
+                    </div>
+                  }
+                }
+                @case ('uptime') {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      uptimeCard;
+                      context: {
+                        $implicit: showsUptime(s) ? s : null,
+                        availability: shownAvailability(),
+                      }
+                    "
+                  />
+                }
+              }
             }
           </div>
         }
-        <p class="detail">
-          {{ i18n.plural(s.cpu.cores, 'dashboard.cores.one', 'dashboard.cores.other') }}
-          @if (s.cpu.clockMHz) {
-            · {{ s.cpu.clockMHz / 1000 | number: '1.1-1' : i18n.language() }} GHz
-          }
-        </p>
-        @if (s.cpu.loadAverage; as load) {
-          <p class="detail" [title]="i18n.t('dashboard.loadAverageHint')">
-            {{
-              i18n.t('dashboard.loadAverage', {
-                one: decimal(load.one, '1.2-2'),
-                five: decimal(load.five, '1.2-2'),
-                fifteen: decimal(load.fifteen, '1.2-2'),
-              })
-            }}
-          </p>
-        }
-        @if (s.cpu.processes; as p) {
-          <p class="detail">
-            {{ i18n.t('dashboard.processes', { total: p.total, running: p.running }) }}
-          </p>
-        }
-        @if (s.cpu.ioWaitPercent !== undefined) {
-          <p class="detail" [title]="i18n.t('dashboard.ioWaitHint')">
-            {{ i18n.t('dashboard.ioWait', { percent: decimal(s.cpu.ioWaitPercent, '1.1-1') }) }}
-            @if (s.cpu.stealPercent) {
-              ·
-              {{ i18n.t('dashboard.steal', { percent: decimal(s.cpu.stealPercent, '1.1-1') }) }}
-            }
-          </p>
-        }
-      </div>
-    }
-
-    @if (!readsLess() || s.memory.totalBytes > 0) {
-      <div class="card" [class.alerting]="alertOn('memory')">
-        <h2>
-          {{ i18n.t('dashboard.memory') }}
-          @if (alertOn('memory'); as level) {
-            <app-alert-icon
-              [level]="level"
-              role="img"
-              [attr.aria-label]="i18n.t('alerts.onCard')"
-              [title]="alertTitle('memory')"
-            />
-          }
-          <app-card-info [text]="i18n.t('dashboard.info.memory')" />
-        </h2>
-        <p class="value">{{ s.memory.usedPercent | number: '1.0-1' : i18n.language() }} %</p>
-        <progress
-          max="100"
-          [value]="s.memory.usedPercent"
-          [attr.aria-label]="i18n.t('dashboard.memoryUsage')"
-        ></progress>
-        <p class="detail">
-          {{
-            i18n.t('dashboard.usedOfTotal', {
-              used: (s.memory.usedBytes | bytes: i18n.language()),
-              total: (s.memory.totalBytes | bytes: i18n.language()),
-            })
-          }}
-        </p>
-        @if (s.memory.availableBytes) {
-          <p class="detail">
-            {{
-              i18n.t('dashboard.available', {
-                available: (s.memory.availableBytes | bytes: i18n.language()),
-              })
-            }}
-            @if (s.memory.cachedBytes) {
-              ·
-              {{
-                i18n.t('dashboard.cache', {
-                  cache: (s.memory.cachedBytes | bytes: i18n.language()),
-                })
-              }}
-            }
-          </p>
-        }
-        @if (s.memory.swap; as swap) {
-          <p class="sensor swap">
-            <span>{{ i18n.t('dashboard.swap') }}</span
-            ><span>{{ swap.usedPercent | number: '1.0-1' : i18n.language() }} %</span>
-          </p>
-          <progress
-            max="100"
-            [value]="swap.usedPercent"
-            [attr.aria-label]="i18n.t('dashboard.swapUsage')"
-          ></progress>
-          <p class="detail">
-            {{
-              i18n.t('dashboard.usedOfTotal', {
-                used: (swap.usedBytes | bytes: i18n.language()),
-                total: (swap.totalBytes | bytes: i18n.language()),
-              })
-            }}
-          </p>
-        }
-      </div>
-    }
-
-    @if (!readsLess() || s.disks.length > 0) {
-      <div class="card" [class.alerting]="alertOn('disk')" [appFitLabels]="s.disks">
-        <h2>
-          {{ i18n.t('dashboard.disks') }}
-          @if (alertOn('disk'); as level) {
-            <app-alert-icon
-              [level]="level"
-              role="img"
-              [attr.aria-label]="i18n.t('alerts.onCard')"
-              [title]="alertTitle('disk')"
-            />
-          }
-          <app-card-info [text]="i18n.t('dashboard.info.disks')" />
-        </h2>
-        <app-scroll-rows>
-          @for (d of s.disks; track d.path) {
-            <div class="disk">
-              <p class="sensor">
-                <span class="label" [title]="d.path">{{ d.path }}</span
-                ><span>{{ d.usedPercent | number: '1.0-1' : i18n.language() }} %</span>
-              </p>
-              <progress
-                max="100"
-                [value]="d.usedPercent"
-                [attr.aria-label]="i18n.t('dashboard.diskUsage', { path: d.path })"
-              ></progress>
-              <p class="detail">
-                {{
-                  i18n.t('dashboard.usedOfTotal', {
-                    used: (d.usedBytes | bytes: i18n.language()),
-                    total: (d.totalBytes | bytes: i18n.language()),
-                  })
-                }}
-              </p>
-              @if (d.readBytesPerSecond !== undefined && d.writeBytesPerSecond !== undefined) {
-                <p class="detail speeds">
-                  <span>{{
-                    i18n.t('dashboard.diskRead', {
-                      speed: (d.readBytesPerSecond | bytes: i18n.language()),
-                    })
-                  }}</span>
-                  <span>{{
-                    i18n.t('dashboard.diskWrite', {
-                      speed: (d.writeBytesPerSecond | bytes: i18n.language()),
-                    })
-                  }}</span>
-                </p>
-              }
-              @if (d.operationsPerSecond !== undefined) {
-                <p class="detail speeds">
-                  <span>{{
-                    i18n.t('dashboard.diskOperations', {
-                      count: decimal(d.operationsPerSecond, '1.0-0'),
-                    })
-                  }}</span>
-                  @if (d.busyPercent !== undefined && d.latencyMs !== undefined) {
-                    <span>{{
-                      i18n.t('dashboard.diskBusy', { percent: decimal(d.busyPercent, '1.0-0') })
-                    }}</span>
-                    <span [title]="i18n.t('dashboard.diskLatencyHint')">{{
-                      i18n.t('dashboard.diskLatency', { ms: decimal(d.latencyMs, '1.1-1') })
-                    }}</span>
-                  }
-                </p>
-              }
-            </div>
-          } @empty {
-            <p class="detail">{{ i18n.t('dashboard.noDisk') }}</p>
-          }
-        </app-scroll-rows>
-      </div>
-    }
-
-    @let network = activeInterfaces(s);
-    @if (!isChecked() || s.network.length > 0) {
-      <div class="card" [appFitLabels]="network.shown">
-        <h2>
-          {{ i18n.t('dashboard.network') }}
-          <app-card-info [text]="i18n.t('dashboard.info.network')" />
-        </h2>
-        <app-scroll-rows>
-          @for (n of network.shown; track n.name) {
-            <div class="interface">
-              <span class="label" [title]="n.name">{{ n.name }}</span>
-              <span class="rate">↓ {{ n.receiveBytesPerSecond | bytes: i18n.language() }}/s</span>
-              <span class="rate">↑ {{ n.sendBytesPerSecond | bytes: i18n.language() }}/s</span>
-              @if (n.addresses?.length || n.linkMbps) {
-                <span class="link">{{ linkDetails(n) }}</span>
-              }
-              @if (n.errors || n.dropped) {
-                <span class="problems" [title]="i18n.t('dashboard.networkProblemsHint')">{{
-                  i18n.t('dashboard.networkProblems', {
-                    errors: n.errors ?? 0,
-                    dropped: n.dropped ?? 0,
-                  })
-                }}</span>
-              }
-            </div>
-          } @empty {
-            <p class="detail">{{ i18n.t('dashboard.noNetwork') }}</p>
-          }
-        </app-scroll-rows>
-        @if (network.idle > 0) {
-          <p class="detail">
-            {{
-              i18n.plural(network.idle, 'dashboard.idleHidden.one', 'dashboard.idleHidden.other')
-            }}
-          </p>
-        }
-      </div>
-    }
-
-    @if (s.gpus?.length) {
-      <div class="card" [appFitLabels]="s.gpus">
-        <h2>
-          {{ i18n.t('dashboard.gpu') }}
-          <app-card-info [text]="i18n.t('dashboard.info.gpu')" />
-        </h2>
-        <app-scroll-rows>
-          @for (g of s.gpus; track g.name) {
-            <div class="gpu">
-              <p class="label" [title]="g.name">{{ g.name }}</p>
-              <p class="sensor">
-                <span>{{ g.usagePercent | number: '1.0-1' : i18n.language() }} %</span>
-                @if (g.celsius !== undefined) {
-                  <span>{{ g.celsius | number: '1.0-1' : i18n.language() }} °C</span>
-                }
-              </p>
-              <progress
-                max="100"
-                [value]="g.usagePercent"
-                [attr.aria-label]="i18n.t('dashboard.gpuUsage', { name: g.name })"
-              ></progress>
-              @if (g.memoryTotalBytes) {
-                <p class="detail">
-                  {{
-                    i18n.t('dashboard.gpuMemory', {
-                      used: (g.memoryUsedBytes ?? 0 | bytes: i18n.language()),
-                      total: (g.memoryTotalBytes | bytes: i18n.language()),
-                    })
-                  }}
-                </p>
-              }
-            </div>
-          }
-        </app-scroll-rows>
-      </div>
-    }
-
-    @if (!readsLess() || s.temperatures.length > 0) {
-      <div class="card" [class.alerting]="alertOn('temperature')" [appFitLabels]="s.temperatures">
-        <h2>
-          {{ i18n.t('dashboard.temperature') }}
-          @if (alertOn('temperature'); as level) {
-            <app-alert-icon
-              [level]="level"
-              role="img"
-              [attr.aria-label]="i18n.t('alerts.onCard')"
-              [title]="alertTitle('temperature')"
-            />
-          }
-          <app-card-info [text]="i18n.t('dashboard.info.temperature')" />
-        </h2>
-        <app-scroll-rows>
-          @for (t of hottestFirst(s.temperatures); track t.sensor) {
-            <p class="sensor">
-              <span class="label" [title]="t.sensor">{{ t.sensor }}</span
-              ><span>{{ t.celsius | number: '1.0-1' : i18n.language() }} °C</span>
-            </p>
-          } @empty {
-            <p class="detail">{{ i18n.t('dashboard.noTemperature') }}</p>
-          }
-        </app-scroll-rows>
-      </div>
-    }
-
-    @if (s.fans?.length) {
-      <div class="card" [appFitLabels]="s.fans">
-        <h2>
-          {{ i18n.t('dashboard.fans') }}
-          <app-card-info [text]="i18n.t('dashboard.info.fans')" />
-        </h2>
-        <app-scroll-rows>
-          @for (f of s.fans; track f.name) {
-            <p class="sensor">
-              <span class="label" [title]="f.name">{{ f.name }}</span
-              ><span>{{ i18n.t('dashboard.rpm', { rpm: decimal(f.rpm, '1.0-0') }) }}</span>
-            </p>
-          }
-        </app-scroll-rows>
-      </div>
-    }
-
-    @if (s.battery; as b) {
-      <div class="card">
-        <h2>
-          {{ i18n.t('dashboard.battery') }}
-          <app-card-info [text]="i18n.t('dashboard.info.battery')" />
-        </h2>
-        <p class="value">{{ b.percent | number: '1.0-0' : i18n.language() }} %</p>
-        <progress
-          max="100"
-          [value]="b.percent"
-          [attr.aria-label]="i18n.t('dashboard.batteryCharge')"
-        ></progress>
-        <p class="detail">
-          {{ i18n.t(b.pluggedIn ? 'dashboard.pluggedIn' : 'dashboard.onBattery') }}
-        </p>
-        @if (b.watts) {
-          <p class="detail">
-            {{
-              i18n.t(b.pluggedIn ? 'dashboard.batteryCharging' : 'dashboard.batteryDrawing', {
-                watts: decimal(b.watts, '1.1-1'),
-              })
-            }}
-          </p>
-        }
-        @if (b.healthPercent !== undefined) {
-          <p class="detail" [title]="i18n.t('dashboard.batteryHealthHint')">
-            {{ i18n.t('dashboard.batteryHealth', { percent: decimal(b.healthPercent, '1.0-0') }) }}
-          </p>
-        }
-      </div>
-    }
-
-    @if (s.throttling; as t) {
-      <div class="card" [class.alerting]="alertOn('throttling')">
-        <h2>
-          {{ i18n.t('dashboard.power') }}
-          @if (alertOn('throttling'); as level) {
-            <app-alert-icon
-              [level]="level"
-              role="img"
-              [attr.aria-label]="i18n.t('alerts.onCard')"
-              [title]="alertTitle('throttling')"
-            />
-          }
-          <app-card-info [text]="i18n.t('dashboard.info.power')" />
-        </h2>
-        @let earlier = earlierConditions(t);
-        @if (t.now.length > 0 || earlier.length > 0) {
-          <p class="value" [class.problem]="t.now.length > 0">
-            {{ i18n.t('dashboard.powerWarning') }}
-          </p>
-          @if (t.now.length > 0) {
-            <p class="detail problem">
-              {{ i18n.t('dashboard.throttlingNow', { conditions: conditionList(t.now) }) }}
-            </p>
-          }
-          @if (earlier.length > 0) {
-            <p class="detail">
-              {{ i18n.t('dashboard.throttlingEarlier', { conditions: conditionList(earlier) }) }}
-            </p>
-          }
-        } @else {
-          <p class="value">{{ i18n.t('dashboard.powerOk') }}</p>
-          <p class="detail">{{ i18n.t('dashboard.powerNoProblems') }}</p>
-        }
-      </div>
-    }
-
-    <!-- Values beyond the fixed ones, which the device describes itself, so newer devices' values show too. -->
-    @for (group of s.extras; track group.id) {
-      @let groupAlert = group.id === 'smart-checks' ? alertOn('smart') : null;
-      <div class="card" [class.alerting]="groupAlert" [appFitLabels]="group.items">
-        <h2>
-          {{ extraText(group.title, group.titles) }}
-          @if (groupAlert; as level) {
-            <app-alert-icon
-              [level]="level"
-              role="img"
-              [attr.aria-label]="i18n.t('alerts.onCard')"
-              [title]="alertTitle('smart')"
-            />
-          }
-          @if (group.description) {
-            <app-card-info [text]="extraText(group.description, group.descriptions)" />
-          }
-        </h2>
-        <!-- Texts, such as the addresses of a port, can be long, so they fit like the names. -->
-        <app-scroll-rows>
-          @for (part of extraSections(group); track part.section) {
-            @if (part.section) {
-              <p class="section label" [title]="part.section">{{ part.section }}</p>
-            }
-            @for (item of part.items; track item.id) {
-              <p class="sensor">
-                <span class="label" [title]="extraText(item.label, item.labels)">{{
-                  extraLabel(item)
-                }}</span
-                ><span
-                  [class.label]="item.unit === 'text'"
-                  [attr.title]="item.unit === 'text' ? extraValue(item) : null"
-                  >{{ extraValue(item) }}</span
-                >
-              </p>
-            }
-          }
-        </app-scroll-rows>
-      </div>
-    }
-
-    @if (s.timeZone; as zone) {
-      <div class="card">
-        <h2>
-          {{ i18n.t('dashboard.time') }}
-          <app-card-info [text]="i18n.t('dashboard.info.time')" />
-        </h2>
-        <p class="value">{{ deviceTime(s.time, zone, 'shortTime') }}</p>
-        <p class="detail">{{ deviceTime(s.time, zone, 'fullDate') }} · {{ zoneLabel(zone) }}</p>
-      </div>
-    }
-
-    @if (showsUptime(s) || shownAvailability()) {
-      <ng-container
-        *ngTemplateOutlet="
-          uptimeCard;
-          context: {
-            $implicit: showsUptime(s) ? s : null,
-            availability: shownAvailability(),
-          }
-        "
-      />
+      </section>
     }
   </div>
 } @else if (problem() === 'device' && shownAvailability(); as a) {

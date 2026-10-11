@@ -7,7 +7,7 @@ package winservice
 import "context"
 
 // Run reports false: only Windows runs a program as a service.
-func Run(string, func(context.Context) error) (bool, error) {
+func Run(string, func(context.Context) error, func() func()) (bool, error) {
 	return false, nil
 }
 

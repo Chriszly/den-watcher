@@ -3,8 +3,10 @@
 # (usage-control 2.0.7a) with the website on another port and the power
 # add-on, updates it to Msi without options and checks there is one install,
 # named Den-Watcher, that it kept the port, the add-on and the history, and
-# that the old program folder and firewall rule are gone; then uninstalls it
-# with DELETE_HISTORY=1, so windows/check-installer.ps1 starts clean.
+# that the old program folder and firewall rule are gone and the power
+# add-on, a service of its own before, now runs as the service's child
+# process; then uninstalls it with DELETE_HISTORY=1, so
+# windows/check-installer.ps1 starts clean.
 #
 #   pwsh windows/check-rename-upgrade.ps1 -OldMsi usage-control-2.0.7a-x64.msi -Msi den-watcher-255.0.0-x64.msi
 param(
@@ -50,7 +52,14 @@ if ((Get-Installed 'Usage Control').Count -ne 0) { throw 'The update left the in
 if ((Get-Installed 'Den-Watcher').Count -ne 1) { throw 'Windows does not list one install named Den-Watcher' }
 $metrics = Get-Answer 'http://127.0.0.1:8092/api/metrics'
 if (-not $metrics.version) { throw 'The updated service does not report its version' }
-if ((Get-Service UsageControlPower).Status -ne 'Running') { throw 'The update lost the power add-on' }
+if (Get-Service UsageControlPower -ErrorAction SilentlyContinue) { throw 'The update left the power add-on as a service of its own' }
+$service = (Get-CimInstance Win32_Service -Filter "Name = 'UsageControl'").ProcessId
+foreach ($try in 1..30) {
+    $addOn = @(Get-CimInstance Win32_Process -Filter "Name = 'den-watcher-power.exe'" | Where-Object ParentProcessId -eq $service)
+    if ($addOn.Count -eq 1) { break }
+    Start-Sleep -Seconds 1
+}
+if ($addOn.Count -ne 1) { throw 'The update lost the power add-on, which the service should run as its child process' }
 if (-not (Test-Path "$env:ProgramData\Usage Control\usage-control.db")) { throw 'The update lost the history' }
 if (Test-Path "$env:ProgramFiles\Usage Control") { throw 'The old program folder is still there' }
 if (Get-NetFirewallRule -DisplayName 'Usage Control' -ErrorAction SilentlyContinue) { throw 'The old firewall rule is still there' }

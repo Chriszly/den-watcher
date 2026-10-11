@@ -222,3 +222,38 @@ func TestWindowsServiceStopsWhileWaitingToServeAgain(t *testing.T) {
 		t.Errorf("Execute() = %v, %d with error %v, want false, 0 without error", specific, code, service.err)
 	}
 }
+
+func TestWindowsServiceRunsAlongsideOnceUntilServeStopped(t *testing.T) {
+	var events []string
+	var attempts atomic.Int32
+	served := make(chan struct{})
+	service := &windowsService{
+		log:        func(error) {},
+		retryDelay: 10 * time.Millisecond,
+		alongside: func() func() {
+			events = append(events, "start")
+			return func() { events = append(events, "stop") }
+		},
+		serve: func(ctx context.Context) error {
+			if attempts.Add(1) == 1 {
+				return errors.New("port in use")
+			}
+			close(served)
+			<-ctx.Done()
+			events = append(events, "served")
+			return nil
+		},
+	}
+	requests := make(chan svc.ChangeRequest, 1)
+	status := make(chan svc.Status, 2)
+	go func() {
+		<-served
+		requests <- svc.ChangeRequest{Cmd: svc.Stop}
+	}()
+
+	service.Execute(nil, requests, status)
+	// Started once, however often serve was tried, and stopped after it.
+	if got, want := fmt.Sprint(events), "[start served stop]"; got != want {
+		t.Errorf("events = %s, want %s", got, want)
+	}
+}

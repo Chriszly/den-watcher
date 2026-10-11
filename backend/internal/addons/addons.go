@@ -57,7 +57,7 @@ func Main(name, service string, newRead func() Read) {
 	serve := func(ctx context.Context) error { return Serve(ctx, name, read()) }
 	// A service has no console, so its warnings go to the event log too.
 	winservice.LogWarnings(service)
-	ranAsService, err := winservice.Run(service, serve)
+	ranAsService, err := winservice.Run(service, serve, nil)
 	if !ranAsService && err == nil {
 		// Only outside the service manager: Go turns a user logging off
 		// Windows into SIGTERM, which would stop the service for good.

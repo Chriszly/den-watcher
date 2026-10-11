@@ -3,8 +3,8 @@
 // add-on folder (see package addons). It runs as root on Linux, as newer
 // kernels let only root read the CPU's energy counters; den-watcher itself
 // stays without privileges. On Windows, where it reads the energy meters and
-// batteries Windows offers and NVIDIA GPUs, the installer runs it as the
-// service UsageControlPower in the Local Service account.
+// batteries Windows offers and NVIDIA GPUs, the den-watcher service runs it
+// as its child process, in the Local Service account.
 //
 // Settings come from environment variables:
 //

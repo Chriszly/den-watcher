@@ -62,6 +62,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Chriszly/den-watcher/backend/internal/addons"
 	"github.com/Chriszly/den-watcher/backend/internal/history"
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
@@ -77,9 +78,13 @@ import (
 func main() {
 	// Installed on Windows, the service manager starts the program and tells
 	// it when to stop; everywhere else it runs until it is interrupted. A
-	// service has no console, so its warnings go to the event log too.
+	// service has no console, so its warnings go to the event log too. The
+	// service starts the add-ons installed next to it as its child processes,
+	// and stops them when it stops.
 	winservice.LogWarnings("UsageControl")
-	ranAsService, err := winservice.Run("UsageControl", run)
+	ranAsService, err := winservice.Run("UsageControl", run, func() func() {
+		return addons.StartChildren(os.Getenv("ADDONS_DIR"))
+	})
 	if !ranAsService && err == nil {
 		// Only outside the service manager: Go turns a user logging off
 		// Windows into SIGTERM, which would stop the service for good.

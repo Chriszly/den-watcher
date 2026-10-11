@@ -9,40 +9,37 @@
   switches with the option (msiexec /i den-watcher.msi REINSTALL=ALL
   REINSTALLMODE=m WEBSITE=1).
 
-  Add-ons are optional programs that track more, each a service of its own
-  that writes to C:\ProgramData\Usage Control\addons, which den-watcher
-  shows. The Add-ons page offers each one as a box, and each has an install
-  option. POWER=1 installs the power add-on, den-watcher-power.exe, as the
-  Windows service "Den-Watcher power add-on", which reads the power the
-  energy meters Windows offers report (CPU, memory and laptop meters), what
-  the battery gives while the PC runs on it, and what NVIDIA GPUs draw.
-  GPU=1 installs the gpu add-on, den-watcher-gpu.exe, as the service
-  "Den-Watcher gpu add-on", which reads the fan, clocks and more of NVIDIA
-  GPUs.
-  PRESSURE=1 installs the pressure add-on, den-watcher-pressure.exe, as the
-  service "Den-Watcher pressure add-on", which reads how many threads wait
-  for a processor, how many pages are read from disk for memory and how busy
-  the disks are.
-  KERNEL=1 installs the kernel add-on, den-watcher-kernel.exe, as "Den-Watcher
-  kernel add-on", which reads context switches, interrupts, handles, TCP
-  connections and retransmissions.
-  WIFI=1 installs the Wi-Fi add-on, den-watcher-wifi.exe, as "Den-Watcher
-  Wi-Fi add-on", which reads the signal of each connected Wi-Fi
-  adapter.
-  MEMORY=1 installs the memory add-on, den-watcher-memory.exe, as the
-  service "Den-Watcher memory add-on", which reads the Memory performance
-  counters.
-  PORTS=1 installs the ports add-on, den-watcher-ports.exe, as "Den-Watcher
-  ports add-on", which lists the ports the PC listens on.
+  Add-ons are optional programs that track more, each writing to
+  C:\ProgramData\Usage Control\addons, which den-watcher shows. The service
+  starts the installed add-ons as its child processes, so Task Manager shows
+  them under it, except the smart add-on, which needs more rights and is a
+  service of its own. The Add-ons page offers each one as a box, and each
+  has an install option. POWER=1 installs the power add-on,
+  den-watcher-power.exe, which reads the power the energy meters Windows
+  offers report (CPU, memory and laptop meters), what the battery gives
+  while the PC runs on it, and what NVIDIA GPUs draw.
+  GPU=1 installs the gpu add-on, den-watcher-gpu.exe, which reads the fan,
+  clocks and more of NVIDIA GPUs.
+  PRESSURE=1 installs the pressure add-on, den-watcher-pressure.exe, which
+  reads how many threads wait for a processor, how many pages are read from
+  disk for memory and how busy the disks are.
+  KERNEL=1 installs the kernel add-on, den-watcher-kernel.exe, which reads
+  context switches, interrupts, handles, TCP connections and
+  retransmissions.
+  WIFI=1 installs the Wi-Fi add-on, den-watcher-wifi.exe, which reads the
+  signal of each connected Wi-Fi adapter.
+  MEMORY=1 installs the memory add-on, den-watcher-memory.exe, which reads
+  the Memory performance counters.
+  PORTS=1 installs the ports add-on, den-watcher-ports.exe, which lists the
+  ports the PC listens on.
   SMART=1 installs the smart add-on, den-watcher-smart.exe, as the
   service "Den-Watcher smart add-on", which reads the disks' health; it
   runs as LocalSystem, as only administrators may send disks SMART commands.
-  PROCESSES=1 installs the processes add-on, den-watcher-processes.exe, as
-  "Den-Watcher processes add-on", which lists the processes using the most
-  CPU and memory.
-  BLUETOOTH=1 installs the Bluetooth add-on, den-watcher-bluetooth.exe, as
-  "Den-Watcher Bluetooth add-on", which lists the connected classic
-  Bluetooth devices, such as headsets and speakers.
+  PROCESSES=1 installs the processes add-on, den-watcher-processes.exe,
+  which lists the processes using the most CPU and memory.
+  BLUETOOTH=1 installs the Bluetooth add-on, den-watcher-bluetooth.exe,
+  which lists the connected classic Bluetooth devices, such as headsets and
+  speakers.
 
   It also installs den-watcher-tray.exe, the icon in the taskbar that shows
   whether the service runs and pauses, stops or opens it. It starts when
@@ -446,36 +443,25 @@
                            Condition='NOT (REINSTALL AND REINSTALLMODE = "m")' />
 
     <!--
-      The power add-on, with POWER=1: a service of its own, in the same
-      low-privilege account, that writes to the add-on folder. An update
+      The power add-on, with POWER=1: a program the Den-Watcher service
+      starts as its child process when it finds it next to itself, so it
+      runs in the service's low-privilege account, shows under it in Task
+      Manager and stops with it (see addons.StartChildren); it writes to the
+      add-on folder, and its warnings to the event log under its own name.
+      An install from before it was a child had it as a service of its own,
+      which the update removes with the old version. An update
       checks the condition again, so it also adds or removes the add-on.
       Each add-on is transitive, so a repair checks it again too (REINSTALL=ALL
       REINSTALLMODE=m POWER=1 adds it, POWER=0 removes it). A repair without
       the option reads the remembered one, which the service's component
       writes back, so it keeps the add-ons as they are. A repair that only
-      rewrites the registry (REINSTALLMODE=m) would add or remove the
-      add-on's service but copy or delete no file, so a repair that changes
-      an add-on also checks the files (AddOnFiles).
+      rewrites the registry (REINSTALLMODE=m) would copy or delete no file,
+      so a repair that changes an add-on also checks the files (AddOnFiles).
+      The repair stops the service before it changes the files and starts it
+      after, which then starts the add-ons it finds.
     -->
     <Component Directory="INSTALLFOLDER" Condition='POWER = "1"' Transitive="yes">
       <File Source="$(AddOns)\den-watcher-power.exe" Name="den-watcher-power.exe" KeyPath="yes" />
-      <ServiceInstall Name="UsageControlPower"
-                      DisplayName="Den-Watcher power add-on"
-                      Description="Reads the power this computer draws for Den-Watcher."
-                      Type="ownProcess"
-                      Start="auto"
-                      ErrorControl="normal"
-                      Account="NT AUTHORITY\LocalService">
-        <util:ServiceConfig FirstFailureActionType="restart"
-                            SecondFailureActionType="restart"
-                            ThirdFailureActionType="restart"
-                            RestartServiceDelayInSeconds="10"
-                            ResetPeriodInDays="1" />
-      </ServiceInstall>
-      <ServiceControl Name="UsageControlPower" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
-      <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControlPower" Name="Environment" Type="multiString">
-        <MultiStringValue Value="ADDONS_DIR=[ADDONSFOLDER]" />
-      </RegistryValue>
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPower"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPower"
@@ -487,23 +473,6 @@
     -->
     <Component Directory="INSTALLFOLDER" Condition='GPU = "1"' Transitive="yes">
       <File Source="$(AddOns)\den-watcher-gpu.exe" Name="den-watcher-gpu.exe" KeyPath="yes" />
-      <ServiceInstall Name="UsageControlGPU"
-                      DisplayName="Den-Watcher gpu add-on"
-                      Description="Reads the fan, clocks and more of the NVIDIA graphics card for Den-Watcher."
-                      Type="ownProcess"
-                      Start="auto"
-                      ErrorControl="normal"
-                      Account="NT AUTHORITY\LocalService">
-        <util:ServiceConfig FirstFailureActionType="restart"
-                            SecondFailureActionType="restart"
-                            ThirdFailureActionType="restart"
-                            RestartServiceDelayInSeconds="10"
-                            ResetPeriodInDays="1" />
-      </ServiceInstall>
-      <ServiceControl Name="UsageControlGPU" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
-      <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControlGPU" Name="Environment" Type="multiString">
-        <MultiStringValue Value="ADDONS_DIR=[ADDONSFOLDER]" />
-      </RegistryValue>
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlGPU"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlGPU"
@@ -516,23 +485,6 @@
     -->
     <Component Directory="INSTALLFOLDER" Condition='PRESSURE = "1"' Transitive="yes">
       <File Source="$(AddOns)\den-watcher-pressure.exe" Name="den-watcher-pressure.exe" KeyPath="yes" />
-      <ServiceInstall Name="UsageControlPressure"
-                      DisplayName="Den-Watcher pressure add-on"
-                      Description="Reads how much waits for the processor, memory and disks for Den-Watcher."
-                      Type="ownProcess"
-                      Start="auto"
-                      ErrorControl="normal"
-                      Account="NT AUTHORITY\LocalService">
-        <util:ServiceConfig FirstFailureActionType="restart"
-                            SecondFailureActionType="restart"
-                            ThirdFailureActionType="restart"
-                            RestartServiceDelayInSeconds="10"
-                            ResetPeriodInDays="1" />
-      </ServiceInstall>
-      <ServiceControl Name="UsageControlPressure" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
-      <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControlPressure" Name="Environment" Type="multiString">
-        <MultiStringValue Value="ADDONS_DIR=[ADDONSFOLDER]" />
-      </RegistryValue>
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPressure"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPressure"
@@ -546,23 +498,6 @@
     -->
     <Component Directory="INSTALLFOLDER" Condition='KERNEL = "1"' Transitive="yes">
       <File Source="$(AddOns)\den-watcher-kernel.exe" Name="den-watcher-kernel.exe" KeyPath="yes" />
-      <ServiceInstall Name="UsageControlKernel"
-                      DisplayName="Den-Watcher kernel add-on"
-                      Description="Reads what Windows is busy with for Den-Watcher."
-                      Type="ownProcess"
-                      Start="auto"
-                      ErrorControl="normal"
-                      Account="NT AUTHORITY\LocalService">
-        <util:ServiceConfig FirstFailureActionType="restart"
-                            SecondFailureActionType="restart"
-                            ThirdFailureActionType="restart"
-                            RestartServiceDelayInSeconds="10"
-                            ResetPeriodInDays="1" />
-      </ServiceInstall>
-      <ServiceControl Name="UsageControlKernel" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
-      <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControlKernel" Name="Environment" Type="multiString">
-        <MultiStringValue Value="ADDONS_DIR=[ADDONSFOLDER]" />
-      </RegistryValue>
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlKernel"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlKernel"
@@ -575,23 +510,6 @@
     -->
     <Component Directory="INSTALLFOLDER" Condition='WIFI = "1"' Transitive="yes">
       <File Source="$(AddOns)\den-watcher-wifi.exe" Name="den-watcher-wifi.exe" KeyPath="yes" />
-      <ServiceInstall Name="UsageControlWifi"
-                      DisplayName="Den-Watcher Wi-Fi add-on"
-                      Description="Reads the Wi-Fi signal of this computer for Den-Watcher."
-                      Type="ownProcess"
-                      Start="auto"
-                      ErrorControl="normal"
-                      Account="NT AUTHORITY\LocalService">
-        <util:ServiceConfig FirstFailureActionType="restart"
-                            SecondFailureActionType="restart"
-                            ThirdFailureActionType="restart"
-                            RestartServiceDelayInSeconds="10"
-                            ResetPeriodInDays="1" />
-      </ServiceInstall>
-      <ServiceControl Name="UsageControlWifi" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
-      <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControlWifi" Name="Environment" Type="multiString">
-        <MultiStringValue Value="ADDONS_DIR=[ADDONSFOLDER]" />
-      </RegistryValue>
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlWifi"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlWifi"
@@ -601,23 +519,6 @@
     <!-- The memory add-on, with MEMORY=1, set up like the power add-on. -->
     <Component Directory="INSTALLFOLDER" Condition='MEMORY = "1"' Transitive="yes">
       <File Source="$(AddOns)\den-watcher-memory.exe" Name="den-watcher-memory.exe" KeyPath="yes" />
-      <ServiceInstall Name="UsageControlMemory"
-                      DisplayName="Den-Watcher memory add-on"
-                      Description="Reads details of this computer's memory for Den-Watcher."
-                      Type="ownProcess"
-                      Start="auto"
-                      ErrorControl="normal"
-                      Account="NT AUTHORITY\LocalService">
-        <util:ServiceConfig FirstFailureActionType="restart"
-                            SecondFailureActionType="restart"
-                            ThirdFailureActionType="restart"
-                            RestartServiceDelayInSeconds="10"
-                            ResetPeriodInDays="1" />
-      </ServiceInstall>
-      <ServiceControl Name="UsageControlMemory" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
-      <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControlMemory" Name="Environment" Type="multiString">
-        <MultiStringValue Value="ADDONS_DIR=[ADDONSFOLDER]" />
-      </RegistryValue>
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlMemory"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlMemory"
@@ -627,23 +528,6 @@
     <!-- The ports add-on, with PORTS=1, like the power add-on. -->
     <Component Directory="INSTALLFOLDER" Condition='PORTS = "1"' Transitive="yes">
       <File Source="$(AddOns)\den-watcher-ports.exe" Name="den-watcher-ports.exe" KeyPath="yes" />
-      <ServiceInstall Name="UsageControlPorts"
-                      DisplayName="Den-Watcher ports add-on"
-                      Description="Lists the ports this computer listens on for Den-Watcher."
-                      Type="ownProcess"
-                      Start="auto"
-                      ErrorControl="normal"
-                      Account="NT AUTHORITY\LocalService">
-        <util:ServiceConfig FirstFailureActionType="restart"
-                            SecondFailureActionType="restart"
-                            ThirdFailureActionType="restart"
-                            RestartServiceDelayInSeconds="10"
-                            ResetPeriodInDays="1" />
-      </ServiceInstall>
-      <ServiceControl Name="UsageControlPorts" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
-      <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControlPorts" Name="Environment" Type="multiString">
-        <MultiStringValue Value="ADDONS_DIR=[ADDONSFOLDER]" />
-      </RegistryValue>
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPorts"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPorts"
@@ -691,23 +575,6 @@
     -->
     <Component Directory="INSTALLFOLDER" Condition='PROCESSES = "1"' Transitive="yes">
       <File Source="$(AddOns)\den-watcher-processes.exe" Name="den-watcher-processes.exe" KeyPath="yes" />
-      <ServiceInstall Name="UsageControlProcesses"
-                      DisplayName="Den-Watcher processes add-on"
-                      Description="Lists the processes using the most CPU and memory for Den-Watcher."
-                      Type="ownProcess"
-                      Start="auto"
-                      ErrorControl="normal"
-                      Account="NT AUTHORITY\LocalService">
-        <util:ServiceConfig FirstFailureActionType="restart"
-                            SecondFailureActionType="restart"
-                            ThirdFailureActionType="restart"
-                            RestartServiceDelayInSeconds="10"
-                            ResetPeriodInDays="1" />
-      </ServiceInstall>
-      <ServiceControl Name="UsageControlProcesses" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
-      <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControlProcesses" Name="Environment" Type="multiString">
-        <MultiStringValue Value="ADDONS_DIR=[ADDONSFOLDER]" />
-      </RegistryValue>
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlProcesses"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlProcesses"
@@ -721,23 +588,6 @@
     -->
     <Component Directory="INSTALLFOLDER" Condition='BLUETOOTH = "1"' Transitive="yes">
       <File Source="$(AddOns)\den-watcher-bluetooth.exe" Name="den-watcher-bluetooth.exe" KeyPath="yes" />
-      <ServiceInstall Name="UsageControlBluetooth"
-                      DisplayName="Den-Watcher Bluetooth add-on"
-                      Description="Lists the Bluetooth devices connected to this computer for Den-Watcher."
-                      Type="ownProcess"
-                      Start="auto"
-                      ErrorControl="normal"
-                      Account="NT AUTHORITY\LocalService">
-        <util:ServiceConfig FirstFailureActionType="restart"
-                            SecondFailureActionType="restart"
-                            ThirdFailureActionType="restart"
-                            RestartServiceDelayInSeconds="10"
-                            ResetPeriodInDays="1" />
-      </ServiceInstall>
-      <ServiceControl Name="UsageControlBluetooth" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
-      <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControlBluetooth" Name="Environment" Type="multiString">
-        <MultiStringValue Value="ADDONS_DIR=[ADDONSFOLDER]" />
-      </RegistryValue>
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlBluetooth"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlBluetooth"
@@ -853,7 +703,7 @@
         <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
         <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
         <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Which edition should it run?" />
-        <Control Id="Description" Type="Text" X="25" Y="23" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Text="Each add-on runs as a small service of its own." />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Text="Den-Watcher runs each add-on as a small program of its own." />
         <Control Id="Edition" Type="RadioButtonGroup" X="20" Y="60" Width="330" Height="110" Property="EDITION">
           <RadioButtonGroup Property="EDITION">
             <RadioButton Value="cub" X="0" Y="0" Width="330" Height="15" Text="&amp;Cub: the lightweight add-ons (recommended)" />

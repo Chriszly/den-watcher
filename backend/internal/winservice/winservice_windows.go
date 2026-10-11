@@ -29,14 +29,18 @@ const (
 // registers it under, when the service manager started the program, and
 // reports false when it was started any other way. Errors are also written
 // to the Windows event log, because a service has no console to print them to.
-func Run(name string, serve func(context.Context) error) (bool, error) {
+// alongside, when not nil, is called once as the service starts, for what
+// runs for as long as the service does, however often serve is tried again,
+// and the function it returns once serve has stopped, before the service
+// reports that it stopped.
+func Run(name string, serve func(context.Context) error, alongside func() (stop func())) (bool, error) {
 	isService, err := svc.IsWindowsService()
 	if err != nil || !isService {
 		return false, err
 	}
 	logError := func(err error) { logTo(name, err) }
 	service := &windowsService{
-		serve: serve, log: logError,
+		serve: serve, alongside: alongside, log: logError,
 		retryDelay: serveRetryDelay, maxRetryDelay: maxServeRetryDelay,
 	}
 	if err := svc.Run(name, service); err != nil {
@@ -49,10 +53,10 @@ func Run(name string, serve func(context.Context) error) (bool, error) {
 }
 
 // LogWarnings sends slog's warnings and errors to the Windows event log too,
-// under source, when the service manager started the program: a service's
-// standard error goes nowhere.
+// under source, when the service manager started the program, or a service
+// that set EventLogVariable to 1 did: their standard error goes nowhere.
 func LogWarnings(source string) {
-	if isService, err := svc.IsWindowsService(); err != nil || !isService {
+	if isService, err := svc.IsWindowsService(); err != nil || (!isService && os.Getenv(EventLogVariable) != "1") {
 		return
 	}
 	log, err := eventlog.Open(source)
@@ -74,7 +78,8 @@ func logTo(source string, err error) {
 
 // windowsService answers the service manager while serve runs.
 type windowsService struct {
-	serve func(context.Context) error
+	serve     func(context.Context) error
+	alongside func() (stop func())
 	// log reports a failure of serve, and retryDelay is how long to wait
 	// before serving again after one, doubling with each failure in a row up
 	// to maxRetryDelay.
@@ -93,6 +98,10 @@ type windowsService struct {
 // retryDelay before it failed; a serve that ran for maxRetryDelay or longer
 // before it failed starts over.
 func (s *windowsService) Execute(_ []string, requests <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
+	if s.alongside != nil {
+		// Deferred first, so it runs last: after serve has stopped.
+		defer s.alongside()()
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stopped := make(chan error, 1)

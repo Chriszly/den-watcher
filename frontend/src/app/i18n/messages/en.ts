@@ -177,7 +177,6 @@ export const en = {
   'passwordDialog.confirmRemove': 'Remove',
   'passwordDialog.kind': 'Change {device} to {kind}?',
   'passwordDialog.confirmKind': 'Change',
-  'history.title': 'History',
   'history.unit': 'Unit of the time shown',
   'history.range': 'Time shown',
   'history.unreachableStale': 'The history cannot be read. Showing the last values read.',

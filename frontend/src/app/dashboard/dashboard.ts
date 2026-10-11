@@ -8,6 +8,9 @@ import { Alert, AlertKind, AlertLevel } from '../alerts/alert';
 import { AlertIcon } from '../alerts/alert-icon';
 import { alertText, worstLevel } from '../alerts/alerts';
 import { HubConnection } from '../connection/connection';
+import { CategoryCharts } from '../history/category-charts';
+import { DeviceCharts } from '../history/history';
+import { RangePicker } from '../history/range-picker';
 import { Availability, DeviceService, LOCAL_DEVICE, deviceName } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
 import { EvenColumns } from '../layout/even-columns';
@@ -25,7 +28,7 @@ import {
 } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
 import { CardInfo } from './card-info';
-import { Category, FoldedCategories, byCategory, extraCategory } from './categories';
+import { CATEGORIES, Category, FoldedCategories, extraCategory } from './categories';
 import { CategoryFold } from './category-fold';
 import { FitLabels } from './fit-labels';
 import { Glance } from './glance';
@@ -133,12 +136,14 @@ type Problem = 'backend' | 'device';
     AlertIcon,
     BytesPipe,
     CardInfo,
+    CategoryCharts,
     CategoryFold,
     DecimalPipe,
     EvenColumns,
     FitLabels,
     Glance,
     NgTemplateOutlet,
+    RangePicker,
     ScrollRows,
   ],
   templateUrl: './dashboard.html',
@@ -176,10 +181,21 @@ export class Dashboard {
   protected readonly shownAvailability = computed(() =>
     this.refused() ? null : this.availability(),
   );
-  /** The cards of the picked device by category, in the order the page shows them. */
-  protected readonly cardGroups = computed(() => {
+  private readonly charts = inject(DeviceCharts).byCategory;
+  /**
+   * The categories of the page, each with its cards and then its charts, in the order the page
+   * shows them. A device that has not answered since the page opened has no cards, but it can
+   * have charts up to its last reading.
+   */
+  protected readonly sections = computed(() => {
     const s = this.snapshot();
-    return s ? byCategory(this.cards(s), (card) => card.category) : [];
+    const cards = s ? this.cards(s) : [];
+    const charts = this.charts();
+    return CATEGORIES.map((category) => ({
+      category,
+      cards: cards.filter((card) => card.category === category),
+      charts: charts.get(category)?.length ?? 0,
+    })).filter((section) => section.cards.length > 0 || section.charts > 0);
   });
   protected readonly foldedCategories = inject(FoldedCategories);
   protected readonly coreColumns = coreColumns;
@@ -259,6 +275,18 @@ export class Dashboard {
       ...fixed('time', 'device', s.timeZone),
       ...fixed('uptime', 'device', this.showsUptime(s) || this.shownAvailability()),
     ];
+  }
+
+  /** How many cards and charts a folded category holds, for its title. */
+  protected sectionCount(cards: number, charts: number): string {
+    return [
+      cards > 0 ? this.i18n.plural(cards, 'categories.cards.one', 'categories.cards.other') : '',
+      charts > 0
+        ? this.i18n.plural(charts, 'categories.charts.one', 'categories.charts.other')
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
   }
 
   /** The level of the alerts on the cards of a folded category, for the sign at its title. */

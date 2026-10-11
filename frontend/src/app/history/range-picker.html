@@ -1,0 +1,46 @@
+<div class="bar">
+  <div class="choices units" role="group" [attr.aria-label]="i18n.t('history.unit')">
+    @for (u of store.units(); track u.id) {
+      <button
+        type="button"
+        [attr.aria-pressed]="u.id === store.unit()?.id"
+        (click)="store.selectUnit(u.id)"
+      >
+        <span class="label">{{ i18n.t(u.label) }}</span>
+      </button>
+    }
+  </div>
+
+  @if (store.unit(); as u) {
+    @if (u.id !== 'all') {
+      <div class="choices ranges" role="group" [attr.aria-label]="i18n.t('history.range')">
+        @for (range of u.ranges; track range.seconds) {
+          <button
+            type="button"
+            [attr.aria-pressed]="range.seconds === store.span()"
+            (click)="store.span.set(range.seconds)"
+          >
+            <span class="label">{{ i18n.t(range.label) }}</span>
+          </button>
+        }
+      </div>
+    }
+  }
+
+  <p class="period">
+    @if (store.history(); as h) {
+      {{ h.from * 1000 | date: dateFormat() : undefined : i18n.language() }} –
+      {{ h.to * 1000 | date: dateFormat() : undefined : i18n.language() }}
+    }
+  </p>
+</div>
+
+@if (store.unreachable() && !connection.lost()) {
+  <p class="warning" role="alert">
+    {{ i18n.t(store.history() ? 'history.unreachableStale' : 'history.unreachable') }}
+  </p>
+} @else if (lastReading(); as time) {
+  <p class="warning" role="status">{{ i18n.t('history.notLive', { time }) }}</p>
+} @else if (store.history() && charts().size === 0) {
+  <p class="detail">{{ i18n.t('history.empty') }}</p>
+}

@@ -1,0 +1,44 @@
+:host {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+/* The units, then the ranges, then the period on the right; they wrap on small screens. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.period {
+  margin: 0 0 0 auto;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.detail {
+  margin: 0.75rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.warning {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--warning-surface);
+}
+
+/* Centered labels of one width per row, so every button in a row is equally wide. */
+.label {
+  display: inline-block;
+  text-align: center;
+}
+
+.units .label {
+  min-width: 3.5rem;
+}
+
+.ranges .label {
+  min-width: 3rem;
+}

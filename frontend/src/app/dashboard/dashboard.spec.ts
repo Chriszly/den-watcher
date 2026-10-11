@@ -58,7 +58,7 @@ describe('Dashboard', () => {
   });
 
   afterEach(() => {
-    // The glance row reads the history for its small charts, which its own tests cover.
+    // The range picker, the glance row and the charts read the history, which their own tests cover.
     http.match((r) => r.url === '/api/history');
     http.verify();
     vi.useRealTimers();
@@ -516,6 +516,60 @@ describe('Dashboard', () => {
     expect(storage().querySelector('.card')).not.toBeNull();
     expect(JSON.parse(localStorage.getItem(FOLDED_STORAGE_KEY)!)).toEqual([]);
     localStorage.removeItem(FOLDED_STORAGE_KEY);
+  });
+
+  it("puts each category's charts under its cards, folded with them", () => {
+    respond(snapshot);
+    http
+      .expectOne((r) => r.url === '/api/history')
+      .flush({
+        from: 0,
+        to: 1800,
+        stepSeconds: 5,
+        retentionDays: 30,
+        series: [
+          { metric: 'cpu', points: [{ time: 0, value: 12.5 }] },
+          { metric: 'disk:/', points: [{ time: 0, value: 30 }] },
+        ],
+      });
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const storage = () =>
+      [...element.querySelectorAll('.category')].find((c) =>
+        c.querySelector('h2')!.textContent!.trim().startsWith('Storage'),
+      )!;
+    expect([...storage().querySelectorAll('.card h3')].map((h) => shown(h).trim())).toEqual([
+      'Disks',
+      'Disks',
+    ]);
+    expect(storage().querySelector('app-category-charts app-line-chart')).not.toBeNull();
+
+    storage().querySelector<HTMLButtonElement>('button.fold')!.click();
+    fixture.detectChanges();
+    expect(storage().querySelector('app-line-chart')).toBeNull();
+    expect(storage().querySelector('button.fold')!.textContent).toContain('1 card · 1 chart');
+    storage().querySelector<HTMLButtonElement>('button.fold')!.click();
+    localStorage.removeItem(FOLDED_STORAGE_KEY);
+  });
+
+  it('shows the charts up to the last reading of a device that has not answered', () => {
+    respond(null);
+    http
+      .expectOne((r) => r.url === '/api/history')
+      .flush({
+        from: 0,
+        to: 1800,
+        stepSeconds: 5,
+        retentionDays: 30,
+        lastReading: 1800,
+        series: [{ metric: 'cpu', points: [{ time: 0, value: 12.5 }] }],
+      });
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect([...element.querySelectorAll('.category h2')].map((h) => h.textContent!.trim())).toEqual(
+      ['System'],
+    );
+    expect(element.querySelector('.category app-line-chart')).not.toBeNull();
   });
 
   it('leaves out what the device does not report', () => {

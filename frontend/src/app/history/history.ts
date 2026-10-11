@@ -1,20 +1,15 @@
-import { DatePipe, formatDate } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Injectable, computed, inject } from '@angular/core';
 
-import { HubConnection } from '../connection/connection';
 import { DeviceService } from '../devices/devices';
 import { I18n, LanguageCode, TextParams } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
-import { EvenColumns } from '../layout/even-columns';
 import { ExtraInfo, localized } from '../metrics/extras';
 import { Point, Series } from '../metrics/metrics';
-import { Category, FoldedCategories, byCategory, extraCategory } from '../dashboard/categories';
-import { CategoryFold } from '../dashboard/category-fold';
+import { Category, byCategory, extraCategory } from '../dashboard/categories';
 import { HistoryStore } from './history-store';
-import { ChartLine, ChartUnit, LineChart, dateTimeFormat, needsYear } from './line-chart';
+import { ChartLine, ChartUnit } from './line-chart';
 
-interface Chart {
+export interface Chart {
   title: string;
   category: Category;
   unit: ChartUnit;
@@ -23,60 +18,38 @@ interface Chart {
 }
 
 /**
- * Shows the machine's usage over the latest stretch of time as charts. A unit
- * (minutes, hours, days or all) and then a range of that unit pick how long
- * that stretch is, up to everything the backend keeps. For a device that is
- * not answering, the backend moves the stretch back to end at its last
- * reading, and a notice says the charts are not live.
+ * The charts of the picked device's history over the range picked at the top of the page, by the
+ * category of the cards they go with.
  */
-@Component({
-  selector: 'app-history',
-  imports: [CategoryFold, DatePipe, EvenColumns, LineChart],
-  templateUrl: './history.html',
-  styleUrl: './history.css',
-})
-export class HistoryCharts {
+@Injectable({ providedIn: 'root' })
+export class DeviceCharts {
   private readonly devices = inject(DeviceService);
-  protected readonly store = inject(HistoryStore);
-  protected readonly i18n = inject(I18n);
-  /** While the hub does not answer, the banner across the page says the charts are not live, and they fade. */
-  protected readonly connection = inject(HubConnection);
+  private readonly store = inject(HistoryStore);
+  private readonly i18n = inject(I18n);
 
-  /** Short ranges show seconds too, and long ranges or ranges into another year the year. */
-  protected readonly dateFormat = computed(() => {
-    const history = this.store.history();
-    const year = history !== null && needsYear(history.from, history.to);
-    return this.i18n.t(dateTimeFormat(this.store.span() <= 30 * 60, year));
-  });
-
-  /** For a device that is not answering, when the shown data ends, in the page's language. */
-  protected readonly lastReading = computed(() => {
-    const last = this.store.history()?.lastReading;
-    return last ? formatDate(last * 1000, 'short', this.i18n.language()) : null;
-  });
-
-  /** The charts by category, in the order the dashboard shows its cards. */
-  protected readonly chartGroups = computed(() => byCategory(this.charts(), (c) => c.category));
-  protected readonly foldedCategories = inject(FoldedCategories);
-  protected readonly charts = computed(() => {
+  private readonly charts = computed(() => {
     const history = this.store.history();
     if (!history) {
       return [];
     }
-    const language = this.i18n.language();
+    const device = this.devices.selected();
     return [
       ...chartsOf(
         history.series,
         (key, params) => this.i18n.t(key, params),
-        !!this.devices.selected().router || !!this.devices.selected().checked,
+        !!device.router || !!device.checked,
       ),
-      ...extraChartsOf(history.series, history.extras ?? {}, language),
+      ...extraChartsOf(history.series, history.extras ?? {}, this.i18n.language()),
     ];
   });
 
-  constructor() {
-    this.store.watch.pipe(takeUntilDestroyed()).subscribe();
-  }
+  /** The charts of each category that has any, in the order the dashboard shows its cards. */
+  readonly byCategory = computed(
+    () =>
+      new Map(
+        byCategory(this.charts(), (chart) => chart.category).map((g) => [g.category, g.items]),
+      ),
+  );
 }
 
 /**

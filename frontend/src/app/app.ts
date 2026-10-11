@@ -8,7 +8,6 @@ import { Dashboard } from './dashboard/dashboard';
 import { DevicePicker } from './devices/device-picker';
 import { DeviceService } from './devices/devices';
 import { ManageButton } from './devices/manage-button';
-import { HistoryCharts } from './history/history';
 import { I18n } from './i18n/i18n';
 import { LanguageSwitcher } from './language/language-switcher';
 import { Sidebar, SidebarState } from './layout/sidebar';
@@ -24,7 +23,6 @@ import { UpdateNotice } from './update/update-notice';
     ConnectionBanner,
     Dashboard,
     DevicePicker,
-    HistoryCharts,
     LanguageSwitcher,
     ManageButton,
     Mascot,

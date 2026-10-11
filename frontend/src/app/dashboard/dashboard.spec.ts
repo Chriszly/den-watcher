@@ -1,12 +1,14 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
 import { HubConnection } from '../connection/connection';
 import { DeviceService } from '../devices/devices';
 import { I18n, LANGUAGE_STORAGE_KEY } from '../i18n/i18n';
 import { Snapshot } from '../metrics/metrics';
 import { Dashboard, REFRESH_INTERVAL_MS, coreColumns } from './dashboard';
+import { FitLabels } from './fit-labels';
 
 const snapshot: Snapshot = {
   time: '2026-10-02T17:00:00Z',
@@ -32,7 +34,7 @@ describe('Dashboard', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    // jsdom has no ResizeObserver, which the temperature card uses to fit its names.
+    // jsdom has no ResizeObserver, which the cards use to fit their names.
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -236,6 +238,36 @@ describe('Dashboard', () => {
     expect(text()).toContain('12,5 W');
     expect(text()).toContain('LaptopKabel');
     localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+  });
+
+  it('fits the names on every card that has names, not only the temperatures', () => {
+    respond({
+      ...snapshot,
+      fans: [{ name: 'pwmfan fan1', rpm: 3120 }],
+      gpus: [{ name: 'AMD Radeon RX 7800 XT', usagePercent: 63.2 }],
+      extras: [
+        {
+          id: 'pressure',
+          title: 'Pressure',
+          items: [{ id: 'cpu', label: 'CPU waiting', unit: 'percent', value: 3.25 }],
+        },
+      ],
+    });
+
+    const named = fixture.debugElement
+      .queryAll(By.css('.card'))
+      .filter((card) => card.query(By.css('.label')));
+    expect(named.map((card) => card.query(By.css('h2')).nativeElement.textContent)).toEqual([
+      'Disks',
+      'Network',
+      'GPU',
+      'Temperature',
+      'Fans',
+      'Pressure',
+    ]);
+    for (const card of named) {
+      expect(card.injector.get(FitLabels, null)).not.toBeNull();
+    }
   });
 
   it('leaves out what the device does not report', () => {
@@ -638,6 +670,44 @@ describe('Dashboard', () => {
   it('leaves out the availability for this device', () => {
     respond(snapshot);
 
+    expect(text()).toContain('3 d 4 h');
     expect(text()).not.toContain('Availability');
+  });
+
+  it("shows another device's uptime and availability in one card", () => {
+    vi.setSystemTime(new Date('2026-10-02T12:00:00Z'));
+    respond(snapshot);
+    const devices = TestBed.inject(DeviceService);
+    devices.devices.set([
+      { id: 'local', name: '' },
+      { id: 'living-room-pi', name: 'Living room Pi' },
+    ]);
+    devices.selectedId.set('living-room-pi');
+    fixture.detectChanges();
+    vi.advanceTimersByTime(0);
+
+    http.expectOne('/api/metrics?device=living-room-pi').flush(snapshot);
+    http.expectOne('/api/availability?device=living-room-pi').flush({
+      kind: 'server',
+      since: '2026-10-01T12:00:00Z',
+      countedSince: '2026-10-01T12:00:00Z',
+      offlineSeconds: 864,
+      outages: 1,
+      lastOutage: { start: '2026-10-02T11:00:00Z', end: '2026-10-02T11:14:24Z' },
+    });
+    fixture.detectChanges();
+
+    const card = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.card'),
+    ).find((c) => c.querySelector('h2')?.textContent?.trim() === 'Uptime');
+    expect(card?.textContent).toContain('3 d 4 h');
+    expect(card?.querySelector('.availability')?.textContent).toContain('Availability');
+    expect(card?.querySelector('.availability')?.textContent).toContain('99 %');
+    expect(card?.textContent).toContain('1 outage, the last on');
+    const titles = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.card h2'),
+      (h) => h.textContent?.trim(),
+    );
+    expect(titles).not.toContain('Availability');
   });
 });

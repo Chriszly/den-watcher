@@ -1,7 +1,7 @@
 @let several = devices.devices().length > 1;
 @if (several) {
   <app-sidebar [label]="i18n.t('devices.label')">
-    <app-device-picker [compact]="sidebar.collapsed()" />
+    <app-device-picker [compact]="sidebar.compact()" />
   </app-sidebar>
 }
 <main>

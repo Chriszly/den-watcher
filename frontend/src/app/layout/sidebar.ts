@@ -1,5 +1,16 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, Injectable, inject, input, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injectable,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import { I18n } from '../i18n/i18n';
 
@@ -13,8 +24,23 @@ export const COLLAPSED_STORAGE_KEY = 'sidebarCollapsed';
 @Injectable({ providedIn: 'root' })
 export class SidebarState {
   private readonly document = inject(DOCUMENT);
+  private readonly wideQuery = this.document.defaultView?.matchMedia?.('(width >= 48rem)');
+  /** Whether the screen is wide enough for the sidebar beside the page. */
+  private readonly wide = signal(this.wideQuery?.matches ?? true);
+
   readonly collapsed = signal(this.stored());
+  /** Collapsed counts only on wide screens; over the page on narrow ones it is always open wide. */
+  readonly compact = computed(() => this.collapsed() && this.wide());
   readonly open = signal(false);
+
+  constructor() {
+    const query = this.wideQuery;
+    if (query) {
+      const update = (event: MediaQueryListEvent) => this.wide.set(event.matches);
+      query.addEventListener('change', update);
+      inject(DestroyRef).onDestroy(() => query.removeEventListener('change', update));
+    }
+  }
 
   toggleCollapsed(): void {
     this.collapsed.update((collapsed) => !collapsed);
@@ -38,16 +64,15 @@ export class SidebarState {
 }
 
 /**
- * A sidebar at the left of the page for what is put in it. On wide screens a button at its foot
+ * A sidebar at the left of the page for what is put in it. On wide screens a button at its top
  * collapses it to a rail, marked », and expands it again, marked «. On narrow screens it opens
- * over the page, and closes again when anything in it is picked, the page beside it is clicked
- * or Escape is pressed.
+ * over the page and takes the focus, and closes again when anything in it is picked, the page
+ * beside it is clicked or Escape is pressed.
  */
 @Component({
   selector: 'app-sidebar',
   template: `
-    <aside [attr.aria-label]="label()">
-      <ng-content />
+    <aside #aside [attr.aria-label]="label()">
       <button
         type="button"
         class="collapse"
@@ -60,6 +85,7 @@ export class SidebarState {
           i18n.t(state.collapsed() ? 'sidebar.expand' : 'sidebar.collapse')
         }}</span>
       </button>
+      <ng-content />
     </aside>
     <div class="scrim" aria-hidden="true" (click)="state.open.set(false)"></div>
   `,
@@ -68,7 +94,7 @@ export class SidebarState {
     '[class.collapsed]': 'state.collapsed()',
     '[class.open]': 'state.open()',
     '(click)': 'closeOnPick($event)',
-    '(keydown.escape)': 'state.open.set(false)',
+    '(document:keydown.escape)': 'state.open.set(false)',
   },
 })
 export class Sidebar {
@@ -77,6 +103,16 @@ export class Sidebar {
 
   protected readonly state = inject(SidebarState);
   protected readonly i18n = inject(I18n);
+  private readonly aside = viewChild.required<ElementRef<HTMLElement>>('aside');
+
+  constructor() {
+    // Opened over the page, the sidebar takes the focus, so the keyboard goes on in it.
+    effect(() => {
+      if (this.state.open()) {
+        this.aside().nativeElement.querySelector<HTMLElement>('button:not(.collapse)')?.focus();
+      }
+    });
+  }
 
   /** On narrow screens, picking a device or the comparison shows it in place of the sidebar. */
   protected closeOnPick(event: Event): void {

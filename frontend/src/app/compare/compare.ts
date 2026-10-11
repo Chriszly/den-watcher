@@ -8,14 +8,7 @@ import { AlertIcon } from '../alerts/alert-icon';
 import { worstLevel } from '../alerts/alerts';
 import { HubConnection } from '../connection/connection';
 import { formatUptime } from '../dashboard/dashboard';
-import {
-  Device,
-  DeviceService,
-  DeviceState,
-  deviceName,
-  deviceState,
-  notInUse,
-} from '../devices/devices';
+import { Device, DeviceService, deviceName, deviceState, notInUse } from '../devices/devices';
 import { StatusDot } from '../devices/status-dot';
 import { FleetValues } from '../devices/fleet-values';
 import { I18n } from '../i18n/i18n';
@@ -248,9 +241,7 @@ export class Compare {
     return deviceName(device, this.i18n);
   }
 
-  protected state(device: Device): DeviceState {
-    return deviceState(device);
-  }
+  protected readonly state = deviceState;
 
   protected alertLevel(device: Device): AlertLevel | null {
     return worstLevel(device.alerts ?? []);

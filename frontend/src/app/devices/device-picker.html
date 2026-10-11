@@ -8,7 +8,7 @@
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
   </svg>
-  <span class="label">{{ i18n.t('compare.title') }}</span>
+  <span [class.visually-hidden]="compact()">{{ i18n.t('compare.title') }}</span>
 </button>
 @for (group of groups(); track group.kind) {
   <section [attr.aria-labelledby]="'device-group-' + group.kind">

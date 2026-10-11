@@ -301,7 +301,6 @@ export const es: Messages = {
   'categories.cards.other': '{count} tarjetas',
   'categories.charts.one': '{count} gráfico',
   'categories.charts.other': '{count} gráficos',
-  'compare.button': 'Comparar',
   'compare.title': 'Comparar dispositivos',
   'compare.intro':
     'Los valores principales de cada dispositivo uno al lado del otro. Ordena por una columna para ver qué dispositivo está más ocupado, más lleno o más caliente, o elige un nombre para ver el dispositivo solo.',

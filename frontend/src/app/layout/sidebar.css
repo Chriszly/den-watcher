@@ -28,7 +28,7 @@ aside {
   align-self: flex-end;
   width: 2.5rem;
   height: 2.5rem;
-  margin-top: auto;
+  margin-bottom: -0.5rem;
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -55,6 +55,11 @@ aside {
 
 /* On narrow screens the sidebar is a drawer over the page, always at its full width. */
 @media (width < 48rem) {
+  /* Sticky would keep the drawer and the scrim under the page, in a stacking context of their own. */
+  :host {
+    position: static;
+  }
+
   aside,
   :host(.collapsed) aside {
     position: fixed;
@@ -92,13 +97,4 @@ aside {
   aside {
     transition: none;
   }
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }

@@ -418,13 +418,18 @@ export class Dashboard {
   }
 
   protected formatUptime(seconds: number): string {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return days > 0
-      ? this.i18n.t('dashboard.uptimeDays', { days, hours })
-      : this.i18n.t('dashboard.uptimeHours', { hours, minutes });
+    return formatUptime(seconds, this.i18n);
   }
+}
+
+/** An uptime as the page shows it: days and hours, or hours and minutes below a day. */
+export function formatUptime(seconds: number, i18n: I18n): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return days > 0
+    ? i18n.t('dashboard.uptimeDays', { days, hours })
+    : i18n.t('dashboard.uptimeHours', { hours, minutes });
 }
 
 /** The sign, hours and minutes of an offset from UTC, such as ["+", "02", "00"]. */

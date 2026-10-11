@@ -16,6 +16,13 @@
   <app-connection-banner />
   <app-update-notice />
   <app-device-picker />
-  <app-dashboard />
-  <app-history />
+  @if (devices.comparing() && devices.devices().length > 1) {
+    <!-- The comparison is loaded only when it is opened, so the page loads fast. -->
+    @defer {
+      <app-compare />
+    }
+  } @else {
+    <app-dashboard />
+    <app-history />
+  }
 </main>

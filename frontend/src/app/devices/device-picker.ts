@@ -53,6 +53,12 @@ export class DevicePicker {
     openDevicesDialog(this.injector);
   }
 
+  /** Shows the device on its own, also when the devices were being compared. */
+  protected pick(device: Device): void {
+    this.devices.selectedId.set(device.id);
+    this.devices.comparing.set(false);
+  }
+
   /** How serious the device's alerts are, for the sign after its name; null for none. */
   protected alertLevel(device: Device): AlertLevel | null {
     return worstLevel(device.alerts ?? []);

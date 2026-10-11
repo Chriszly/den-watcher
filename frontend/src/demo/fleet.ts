@@ -404,11 +404,29 @@ function kernelValues(t: number, step: number, seed: number, cpu: number, size: 
   };
 }
 
+/** A connected Bluetooth device as the add-on shows it: its name, and its battery in percent or its kind. */
+type BluetoothDevice = [
+  id: string,
+  name: string,
+  battery: number | Record<'en' | 'de' | 'fr' | 'es', string>,
+];
+
+const bluetoothKinds = {
+  keyboard: { en: 'Keyboard', de: 'Tastatur', fr: 'Clavier', es: 'Teclado' },
+  gameController: {
+    en: 'Game controller',
+    de: 'Gamecontroller',
+    fr: 'Manette de jeu',
+    es: 'Mando de juego',
+  },
+};
+
 /**
  * What the Bluetooth add-on reports: how many devices are connected, from values() as "extra:bluetooth/connected", and
  * a row per connected device with its battery, or its kind where it tells no battery, whose id is a checksum of its address.
+ * The count values() reports now should match the rows, as the rows are the devices connected now.
  */
-function bluetoothAddOn(): Extra[] {
+function bluetoothAddOn(devices: BluetoothDevice[]): Extra[] {
   return [
     {
       id: 'bluetooth',
@@ -425,20 +443,18 @@ function bluetoothAddOn(): Extra[] {
           unit: 'number',
           history: true,
         },
-        {
-          id: 'device-3f9a61c2',
-          label: 'JBL Flip 6',
-          unit: 'text',
-          text: 'Battery 55%',
-          texts: { de: 'Akku 55 %', fr: 'Batterie 55 %', es: 'Batería 55 %' },
-        },
-        {
-          id: 'device-a40c7e19',
-          label: 'Keychron K3',
-          unit: 'text',
-          text: 'Keyboard',
-          texts: { de: 'Tastatur', fr: 'Clavier', es: 'Teclado' },
-        },
+        ...devices.map(([id, label, battery]): Extra['items'][number] => {
+          const { en, ...texts } =
+            typeof battery === 'number'
+              ? {
+                  en: `Battery ${battery}%`,
+                  de: `Akku ${battery} %`,
+                  fr: `Batterie ${battery} %`,
+                  es: `Batería ${battery} %`,
+                }
+              : battery;
+          return { id: `device-${id}`, label, unit: 'text', text: en, texts };
+        }),
       ],
     },
   ];
@@ -1010,7 +1026,10 @@ const piHub: DemoMachine = {
     ...pressureAddOn(),
     ...kernelAddOn(),
     ...memoryAddOn(),
-    ...bluetoothAddOn(),
+    ...bluetoothAddOn([
+      ['3f9a61c2', 'JBL Flip 6', 55],
+      ['a40c7e19', 'Keychron K3', bluetoothKinds.keyboard],
+    ]),
     ...portsAddOn([
       ['tcp', 22, '0.0.0.0, ::'],
       ['tcp', 9393, '0.0.0.0'],
@@ -1088,8 +1107,9 @@ const piHub: DemoMachine = {
       ...ioPressure(vary(t, step, 301, 1.5, [[2, 120]]), 0.5),
       ...kernelValues(t, step, 900, cpu, 1),
       ...memoryValues(t, step, 140, 8 * GB, cpu / 100),
-      // The keyboard stays connected; the speaker comes and goes.
-      'extra:bluetooth/connected': 1 + Math.round(hash(Math.floor(t / 1800), 140)),
+      // The keyboard stays connected; the speaker comes and goes, and is on now.
+      'extra:bluetooth/connected':
+        t >= openedAt - 40 * 60 ? 2 : 1 + Math.round(hash(Math.floor(t / 1800), 140)),
       'extra:ports/count': 4,
       ...processValues(
         cpu,
@@ -1336,6 +1356,11 @@ const linuxDesktop: DemoMachine = {
     { name: 'docker0', addresses: ['172.17.0.1'] },
   ],
   gpus: [{ name: 'AMD Radeon RX 7800 XT', memoryBytes: 16 * GB }],
+  extras: bluetoothAddOn([
+    ['5d21b8e4', 'WH-1000XM5', 70],
+    ['c7e03a95', 'MX Master 3S', 85],
+    ['9b46f1d0', 'Xbox Controller', bluetoothKinds.gameController],
+  ]),
   bootedDaysAgo: 1.2,
   values: (t, step) => {
     const busy = workday(t);
@@ -1373,6 +1398,9 @@ const linuxDesktop: DemoMachine = {
       'network.send:docker0': vary(t, step, 86, 25e3, [[25e3, 120]], 0, 1e9),
       'gpu:AMD Radeon RX 7800 XT': gpu,
       'gpu.memory:AMD Radeon RX 7800 XT': 10 + gpu * 0.45,
+      // The headphones and the mouse are on through the working day, the controller joins in the evening.
+      'extra:bluetooth/connected':
+        t >= openedAt - 40 * 60 ? 3 : (busy > 0 ? 2 : 0) + (hourOf(t) >= 18 ? 1 : 0),
     };
   },
 };

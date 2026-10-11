@@ -2,6 +2,7 @@ import { HttpBackend, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
+import { AlertService } from '../app/alerts/alerts';
 import { DeviceService, LOCAL_DEVICE, problemMessage } from '../app/devices/devices';
 import { I18n } from '../app/i18n/i18n';
 import { MetricsService } from '../app/metrics/metrics';
@@ -19,6 +20,17 @@ describe('DemoBackend', () => {
     });
     metrics = TestBed.inject(MetricsService);
     devices = TestBed.inject(DeviceService);
+  });
+
+  it('shows the alerts of the values that need attention, and a log', async () => {
+    const list = await firstValueFrom(devices.load());
+    const nas = list.devices.find((d) => d.id === 'linux-nas');
+    expect(nas?.alerts?.map((a) => [a.kind, a.subject, a.level])).toEqual([
+      ['disk', '/srv/backup', 'alert'],
+    ]);
+    const log = await firstValueFrom(TestBed.inject(AlertService).log());
+    expect(log.filter((a) => !a.ended).length).toBe(1);
+    expect(log.filter((a) => a.ended).length).toBeGreaterThan(0);
   });
 
   it('lists Windows and Linux devices, one of them asleep', async () => {

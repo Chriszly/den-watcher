@@ -9,6 +9,9 @@
       >
         <span class="status" [class]="state(device)" aria-hidden="true"></span>
         {{ deviceName(device) }}
+        @if (alertLevel(device); as level) {
+          <app-alert-icon [level]="level" role="img" [attr.aria-label]="i18n.t('alerts.onCard')" />
+        }
         @if (state(device) !== 'reachable') {
           <span class="visually-hidden">({{ shortStatus(device) }})</span>
         }

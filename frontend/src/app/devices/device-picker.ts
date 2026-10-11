@@ -3,6 +3,9 @@ import { Component, Injector, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, exhaustMap } from 'rxjs';
 
+import { AlertLevel } from '../alerts/alert';
+import { AlertIcon } from '../alerts/alert-icon';
+import { worstLevel } from '../alerts/alerts';
 import { HubConnection } from '../connection/connection';
 import { I18n } from '../i18n/i18n';
 import { PageVisibility } from '../page-visibility';
@@ -23,6 +26,7 @@ export const DEVICES_REFRESH_MS = 5000;
  */
 @Component({
   selector: 'app-device-picker',
+  imports: [AlertIcon],
   templateUrl: './device-picker.html',
   styleUrl: './device-picker.css',
 })
@@ -47,6 +51,11 @@ export class DevicePicker {
   protected async openDevices(): Promise<void> {
     const { openDevicesDialog } = await import('./devices-dialog');
     openDevicesDialog(this.injector);
+  }
+
+  /** How serious the device's alerts are, for the sign after its name; null for none. */
+  protected alertLevel(device: Device): AlertLevel | null {
+    return worstLevel(device.alerts ?? []);
   }
 
   protected deviceName(device: Device): string {

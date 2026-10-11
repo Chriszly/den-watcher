@@ -69,6 +69,7 @@ import (
 	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/addons"
+	"github.com/Chriszly/den-watcher/backend/internal/alerts"
 	"github.com/Chriszly/den-watcher/backend/internal/history"
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
@@ -296,22 +297,32 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		return server.Site{}, nil, err
 	}
 
+	localName := strings.TrimSpace(os.Getenv("DEVICE_NAME"))
+	watcher, err := alerts.Open(ctx, store.DB(), func() []alerts.Target {
+		return alertTargets(localName, sampler.Reusing(reuseFor), others)
+	}, retention)
+	if err != nil {
+		return server.Site{}, nil, err
+	}
+
 	recent := &history.Recent{}
 	recorder := &history.Recorder{Store: store, Recent: recent, Collector: sampler.Reusing(reuseFor), Device: history.LocalDevice, MaxEntries: historyEntries}
 	pruner := &history.Pruner{Store: store, Retention: retention}
 	var recording sync.WaitGroup
 	recording.Go(func() { recorder.Run(ctx) })
 	recording.Go(func() { pruner.Run(ctx) })
+	recording.Go(func() { watcher.Run(ctx) })
 
 	site := server.Site{
 		Devices: hubDevices{
 			local: server.Device{
 				ID:      hub.LocalID,
-				Name:    strings.TrimSpace(os.Getenv("DEVICE_NAME")),
+				Name:    localName,
 				Metrics: sampler,
 				History: history.Reader{Store: store, Recent: recent, Device: history.LocalDevice},
 			},
-			hub: others,
+			hub:    others,
+			alerts: watcher,
 		},
 		Hub:       others,
 		Password:  devicesPassword,
@@ -321,6 +332,7 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 
 		AllowedHosts: listSetting("ALLOWED_HOSTS"),
 		Minutes:      history.Reader{Store: store, Recent: recent, Device: history.LocalDevice},
+		Alerts:       watcher,
 	}
 	if checker := update.NewChecker(version.Version); checker != nil && checkUpdates {
 		site.Update = checker.Status
@@ -369,14 +381,18 @@ func withBuffer(ctx context.Context, sampler *metrics.Sampler, path string, span
 	return buffer, wait
 }
 
-// hubDevices lists this device and the devices the hub collects from.
+// hubDevices lists this device and the devices the hub collects from, each
+// with its active alerts.
 type hubDevices struct {
-	local server.Device
-	hub   *hub.Hub
+	local  server.Device
+	hub    *hub.Hub
+	alerts *alerts.Watcher
 }
 
 func (d hubDevices) List() []server.Device {
-	devices := []server.Device{d.local}
+	local := d.local
+	local.Alerts = d.alerts.Active(local.ID)
+	devices := []server.Device{local}
 	for _, remote := range d.hub.Remotes() {
 		since, unreachable := remote.Unreachable()
 		var unreachableSince *time.Time
@@ -394,12 +410,31 @@ func (d hubDevices) List() []server.Device {
 			Refused:          remote.Refused(),
 			Router:           remote.Router(),
 			Checked:          remote.Checked,
+			Alerts:           d.alerts.Active(remote.ID),
 			Metrics:          remote.Agent.Latest(),
 			History:          remote.Reader,
 			Availability:     remote,
 		})
 	}
 	return devices
+}
+
+// alertTargets lists this device, read by local, and the devices the hub
+// collects from, for the alerts watcher.
+func alertTargets(localName string, local alerts.Usage, others *hub.Hub) []alerts.Target {
+	targets := []alerts.Target{{ID: hub.LocalID, Name: localName, Usage: local}}
+	for _, remote := range others.Remotes() {
+		since, unreachable := remote.Unreachable()
+		targets = append(targets, alerts.Target{
+			ID:               remote.ID,
+			Name:             remote.Name,
+			PC:               remote.Kind() == hub.KindPC,
+			Unreachable:      unreachable,
+			UnreachableSince: since,
+			Usage:            remote.Agent.Latest(),
+		})
+	}
+	return targets
 }
 
 // routerDevices returns the routers in HUB_ROUTERS as devices, each with

@@ -11,11 +11,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"slices"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
 
+	"github.com/Chriszly/den-watcher/backend/internal/alerts"
 	"github.com/Chriszly/den-watcher/backend/internal/history"
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
@@ -138,7 +139,15 @@ func TestDataOnlyServesOnlyTheMetrics(t *testing.T) {
 }
 
 func TestListsDevices(t *testing.T) {
-	devices := []Device{{ID: "local"}, {ID: "living-room-pi", Name: "Living room Pi"}, {ID: "vm", Name: "VM", Unreachable: true, Refused: true}}
+	since := time.Date(2026, 10, 11, 18, 0, 0, 0, time.UTC)
+	full := 97.0
+	devices := []Device{
+		{ID: "local"},
+		{ID: "living-room-pi", Name: "Living room Pi", Alerts: []alerts.Alert{
+			{ID: 3, Device: "living-room-pi", DeviceName: "Living room Pi", Kind: alerts.KindDisk, Subject: "/", Level: alerts.Critical, Value: &full, Started: since},
+		}},
+		{ID: "vm", Name: "VM", Unreachable: true, Refused: true},
+	}
 	handler := newHandler(devices, 0, site)
 
 	rec := get(handler, "/api/devices", "192.168.1.20:5000")
@@ -150,8 +159,43 @@ func TestListsDevices(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if !slices.Equal(got.Devices, devices) || got.PasswordSet {
+	if !reflect.DeepEqual(got.Devices, devices) || got.PasswordSet {
 		t.Errorf("response = %+v, want devices %+v and no password", got, devices)
+	}
+}
+
+// fakeAlertLog is a log of alerts, or fails while err is set.
+type fakeAlertLog struct {
+	list []alerts.Alert
+	err  error
+}
+
+func (f fakeAlertLog) Log(context.Context) ([]alerts.Alert, error) {
+	return f.list, f.err
+}
+
+func TestServesTheAlertLog(t *testing.T) {
+	ended := time.Date(2026, 10, 11, 18, 5, 0, 0, time.UTC)
+	logged := []alerts.Alert{{ID: 1, Device: "local", Kind: alerts.KindOffline, Level: alerts.Critical, Started: ended.Add(-time.Hour), Ended: &ended}}
+	withLog := Site{Devices: DeviceList([]Device{{ID: "local"}}), Files: site, Alerts: fakeAlertLog{list: logged}}
+	rec := get(New(withLog), "/api/alerts", "192.168.1.20:5000")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var got []alerts.Alert
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, logged) {
+		t.Errorf("got %+v, want %+v", got, logged)
+	}
+
+	withLog.Alerts = fakeAlertLog{err: errors.New("broken")}
+	if rec := get(New(withLog), "/api/alerts", "192.168.1.20:5000"); rec.Code != http.StatusInternalServerError {
+		t.Errorf("with a broken log: status = %d", rec.Code)
+	}
+	if rec := get(newHandler([]Device{{ID: "local"}}, 0, site), "/api/alerts", "192.168.1.20:5000"); rec.Code == http.StatusOK && strings.HasPrefix(rec.Body.String(), "[") {
+		t.Error("served alerts without a log")
 	}
 }
 

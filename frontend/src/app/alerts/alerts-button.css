@@ -1,0 +1,42 @@
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: var(--mat-sys-corner-full);
+  font: var(--mat-sys-label-large);
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+/* Big and red, so it is seen from across the room. */
+.active {
+  --alert-icon-size: 1.75rem;
+  height: 3rem;
+  padding: 0 1.25rem 0 0.625rem;
+  border: 2px solid light-dark(#c62828, #f85149);
+  background: light-dark(#fdecea, #3a1210);
+  color: light-dark(#8e1c1c, #ffb4ab);
+  font: var(--mat-sys-title-medium);
+}
+
+.active.warning {
+  border-color: light-dark(#b26a00, #f0a030);
+  background: light-dark(#fff4e0, #33240a);
+  color: light-dark(#6d4100, #ffd28a);
+}
+
+.quiet {
+  border: 1px solid var(--mat-sys-outline-variant);
+  background: transparent;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.quiet:hover {
+  background: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent);
+}

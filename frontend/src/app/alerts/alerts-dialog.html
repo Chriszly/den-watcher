@@ -1,0 +1,38 @@
+<h2 mat-dialog-title>{{ i18n.t('alerts.logTitle') }}</h2>
+
+<mat-dialog-content>
+  <p class="hint">{{ i18n.t('alerts.intro') }}</p>
+  @if (failed()) {
+    <p class="hint" role="alert">{{ i18n.t('alerts.logFailed') }}</p>
+  } @else if (log(); as log) {
+    @if (log.length === 0) {
+      <p>{{ i18n.t('alerts.empty') }}</p>
+    } @else {
+      <ul>
+        @for (alert of log; track alert.id) {
+          <li [class.ended]="!!alert.ended">
+            <app-alert-icon [level]="alert.level" />
+            <span class="what">
+              <span class="text">
+                <span class="device">{{ deviceName(alert) }}</span>
+                {{ text(alert) }}
+              </span>
+              <span class="when">
+                {{
+                  i18n.t(alert.level === 'alert' ? 'alerts.level.alert' : 'alerts.level.warning')
+                }}
+                · {{ when(alert) }}
+              </span>
+            </span>
+          </li>
+        }
+      </ul>
+    }
+  } @else {
+    <p>{{ i18n.t('dashboard.loading') }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>{{ i18n.t('devicesDialog.close') }}</button>
+</mat-dialog-actions>

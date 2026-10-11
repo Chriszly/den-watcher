@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Chriszly/den-watcher/backend/internal/alerts"
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 	"github.com/Chriszly/den-watcher/backend/internal/lan"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
@@ -54,9 +55,12 @@ type Device struct {
 	Router bool `json:"router,omitempty"`
 	// Checked is set for a thing the hub only checks for whether it
 	// answers, such as a printer, as it runs no den-watcher.
-	Checked bool          `json:"checked,omitempty"`
-	Metrics Collector     `json:"-"`
-	History HistoryReader `json:"-"`
+	Checked bool `json:"checked,omitempty"`
+	// Alerts are the values of the device that need attention now, most
+	// serious first.
+	Alerts  []alerts.Alert `json:"alerts,omitempty"`
+	Metrics Collector      `json:"-"`
+	History HistoryReader  `json:"-"`
 	// Availability is set for the devices the hub collects from.
 	Availability AvailabilityReader `json:"-"`
 }
@@ -92,6 +96,13 @@ type Site struct {
 	// Minutes are this machine's own, for a hub that collects from it; nil
 	// leaves out GET /api/minutes.
 	Minutes MinuteSource
+	// Alerts is the log of alerts; nil leaves out GET /api/alerts.
+	Alerts AlertLog
+}
+
+// AlertLog tells the newest alerts of every device.
+type AlertLog interface {
+	Log(ctx context.Context) ([]alerts.Alert, error)
 }
 
 // New returns the handler for the whole site: the JSON API under /api/ and
@@ -116,6 +127,9 @@ func New(site Site) http.Handler {
 	mux.HandleFunc("GET /api/availability", forDevice(site.Devices, availabilityHandler))
 	if site.Minutes != nil {
 		mux.HandleFunc("GET "+hub.MinutesPath, minutesHandler(site.Minutes))
+	}
+	if site.Alerts != nil {
+		mux.HandleFunc("GET /api/alerts", alertsHandler(site.Alerts))
 	}
 	if site.Update != nil {
 		mux.HandleFunc("GET /api/update", func(w http.ResponseWriter, _ *http.Request) {
@@ -234,6 +248,20 @@ func availabilityHandler(d Device) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, availability)
+	}
+}
+
+// alertsHandler serves GET /api/alerts: the newest alerts of every device,
+// the ones that last and the ones that ended, newest first.
+func alertsHandler(log AlertLog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		list, err := log.Log(r.Context())
+		if err != nil {
+			slog.Error("read the alerts", "error", err)
+			http.Error(w, "could not read the alerts", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, list)
 	}
 }
 

@@ -99,12 +99,31 @@
   </p>
 }
 
+@if (deviceAlerts().length > 0) {
+  <ul class="alerts" role="alert">
+    @for (alert of deviceAlerts(); track alert.id) {
+      <li [class.warning]="alert.level === 'warning'">
+        <app-alert-icon [level]="alert.level" />
+        {{ alertText(alert) }}
+      </li>
+    }
+  </ul>
+}
+
 @if (snapshot(); as s) {
   <div class="cards" appEvenColumns [class.stale]="connection.lost()">
     @if (!readsLess() || s.cpu.cores > 0) {
-      <div class="card">
+      <div class="card" [class.alerting]="alertOn('cpu')">
         <h2>
           {{ i18n.t('dashboard.cpu') }}
+          @if (alertOn('cpu'); as level) {
+            <app-alert-icon
+              [level]="level"
+              role="img"
+              [attr.aria-label]="i18n.t('alerts.onCard')"
+              [title]="alertTitle('cpu')"
+            />
+          }
           <app-card-info [text]="i18n.t('dashboard.info.cpu')" />
         </h2>
         <p class="value">{{ s.cpu.usagePercent | number: '1.0-1' : i18n.language() }} %</p>
@@ -169,9 +188,17 @@
     }
 
     @if (!readsLess() || s.memory.totalBytes > 0) {
-      <div class="card">
+      <div class="card" [class.alerting]="alertOn('memory')">
         <h2>
           {{ i18n.t('dashboard.memory') }}
+          @if (alertOn('memory'); as level) {
+            <app-alert-icon
+              [level]="level"
+              role="img"
+              [attr.aria-label]="i18n.t('alerts.onCard')"
+              [title]="alertTitle('memory')"
+            />
+          }
           <app-card-info [text]="i18n.t('dashboard.info.memory')" />
         </h2>
         <p class="value">{{ s.memory.usedPercent | number: '1.0-1' : i18n.language() }} %</p>
@@ -228,9 +255,17 @@
     }
 
     @if (!readsLess() || s.disks.length > 0) {
-      <div class="card" [appFitLabels]="s.disks">
+      <div class="card" [class.alerting]="alertOn('disk')" [appFitLabels]="s.disks">
         <h2>
           {{ i18n.t('dashboard.disks') }}
+          @if (alertOn('disk'); as level) {
+            <app-alert-icon
+              [level]="level"
+              role="img"
+              [attr.aria-label]="i18n.t('alerts.onCard')"
+              [title]="alertTitle('disk')"
+            />
+          }
           <app-card-info [text]="i18n.t('dashboard.info.disks')" />
         </h2>
         <app-scroll-rows>
@@ -369,9 +404,17 @@
     }
 
     @if (!readsLess() || s.temperatures.length > 0) {
-      <div class="card" [appFitLabels]="s.temperatures">
+      <div class="card" [class.alerting]="alertOn('temperature')" [appFitLabels]="s.temperatures">
         <h2>
           {{ i18n.t('dashboard.temperature') }}
+          @if (alertOn('temperature'); as level) {
+            <app-alert-icon
+              [level]="level"
+              role="img"
+              [attr.aria-label]="i18n.t('alerts.onCard')"
+              [title]="alertTitle('temperature')"
+            />
+          }
           <app-card-info [text]="i18n.t('dashboard.info.temperature')" />
         </h2>
         <app-scroll-rows>
@@ -437,9 +480,17 @@
     }
 
     @if (s.throttling; as t) {
-      <div class="card">
+      <div class="card" [class.alerting]="alertOn('throttling')">
         <h2>
           {{ i18n.t('dashboard.power') }}
+          @if (alertOn('throttling'); as level) {
+            <app-alert-icon
+              [level]="level"
+              role="img"
+              [attr.aria-label]="i18n.t('alerts.onCard')"
+              [title]="alertTitle('throttling')"
+            />
+          }
           <app-card-info [text]="i18n.t('dashboard.info.power')" />
         </h2>
         @let earlier = earlierConditions(t);
@@ -466,9 +517,18 @@
 
     <!-- Values beyond the fixed ones, which the device describes itself, so newer devices' values show too. -->
     @for (group of s.extras; track group.id) {
-      <div class="card" [appFitLabels]="group.items">
+      @let groupAlert = group.id === 'smart-checks' ? alertOn('smart') : null;
+      <div class="card" [class.alerting]="groupAlert" [appFitLabels]="group.items">
         <h2>
           {{ extraText(group.title, group.titles) }}
+          @if (groupAlert; as level) {
+            <app-alert-icon
+              [level]="level"
+              role="img"
+              [attr.aria-label]="i18n.t('alerts.onCard')"
+              [title]="alertTitle('smart')"
+            />
+          }
           @if (group.description) {
             <app-card-info [text]="extraText(group.description, group.descriptions)" />
           }

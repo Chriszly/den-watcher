@@ -11,6 +11,7 @@ import { Observable, delay, mergeMap, of, throwError, timer } from 'rxjs';
 import { Availability, DeviceList, LOCAL_DEVICE, Suggestion } from '../app/devices/devices';
 import { History, Series } from '../app/metrics/metrics';
 import { DEMO_BUILD, demoVersion } from './demo-build';
+import { alertLog, fleetAlerts } from './alerts';
 import { DemoMachine, FLEET, extraInfoOf, offlineSince, snapshotOf } from './fleet';
 
 /** How many days of history the demo hub keeps; more than 30 shows the "All" range. */
@@ -47,7 +48,10 @@ export class DemoBackend implements HttpBackend {
     const now = Date.now() / 1000;
 
     if (request.method === 'GET' && url.pathname === '/api/devices') {
-      return respond(request, deviceList());
+      return respond(request, deviceList(now));
+    }
+    if (request.method === 'GET' && url.pathname === '/api/alerts') {
+      return respond(request, alertLog(Math.floor(now)));
     }
     if (request.method === 'GET' && url.pathname === '/api/devices/suggestion') {
       return respond(request, DEMO_SUGGESTION);
@@ -82,8 +86,15 @@ export class DemoBackend implements HttpBackend {
   }
 }
 
-function deviceList(): DeviceList {
-  return { devices: FLEET.map((m) => m.device), passwordSet: true };
+function deviceList(now: number): DeviceList {
+  const alerts = fleetAlerts(Math.floor(now));
+  return {
+    devices: FLEET.map((m) => {
+      const active = alerts.get(m.device.id) ?? [];
+      return active.length > 0 ? { ...m.device, alerts: active } : m.device;
+    }),
+    passwordSet: true,
+  };
 }
 
 function isOnline(machine: DemoMachine, t: number): boolean {

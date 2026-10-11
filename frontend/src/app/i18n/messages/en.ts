@@ -261,6 +261,28 @@ export const en = {
     'How much of the time since it was added the device answered; the times it did not are outages.',
   'dashboard.info.usage':
     'How much of the time since it was added the PC or laptop was switched on. Time switched off is just time it was not in use.',
+  'alerts.kind.offline': 'Does not answer',
+  'alerts.kind.disk': 'Disk {subject} is {value} full',
+  'alerts.kind.memory': 'Memory is {value} used',
+  'alerts.kind.cpu': 'CPU is {value} busy',
+  'alerts.kind.temperature': '{subject} is at {value}',
+  'alerts.kind.throttling': 'Power supply or cooling: {subject}',
+  'alerts.kind.smart': 'The SMART check of {subject} failed',
+  'alerts.kind.other': 'Something needs attention',
+  'alerts.level.warning': 'Warning',
+  'alerts.level.alert': 'Alert',
+  'alerts.count.one': '{count} alert',
+  'alerts.count.other': '{count} alerts',
+  'alerts.log': 'Alert log',
+  'alerts.openLog': 'Show the alerts and the log of earlier ones',
+  'alerts.logTitle': 'Alerts',
+  'alerts.intro':
+    'Values that need attention, such as a disk over 90 % full or a server that has not answered for 2 minutes, and the earlier ones. They are only shown on this page; nothing is sent anywhere.',
+  'alerts.empty': 'No alerts so far.',
+  'alerts.logFailed': 'The log could not be read.',
+  'alerts.since': 'since {since}',
+  'alerts.fromTo': '{from} to {to}',
+  'alerts.onCard': 'Needs attention',
 } as const;
 
 /** The key of one text on the website. */

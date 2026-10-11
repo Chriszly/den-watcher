@@ -223,6 +223,8 @@ export const fr: Messages = {
   'history.chartSummary': 'Graphique « {title} » du {from} au {to} : {lines}',
   'history.chartLineLatest': '{label} (dernière valeur {value})',
   'history.chartLineNoData': '{label} (aucune donnée)',
+  'timeline.label': 'Frise chronologique',
+  'timeline.show': 'Afficher toutes les valeurs sur une frise chronologique',
   'languageSwitcher.label': 'Langue',
   'bytes.unit.b': 'o',
   'bytes.unit.kib': 'Kio',

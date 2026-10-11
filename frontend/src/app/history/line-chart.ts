@@ -131,12 +131,7 @@ export class LineChart {
   }
 
   protected onPointerMove(event: PointerEvent): void {
-    const area = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const fraction = Math.min(1, Math.max(0, (event.clientX - area.left) / area.width));
-    const time = this.from() + fraction * (this.to() - this.from());
-    const step = this.step();
-    // The right edge belongs to the last step, which starts before `to`.
-    this.hoverTime.set(Math.floor(Math.min(time, this.to() - 1) / step) * step);
+    this.hoverTime.set(stepUnder(event, this.from(), this.to(), this.step()));
   }
 
   protected onPointerLeave(): void {
@@ -147,6 +142,18 @@ export class LineChart {
   private fraction(time: number): number {
     return (time - this.from()) / (this.to() - this.from());
   }
+}
+
+/**
+ * The start of the step under the pointer on a time axis that runs across the event's target, from
+ * `from` to `to` (Unix seconds) in steps of `step` seconds.
+ */
+export function stepUnder(event: PointerEvent, from: number, to: number, step: number): number {
+  const area = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const fraction = Math.min(1, Math.max(0, (event.clientX - area.left) / area.width));
+  const time = from + fraction * (to - from);
+  // The right edge belongs to the last step, which starts before `to`.
+  return Math.floor(Math.min(time, to - 1) / step) * step;
 }
 
 /**

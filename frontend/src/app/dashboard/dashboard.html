@@ -122,6 +122,9 @@
   <p>{{ i18n.t('dashboard.loading') }}</p>
 }
 
+@if (timeline.on()) {
+  <app-timeline [class.stale]="connection.lost()" />
+}
 <div class="categories" [class.stale]="connection.lost()">
   @for (section of sections(); track section.category) {
     @let folded = foldedCategories.folded().has(section.category);

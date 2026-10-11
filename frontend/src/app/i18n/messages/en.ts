@@ -222,6 +222,8 @@ export const en = {
   'history.chartSummary': 'Chart of “{title}” from {from} to {to}: {lines}',
   'history.chartLineLatest': '{label} (latest {value})',
   'history.chartLineNoData': '{label} (no data)',
+  'timeline.label': 'Timeline',
+  'timeline.show': 'Show every value on one timeline',
   'languageSwitcher.label': 'Language',
   'bytes.unit.b': 'B',
   'bytes.unit.kib': 'KiB',

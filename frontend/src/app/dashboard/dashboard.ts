@@ -11,6 +11,7 @@ import { HubConnection } from '../connection/connection';
 import { CategoryCharts } from '../history/category-charts';
 import { DeviceCharts } from '../history/history';
 import { RangePicker } from '../history/range-picker';
+import { Timeline, TimelineMode } from '../history/timeline';
 import { Availability, DeviceService, LOCAL_DEVICE, deviceName } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
 import { EvenColumns } from '../layout/even-columns';
@@ -145,6 +146,7 @@ type Problem = 'backend' | 'device';
     NgTemplateOutlet,
     RangePicker,
     ScrollRows,
+    Timeline,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
@@ -182,12 +184,17 @@ export class Dashboard {
     this.refused() ? null : this.availability(),
   );
   private readonly charts = inject(DeviceCharts).byCategory;
+  /** Whether every value shows on one timeline instead of in the categories; the mascot switches it. */
+  protected readonly timeline = inject(TimelineMode);
   /**
    * The categories of the page, each with its cards and then its charts, in the order the page
    * shows them. A device that has not answered since the page opened has no cards, but it can
-   * have charts up to its last reading.
+   * have charts up to its last reading. None while the timeline shows every value instead.
    */
   protected readonly sections = computed(() => {
+    if (this.timeline.on()) {
+      return [];
+    }
     const s = this.snapshot();
     const cards = s ? this.cards(s) : [];
     const charts = this.charts();

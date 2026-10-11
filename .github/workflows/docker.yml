@@ -148,7 +148,7 @@ jobs:
 
           Images for arm64 and amd64: \`$image:$version\`$also.
 
-          The images are also published under the old name, \`$old_image\`, for now; switch the \`image:\` lines in \`compose.yaml\` to \`$image\`.
+          The images are also published under the old name, \`$old_image\`, up to and including version 3.0.0; switch the \`image:\` lines in \`compose.yaml\` to \`$image\`.
 
           Update with \`docker compose pull && docker compose up -d\` in the folder with \`compose.yaml\`.
           NOTES

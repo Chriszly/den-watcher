@@ -54,7 +54,9 @@ fi
 if [[ -e /etc/systemd/system/usage-control.service || -e /usr/local/bin/usage-control ]]; then
   echo "Moving usage-control to its new name, den-watcher, with its settings, add-ons and history."
   for old in /etc/systemd/system/usage-control*.service; do
-    [[ -f "$old" ]] && systemctl disable --now "$(basename "$old")" 2> /dev/null || true
+    if [[ -f "$old" ]]; then
+      systemctl disable --now "$(basename "$old")" 2> /dev/null || true
+    fi
   done
   for old in /etc/systemd/system/usage-control-*.service /etc/systemd/system/usage-control*.service.d; do
     new="/etc/systemd/system/den-watcher${old#/etc/systemd/system/usage-control}"

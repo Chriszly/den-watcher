@@ -8,13 +8,27 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/winservice"
 )
+
+func TestChildOfTheServiceIgnoresSIGTERM(t *testing.T) {
+	t.Setenv(winservice.EventLogVariable, "")
+	if got := stopSignals(); !slices.Contains(got, os.Signal(syscall.SIGTERM)) {
+		t.Errorf("an add-on started by hand stops on %v, want SIGTERM among them", got)
+	}
+	t.Setenv(winservice.EventLogVariable, "1")
+	if got := stopSignals(); slices.Contains(got, os.Signal(syscall.SIGTERM)) || !slices.Contains(got, os.Interrupt) {
+		t.Errorf("a child of the service stops on %v, want only an interrupt, as a logoff is SIGTERM", got)
+	}
+}
 
 func TestDueAllowsForReadsThatComeEarly(t *testing.T) {
 	last := time.Now()

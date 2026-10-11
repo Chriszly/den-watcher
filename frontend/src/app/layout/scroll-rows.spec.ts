@@ -1,7 +1,15 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { MAX_ROWS, ScrollRows, moreAbove, moreBelow, rowsHeight, wheelPixels } from './scroll-rows';
+import {
+  MAX_ROWS,
+  ScrollRows,
+  moreAbove,
+  moreBelow,
+  rowsHeight,
+  sharesRow,
+  wheelPixels,
+} from './scroll-rows';
 
 /** Rows 20 pixels high, one under the other. */
 function rows(count: number): { offsetTop: number; offsetHeight: number }[] {
@@ -72,11 +80,32 @@ class Host {
   readonly names = signal(['cpu_thermal']);
 }
 
+describe('sharesRow', () => {
+  function card(width: number, rowWidth: number): Element {
+    const row = { clientWidth: rowWidth } as HTMLElement;
+    return { parentElement: row, getBoundingClientRect: () => ({ width }) } as unknown as Element;
+  }
+
+  it('tells a card next to others from one as wide as its row', () => {
+    expect(sharesRow(card(300, 1000))).toBe(true);
+    expect(sharesRow(card(1000, 1000))).toBe(false);
+    // Rounding of a card that fills the row.
+    expect(sharesRow(card(999.5, 1000))).toBe(false);
+  });
+});
+
 describe('ScrollRows', () => {
   let scrollTop = 0;
+  // The card's width; the row it is in is 1000 pixels wide.
+  let cardWidth = 300;
 
   beforeEach(() => {
     scrollTop = 0;
+    cardWidth = 300;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      () => ({ width: cardWidth }) as DOMRect,
+    );
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -195,6 +224,25 @@ describe('ScrollRows', () => {
     list.firstElementChild!.dispatchEvent(overList);
     expect(overList.defaultPrevented).toBe(false);
     expect(list.scrollBy).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the wheel and swipes to the page in a card as wide as its row, as on a phone', async () => {
+    cardWidth = 1000;
+    const { fixture, list, heading } = render(12);
+    await fixture.whenStable();
+    list.scrollBy = vi.fn();
+
+    const event = new WheelEvent('wheel', { deltaY: 3, cancelable: true, bubbles: true });
+    heading.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(list.scrollBy).not.toHaveBeenCalled();
+    expect(list.classList).not.toContain('lock');
+  });
+
+  it('keeps the wheel at the ends of a list in a card next to others', async () => {
+    const { fixture, list } = render(12);
+    await fixture.whenStable();
+    expect(list.classList).toContain('lock');
   });
 
   it('leaves the wheel to the page while all rows fit', async () => {

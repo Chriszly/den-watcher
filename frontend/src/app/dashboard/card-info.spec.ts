@@ -68,4 +68,32 @@ describe('CardInfo', () => {
     fixture.detectChanges();
     expect(tip.classList).not.toContain('open');
   });
+
+  it('hides with Escape the text that hover or the focus shows, until they leave', () => {
+    const { fixture, button, tip } = render();
+    button.focus();
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(tip.classList).toContain('dismissed');
+
+    button.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    fixture.detectChanges();
+    expect(tip.classList).not.toContain('dismissed');
+
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    button.dispatchEvent(new MouseEvent('mouseleave'));
+    fixture.detectChanges();
+    expect(tip.classList).toContain('dismissed');
+    button.closest('app-card-info')!.dispatchEvent(new MouseEvent('mouseleave'));
+    fixture.detectChanges();
+    expect(tip.classList).not.toContain('dismissed');
+
+    // A tap after Escape opens it again.
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    button.click();
+    fixture.detectChanges();
+    expect(tip.classList).toContain('open');
+    expect(tip.classList).not.toContain('dismissed');
+  });
 });

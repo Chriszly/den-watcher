@@ -58,8 +58,9 @@ export function wheelPixels(event: { deltaY: number; deltaMode: number }, page: 
 /**
  * The entries of a card, of which it shows the first eight; more scroll, without a scrollbar. An
  * arrow below them tells that more follow and scrolls down a page; it hides at the bottom. Once
- * scrolled, an arrow over the top does the same upwards. While the pointer is over the card, the
- * wheel scrolls only the list, also over its heading and at either end, not the page. It measures
+ * scrolled, an arrow over the top does the same upwards. While the pointer is over a card that
+ * shares its row with others, the wheel scrolls only the list, also over its heading and at either
+ * end, not the page (see locks). It measures
  * again after every render, as values that refresh can change how high a row is, and when its width
  * changes, which can wrap rows.
  */
@@ -76,14 +77,21 @@ export class ScrollRows {
   protected readonly more = signal(false);
   /** Whether entries are hidden above, so the arrow at the top shows. */
   protected readonly above = signal(false);
+  /**
+   * Whether the list keeps the wheel: only while the card shares its row with others. A card as wide
+   * as the row, as on a phone, leaves the page no other place to scroll, so there the wheel and a
+   * swipe go on to the page at the list's ends.
+   */
+  protected readonly locks = signal(false);
 
   private readonly list = viewChild.required<ElementRef<HTMLElement>>('list');
+  private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private width = 0;
 
   constructor() {
     afterEveryRender(() => this.measure());
 
-    const host: HTMLElement = inject(ElementRef).nativeElement;
+    const host = this.host;
     const observer = new ResizeObserver(([entry]) => {
       if (entry.contentRect.width !== this.width) {
         this.width = entry.contentRect.width;
@@ -97,7 +105,7 @@ export class ScrollRows {
     let card: Element = host;
     const wheel = (event: WheelEvent) => {
       const list = this.list().nativeElement;
-      if (!this.scrolls() || event.ctrlKey || event.deltaY === 0) {
+      if (!this.scrolls() || !this.locks() || event.ctrlKey || event.deltaY === 0) {
         return;
       }
       if (!list.contains(event.target as Node)) {
@@ -139,6 +147,13 @@ export class ScrollRows {
       list.style.maxHeight = maxHeight;
     }
     this.scrolls.set(height !== null);
+    this.locks.set(sharesRow(this.host.closest('.card') ?? this.host));
     this.update();
   }
+}
+
+/** Whether a card is narrower than the row it is in, so other cards stand next to it. */
+export function sharesRow(card: Element): boolean {
+  const row = card.parentElement;
+  return row !== null && card.getBoundingClientRect().width < row.clientWidth - 1;
 }

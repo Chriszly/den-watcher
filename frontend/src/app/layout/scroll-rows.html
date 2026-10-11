@@ -13,7 +13,13 @@
     </svg>
   </button>
 }
-<div #list class="list" [attr.tabindex]="scrolls() ? 0 : null" (scroll)="update()">
+<div
+  #list
+  class="list"
+  [class.lock]="locks()"
+  [attr.tabindex]="scrolls() ? 0 : null"
+  (scroll)="update()"
+>
   <ng-content />
 </div>
 @if (scrolls()) {

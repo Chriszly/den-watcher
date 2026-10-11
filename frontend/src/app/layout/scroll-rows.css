@@ -4,12 +4,16 @@
 }
 
 /* Rows are measured from the list (see rowsHeight); it scrolls with its scrollbar always hidden.
-   At its ends the wheel stops there, so the page does not scroll on under the pointer. */
+   In a card that shares its row, the wheel stops at its ends, so the page does not scroll on under
+   the pointer; a card as wide as the row lets the page scroll on (see locks). */
 .list {
   position: relative;
   overflow-y: auto;
-  overscroll-behavior: contain;
   scrollbar-width: none;
+}
+
+.list.lock {
+  overscroll-behavior: contain;
 }
 
 .list::-webkit-scrollbar {

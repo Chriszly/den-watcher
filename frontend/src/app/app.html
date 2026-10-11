@@ -20,17 +20,10 @@
         <span class="visually-hidden">{{ i18n.t('sidebar.open') }}</span>
       </button>
     }
-    <button
-      type="button"
-      class="mascot"
-      (click)="theme.toggle()"
-      [attr.aria-label]="themeToggleLabel()"
-      [title]="themeToggleLabel()"
-    >
-      <app-mascot />
-    </button>
+    <app-mascot />
     <h1>Den-Watcher</h1>
     <app-alerts-button />
+    <app-theme-toggle />
     <app-language-switcher />
   </header>
   <app-connection-banner />

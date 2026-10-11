@@ -44,7 +44,7 @@ cd frontend && npm ci && npm start
 
 ## Demo page
 
-`npm run build:demo` in `frontend/` builds the demo into `frontend/dist/demo/`. The Demo page workflow publishes two to the `gh-pages` branch, which GitHub Pages serves: the latest release at https://chriszly.github.io/usage-control/ and main at https://chriszly.github.io/usage-control/main/. A release tag replaces only the root and a change to main only `main/`. It passes `--base-href` and, through `--define`, the release's version (`DEMO_RELEASE`) or main's commit (`DEMO_COMMIT`) for the notice above the page, which links to the other one, and for the version the sample devices report (`src/demo/demo-build.ts`). It is the real page, started from `src/demo/main.ts`, which answers the page's requests with made-up devices from `src/demo/fleet.ts` instead of a backend; devices cannot be added or removed there. The normal build does not contain any of it. When a new value is added to the API, give the sample devices that report it a value in `fleet.ts` too, so the demo shows it.
+`npm run build:demo` in `frontend/` builds the demo into `frontend/dist/demo/`. The Demo page workflow publishes two to the `gh-pages` branch, which GitHub Pages serves: the latest release at https://chriszly.github.io/usage-control/ and main at https://chriszly.github.io/usage-control/main/. A release tag replaces only the root and a change to main only `main/`. It passes `--base-href` and, through `--define`, the release's version (`DEMO_RELEASE`) or main's commit (`DEMO_COMMIT`) for the notice above the page, which links to the other one, and for the version the sample devices report (`src/demo/demo-build.ts`). It is the real page, started from `src/demo/main.ts`, which answers the page's requests with made-up devices from `src/demo/fleet.ts` instead of a backend; devices cannot be added or removed there. The normal build does not contain any of it. When a new value is added to the API, give the sample devices that report it a value in `fleet.ts` too, so the demo shows it. A new add-on needs a function named after its folder in `fleet.ts`, such as `bluetoothAddOn()` for `backend/internal/addons/bluetooth`, used by at least one sample device; `ci/check-demo-covers-addons.sh` checks that in CI.
 
 ## Tray icon and theme colors
 
@@ -76,6 +76,7 @@ Run before opening a pull request:
 
 ```bash
 bash ci/check-no-secrets.sh
+bash ci/check-demo-covers-addons.sh
 (cd backend && gofmt -l . && golangci-lint run && go test ./... && go mod tidy -diff && go tool govulncheck ./...)
 (cd frontend && npm run format:check && npm run lint && npm audit --audit-level=high && npm test && npm run build)
 ```

@@ -29,6 +29,9 @@ jobs:
       - name: No settings, keys or passwords committed
         run: bash ci/check-no-secrets.sh
 
+      - name: Every add-on has mock data in the demo
+        run: bash ci/check-demo-covers-addons.sh
+
       # shellcheck ships with the hosted runner image.
       - name: Check shell scripts
         run: |

@@ -413,6 +413,7 @@ type BluetoothDevice = [
 ];
 
 const bluetoothKinds = {
+  headphones: { en: 'Headphones', de: 'Kopfhörer', fr: 'Casque', es: 'Auriculares' },
   keyboard: { en: 'Keyboard', de: 'Tastatur', fr: 'Clavier', es: 'Teclado' },
   gameController: {
     en: 'Game controller',
@@ -1146,7 +1147,14 @@ const windowsPc: DemoMachine = {
     { name: 'OpenVPN Data Channel Offload' },
   ],
   gpus: [{ name: 'NVIDIA GeForce RTX 4070', memoryBytes: 12 * GB }],
-  extras: gpuAddOn('P2'),
+  extras: [
+    ...gpuAddOn('P2'),
+    // Windows tells a device's kind but not its battery.
+    ...bluetoothAddOn([
+      ['6e2f04ab', 'WH-1000XM4', bluetoothKinds.headphones],
+      ['b18d5c73', 'MX Keys', bluetoothKinds.keyboard],
+    ]),
+  ],
   bootedDaysAgo: 0.4,
   values: (t, step) => {
     const busy = workday(t);
@@ -1192,6 +1200,8 @@ const windowsPc: DemoMachine = {
       'gpu:NVIDIA GeForce RTX 4070': gpu,
       'gpu.memory:NVIDIA GeForce RTX 4070': 18 + gpu * 0.5,
       ...gpuAddOnValues(gpu, 2475, 10501, 200, vary(t, step, 35, 4 * busy, [[6, 900]], 0, 100)),
+      // The keyboard stays connected; the headphones join in the working day, and are on now.
+      'extra:bluetooth/connected': t >= openedAt - 40 * 60 || busy > 0.3 ? 2 : 1,
     };
   },
 };

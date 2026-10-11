@@ -44,7 +44,7 @@ body {
   border-radius: var(--mat-sys-corner-medium);
   background: var(--mat-sys-surface);
 
-  > :is(h2, h3):first-child {
+  > :is(h2, h3, h4):first-child {
     justify-self: start;
     width: fit-content;
     max-width: calc(100% + 0.5rem);

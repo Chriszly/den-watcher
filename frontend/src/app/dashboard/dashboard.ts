@@ -26,6 +26,7 @@ import {
 import { PageVisibility } from '../page-visibility';
 import { CardInfo } from './card-info';
 import { Category, FoldedCategories, byCategory, extraCategory } from './categories';
+import { CategoryFold } from './category-fold';
 import { FitLabels } from './fit-labels';
 
 /** How often the dashboard asks the backend for new values. */
@@ -121,17 +122,6 @@ const ALERT_CARDS: Partial<Record<AlertKind, string>> = {
   smart: 'extra:smart-checks',
 };
 
-/** The message of the title of each category of cards. */
-const CATEGORY_TITLES = {
-  system: 'categories.system',
-  storage: 'categories.storage',
-  network: 'categories.network',
-  temperature: 'categories.temperature',
-  programs: 'categories.programs',
-  other: 'categories.other',
-  device: 'categories.device',
-} as const satisfies Record<Category, string>;
-
 /** Why no new values arrived: the backend did not answer, or the device it collects from did not. */
 type Problem = 'backend' | 'device';
 
@@ -142,6 +132,7 @@ type Problem = 'backend' | 'device';
     AlertIcon,
     BytesPipe,
     CardInfo,
+    CategoryFold,
     DecimalPipe,
     EvenColumns,
     FitLabels,
@@ -189,7 +180,6 @@ export class Dashboard {
     return s ? byCategory(this.cards(s), (card) => card.category) : [];
   });
   protected readonly foldedCategories = inject(FoldedCategories);
-  protected readonly categoryTitle = CATEGORY_TITLES;
   protected readonly coreColumns = coreColumns;
   protected readonly hottestFirst = hottestFirst;
   protected readonly extraSections = extraSections;

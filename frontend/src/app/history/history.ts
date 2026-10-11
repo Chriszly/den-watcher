@@ -11,6 +11,8 @@ import { EvenColumns } from '../layout/even-columns';
 import { ExtraInfo, localized } from '../metrics/extras';
 import { History, MetricsService, Point, Series } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
+import { Category, FoldedCategories, byCategory, extraCategory } from '../dashboard/categories';
+import { CategoryFold } from '../dashboard/category-fold';
 import { ChartLine, ChartUnit, LineChart, dateTimeFormat, needsYear } from './line-chart';
 
 /** A time range a chart can show, always ending now. */
@@ -78,6 +80,7 @@ export function refreshIntervalMs(spanSeconds: number): number {
 
 interface Chart {
   title: string;
+  category: Category;
   unit: ChartUnit;
   max?: number;
   lines: ChartLine[];
@@ -92,7 +95,7 @@ interface Chart {
  */
 @Component({
   selector: 'app-history',
-  imports: [DatePipe, EvenColumns, LineChart],
+  imports: [CategoryFold, DatePipe, EvenColumns, LineChart],
   templateUrl: './history.html',
   styleUrl: './history.css',
 })
@@ -153,6 +156,9 @@ export class HistoryCharts {
     return last ? formatDate(last * 1000, 'short', this.i18n.language()) : null;
   });
 
+  /** The charts by category, in the order the dashboard shows its cards. */
+  protected readonly chartGroups = computed(() => byCategory(this.charts(), (c) => c.category));
+  protected readonly foldedCategories = inject(FoldedCategories);
   protected readonly charts = computed(() => {
     const history = this.history();
     if (!history) {
@@ -291,6 +297,7 @@ export function chartsOf(
   const charts: Chart[] = [
     {
       title: t('history.cpuAndMemory'),
+      category: 'system',
       unit: 'percent',
       max: 100,
       lines: [
@@ -304,12 +311,14 @@ export function chartsOf(
     },
     {
       title: t('history.battery'),
+      category: 'temperature',
       unit: 'percent',
       max: 100,
       lines: [{ label: t('history.charge'), points: metric('battery') }],
     },
     {
       title: t('history.gpu'),
+      category: 'system',
       unit: 'percent',
       max: 100,
       lines: [
@@ -322,22 +331,26 @@ export function chartsOf(
     },
     {
       title: t('history.temperature'),
+      category: 'temperature',
       unit: 'celsius',
       lines: named('temperature'),
     },
     {
       title: t('history.network'),
+      category: 'network',
       unit: 'bytesPerSecond',
       lines: networkLines(named('network.receive'), named('network.send'), t, router),
     },
     {
       title: t('history.disks'),
+      category: 'storage',
       unit: 'percent',
       max: 100,
       lines: named('disk'),
     },
     {
       title: t('history.diskActivity'),
+      category: 'storage',
       unit: 'bytesPerSecond',
       lines: [
         ...named('disk.read').map((line) => ({
@@ -376,6 +389,7 @@ export function extraChartsOf(
     if (!chart) {
       chart = {
         title: localized(info.title, info.titles, language),
+        category: extraCategory(group.slice('extra:'.length)),
         unit: info.unit,
         max: info.unit === 'percent' ? 100 : undefined,
         lines: [],

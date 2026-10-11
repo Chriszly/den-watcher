@@ -6,6 +6,7 @@ import { DeviceService } from '../devices/devices';
 import { History } from '../metrics/metrics';
 import { TextParams, translate } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
+import { FOLDED_STORAGE_KEY, FoldedCategories } from '../dashboard/categories';
 import { HistoryCharts, chartsOf, extraChartsOf, refreshIntervalMs } from './history';
 
 const NOW = new Date('2026-10-02T20:00:00Z');
@@ -252,12 +253,42 @@ describe('HistoryCharts', () => {
     expect(element().querySelectorAll('app-line-chart').length).toBe(1);
   });
 
-  it('keeps the rows of charts even and a lone chart at its usual width', () => {
+  it('groups the charts in the categories of the cards, folded with them', () => {
+    fixture.detectChanges();
+    vi.advanceTimersByTime(0);
+    const request = http.expectOne((r) => r.url === '/api/history');
+    request.flush({
+      ...historyFor(NOW_SECONDS - 1800, NOW_SECONDS, 30),
+      series: [
+        { metric: 'cpu', points: [{ time: NOW_SECONDS - 1800, value: 12.5 }] },
+        { metric: 'disk:/', points: [{ time: NOW_SECONDS - 1800, value: 30 }] },
+        { metric: 'temperature:cpu', points: [{ time: NOW_SECONDS - 1800, value: 48 }] },
+      ],
+    });
+    fixture.detectChanges();
+    const categories = () =>
+      Array.from(element().querySelectorAll('section section'), (section) => [
+        section.querySelector('h3')!.textContent!.replace(/\s+/g, ' ').trim(),
+        Array.from(section.querySelectorAll('h4'), (h) => h.textContent!.trim()),
+      ]);
+    expect(categories()).toEqual([
+      ['System', ['CPU and memory']],
+      ['Storage', ['Disks']],
+      ['Temperature and power', ['Temperature']],
+    ]);
+
+    TestBed.inject(FoldedCategories).toggle('storage');
+    fixture.detectChanges();
+    expect(categories()[1]).toEqual(['Storage 1 chart', []]);
+    TestBed.inject(FoldedCategories).toggle('storage');
+    localStorage.removeItem(FOLDED_STORAGE_KEY);
+  });
+
+  it('keeps a lone chart at the width it has in a full row', () => {
     respond();
     reportWidth(1000);
     const charts = element().querySelector<HTMLElement>('.charts');
-    expect(charts?.style.getPropertyValue('--columns')).toBe('1');
-    expect(charts?.classList).toContain('alone');
+    expect(charts?.style.getPropertyValue('--columns')).toBe('2');
   });
 });
 
@@ -288,6 +319,7 @@ describe('chartsOf', () => {
     expect(charts.map((c) => c.title)).toEqual(['CPU and memory', 'Network', 'Disks']);
     expect(charts[1].lines[0].points).toEqual([{ time: 0, value: 150 }]);
     expect(charts[2].lines[0].label).toBe('/');
+    expect(charts.map((c) => c.category)).toEqual(['system', 'network', 'storage']);
   });
 });
 
@@ -433,6 +465,7 @@ describe('extraChartsOf', () => {
     expect(charts).toEqual([
       {
         title: 'Druck',
+        category: 'system',
         unit: 'percent',
         max: 100,
         lines: [
@@ -442,6 +475,7 @@ describe('extraChartsOf', () => {
       },
       {
         title: 'Pressure · Stalls',
+        category: 'system',
         unit: 'perSecond',
         max: undefined,
         lines: [{ label: 'Stalls', points }],

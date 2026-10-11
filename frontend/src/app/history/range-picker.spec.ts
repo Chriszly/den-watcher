@@ -178,7 +178,7 @@ describe('RangePicker', () => {
     );
   });
 
-  it('shows another device as loading, not with the error of the previous one', () => {
+  it('shows another device without the error or the period of the previous one', () => {
     respond();
     vi.advanceTimersByTime(5_000);
     http
@@ -190,7 +190,7 @@ describe('RangePicker', () => {
     TestBed.inject(DeviceService).selectedId.set('living-room-pi');
     fixture.detectChanges();
     expect(element().querySelector('[role=alert]')).toBeNull();
-    expect(element().textContent).toContain('Loading');
+    expect(element().querySelector('.period')?.textContent?.trim()).toBe('');
     respond();
   });
 
@@ -218,6 +218,20 @@ describe('RangePicker', () => {
     const request = http.expectOne((r) => r.url === '/api/history');
     expect(request.request.params.get('device')).toBe('living-room-pi');
     request.flush(historyFor(NOW_SECONDS - 30 * 60, NOW_SECONDS, 30));
+  });
+
+  it('says when nothing was recorded in the range', () => {
+    fixture.detectChanges();
+    vi.advanceTimersByTime(0);
+    http
+      .expectOne((r) => r.url === '/api/history')
+      .flush({ ...historyFor(NOW_SECONDS - 1800, NOW_SECONDS, 30), series: [] });
+    fixture.detectChanges();
+    expect(element().querySelector('.detail')?.textContent).toContain('No usage recorded');
+
+    vi.advanceTimersByTime(5_000);
+    respond();
+    expect(element().querySelector('.detail')).toBeNull();
   });
 
   it('says the charts are not live when they end at the last reading', () => {

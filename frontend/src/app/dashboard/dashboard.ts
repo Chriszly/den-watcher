@@ -28,7 +28,7 @@ import {
 } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
 import { CardInfo } from './card-info';
-import { CATEGORIES, Category, FoldedCategories, byCategory, extraCategory } from './categories';
+import { CATEGORIES, Category, FoldedCategories, extraCategory } from './categories';
 import { CategoryFold } from './category-fold';
 import { FitLabels } from './fit-labels';
 import { Glance } from './glance';
@@ -189,11 +189,11 @@ export class Dashboard {
    */
   protected readonly sections = computed(() => {
     const s = this.snapshot();
-    const cards = s ? byCategory(this.cards(s), (card) => card.category) : [];
+    const cards = s ? this.cards(s) : [];
     const charts = this.charts();
     return CATEGORIES.map((category) => ({
       category,
-      cards: cards.find((group) => group.category === category)?.items ?? [],
+      cards: cards.filter((card) => card.category === category),
       charts: charts.get(category)?.length ?? 0,
     })).filter((section) => section.cards.length > 0 || section.charts > 0);
   });

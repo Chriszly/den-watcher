@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { HubConnection } from '../connection/connection';
 import { I18n } from '../i18n/i18n';
+import { DeviceCharts } from './history';
 import { HistoryStore } from './history-store';
 import { dateTimeFormat, needsYear } from './line-chart';
 
@@ -11,7 +12,7 @@ import { dateTimeFormat, needsYear } from './line-chart';
  * Picks the stretch of time every chart on the page shows: a unit (minutes, hours, days or all) and
  * then a range of that unit, with the period it covers. For a device that is not answering, the
  * backend moves the stretch back to end at its last reading, and a notice says the charts are not
- * live.
+ * live; where nothing was recorded in the stretch, a line says so.
  */
 @Component({
   selector: 'app-range-picker',
@@ -22,6 +23,7 @@ import { dateTimeFormat, needsYear } from './line-chart';
 export class RangePicker {
   protected readonly store = inject(HistoryStore);
   protected readonly i18n = inject(I18n);
+  protected readonly charts = inject(DeviceCharts).byCategory;
   /** While the hub does not answer, the banner across the page says the charts are not live. */
   protected readonly connection = inject(HubConnection);
 

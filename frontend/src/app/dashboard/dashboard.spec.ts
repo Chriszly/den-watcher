@@ -578,7 +578,7 @@ describe('Dashboard', () => {
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('.cores')).toBeNull();
     expect(text()).not.toContain('GHz');
-    expect(text()).not.toContain('Load ');
+    expect(text()).not.toContain('Load');
     expect(text()).not.toContain('Swap');
     expect(text()).not.toContain('Read');
     expect(text()).not.toContain('Power and clock');

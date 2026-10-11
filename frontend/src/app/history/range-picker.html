@@ -31,8 +31,6 @@
     @if (store.history(); as h) {
       {{ h.from * 1000 | date: dateFormat() : undefined : i18n.language() }} –
       {{ h.to * 1000 | date: dateFormat() : undefined : i18n.language() }}
-    } @else if (!store.unreachable()) {
-      {{ i18n.t('history.loading') }}
     }
   </p>
 </div>
@@ -43,4 +41,6 @@
   </p>
 } @else if (lastReading(); as time) {
   <p class="warning" role="status">{{ i18n.t('history.notLive', { time }) }}</p>
+} @else if (store.history() && charts().size === 0) {
+  <p class="detail">{{ i18n.t('history.empty') }}</p>
 }

@@ -87,6 +87,7 @@ export const en = {
   'dashboard.linkGbps': '{speed} Gbit/s',
   'dashboard.fans': 'Fans',
   'dashboard.moreBelow': 'Scroll down for more',
+  'dashboard.moreAbove': 'Scroll up for more',
   'dashboard.rpm': '{rpm} rpm',
   'dashboard.batteryCharging': 'Charging at {watts} W',
   'dashboard.batteryDrawing': 'Drawing {watts} W',

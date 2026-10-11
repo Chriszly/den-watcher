@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { MAX_ROWS, ScrollRows, moreBelow, rowsHeight } from './scroll-rows';
+import { MAX_ROWS, ScrollRows, moreAbove, moreBelow, rowsHeight, wheelPixels } from './scroll-rows';
 
 /** Rows 20 pixels high, one under the other. */
 function rows(count: number): { offsetTop: number; offsetHeight: number }[] {
@@ -39,14 +39,33 @@ describe('moreBelow', () => {
   });
 });
 
+describe('moreAbove', () => {
+  it('tells whether rows are hidden above the visible part', () => {
+    expect(moreAbove({ scrollTop: 0 })).toBe(false);
+    expect(moreAbove({ scrollTop: 0.5 })).toBe(false);
+    expect(moreAbove({ scrollTop: 20 })).toBe(true);
+  });
+});
+
+describe('wheelPixels', () => {
+  it('turns lines and pages into pixels', () => {
+    expect(wheelPixels({ deltaY: 100, deltaMode: 0 }, 160)).toBe(100);
+    expect(wheelPixels({ deltaY: 3, deltaMode: 1 }, 160)).toBe(48);
+    expect(wheelPixels({ deltaY: -1, deltaMode: 2 }, 160)).toBe(-160);
+  });
+});
+
 @Component({
   imports: [ScrollRows],
   template: `
-    <app-scroll-rows>
-      @for (name of names(); track $index) {
-        <p class="row">{{ name }}</p>
-      }
-    </app-scroll-rows>
+    <div class="card">
+      <h2>Temperature</h2>
+      <app-scroll-rows>
+        @for (name of names(); track $index) {
+          <p class="row">{{ name }}</p>
+        }
+      </app-scroll-rows>
+    </div>
   `,
 })
 class Host {
@@ -99,6 +118,8 @@ describe('ScrollRows', () => {
       fixture,
       list: element.querySelector<HTMLElement>('.list')!,
       arrow: () => element.querySelector<HTMLButtonElement>('.more'),
+      up: () => element.querySelector<HTMLButtonElement>('.less'),
+      heading: element.querySelector('h2')!,
     };
   }
 
@@ -137,6 +158,51 @@ describe('ScrollRows', () => {
     list.dispatchEvent(new Event('scroll'));
     fixture.detectChanges();
     expect(arrow()?.classList).not.toContain('hidden');
+  });
+
+  it('shows an arrow over the top once scrolled, which scrolls up a page', () => {
+    const { fixture, list, up } = render(12);
+    expect(up()?.classList).toContain('hidden');
+
+    scrollTop = 40;
+    list.dispatchEvent(new Event('scroll'));
+    fixture.detectChanges();
+    expect(up()?.classList).not.toContain('hidden');
+    expect(up()?.getAttribute('aria-label')).toBe('Scroll up for more');
+
+    list.scrollBy = vi.fn();
+    up()!.click();
+    expect(list.scrollBy).toHaveBeenCalledWith({ top: -160, behavior: 'smooth' });
+  });
+
+  it('scrolls the list, not the page, with the wheel over the rest of the card', async () => {
+    const { fixture, list, heading } = render(12);
+    await fixture.whenStable();
+    list.scrollBy = vi.fn();
+
+    const overHeading = new WheelEvent('wheel', {
+      deltaY: 3,
+      deltaMode: 1,
+      cancelable: true,
+      bubbles: true,
+    });
+    heading.dispatchEvent(overHeading);
+    expect(overHeading.defaultPrevented).toBe(true);
+    expect(list.scrollBy).toHaveBeenCalledWith({ top: 48 });
+
+    // Over the list the browser scrolls it itself.
+    const overList = new WheelEvent('wheel', { deltaY: 3, cancelable: true, bubbles: true });
+    list.firstElementChild!.dispatchEvent(overList);
+    expect(overList.defaultPrevented).toBe(false);
+    expect(list.scrollBy).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the wheel to the page while all rows fit', async () => {
+    const { fixture, heading } = render(MAX_ROWS);
+    await fixture.whenStable();
+    const event = new WheelEvent('wheel', { deltaY: 100, cancelable: true, bubbles: true });
+    heading.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
   });
 
   it('lets the list grow again when rows go', () => {

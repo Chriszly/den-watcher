@@ -1,11 +1,14 @@
 :host {
+  position: relative;
   display: block;
 }
 
-/* Rows are measured from the list (see rowsHeight); it scrolls with its scrollbar always hidden. */
+/* Rows are measured from the list (see rowsHeight); it scrolls with its scrollbar always hidden.
+   At its ends the wheel stops there, so the page does not scroll on under the pointer. */
 .list {
   position: relative;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-width: none;
 }
 
@@ -19,7 +22,8 @@
 }
 
 /* Only hidden, not removed, at the bottom, so the card does not change its height. */
-.more {
+.more,
+.less {
   display: flex;
   margin: 0.25rem auto 0;
   padding: 0;
@@ -30,15 +34,33 @@
   cursor: pointer;
 }
 
+/* The arrow up lies over the first row shown, so the card keeps its height when it shows. */
+.less {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
+  background: var(--mat-sys-surface-container-high);
+  box-shadow: var(--mat-sys-level1);
+}
+
 .more:hover {
   background: var(--mat-sys-surface-container-high);
 }
 
-.more:focus-visible {
+.less:hover {
+  background: var(--mat-sys-surface-container-highest);
+}
+
+.more:focus-visible,
+.less:focus-visible {
   outline: 2px solid var(--mat-sys-primary);
 }
 
-.more.hidden {
+.more.hidden,
+.less.hidden {
   visibility: hidden;
 }
 

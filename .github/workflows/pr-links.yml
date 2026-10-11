@@ -31,8 +31,11 @@ jobs:
                 return '';
               }
             };
+            // The owner's GitHub Pages site hosts the demo (the mock pages).
+            const pages = `${context.repo.owner.toLowerCase()}.github.io`;
             const onGitHub = (h) =>
-              h === 'github.com' || h.endsWith('.github.com') || h.endsWith('.githubusercontent.com');
+              h === 'github.com' || h.endsWith('.github.com') || h.endsWith('.githubusercontent.com') ||
+              h === pages;
 
             const hits = body.split(/\r?\n/).flatMap((line, i) =>
               [...line.matchAll(link)]

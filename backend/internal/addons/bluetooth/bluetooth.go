@@ -2,8 +2,9 @@
 // for the Bluetooth add-on. On Linux it asks BlueZ, the Bluetooth service,
 // over the system D-Bus for the name, kind and battery of each connected
 // device (see bluez.go), and where BlueZ cannot be asked, counts the
-// connections the kernel lists in /sys/class/bluetooth (see sysfs.go). Other
-// systems report nothing.
+// connections the kernel lists in /sys/class/bluetooth (see sysfs.go). On
+// Windows it asks the Bluetooth API for the connected classic devices (see
+// reader_windows.go). Other systems report nothing.
 //
 // It only reads; nothing in here changes the machine or its Bluetooth: it
 // starts no scan and connects or disconnects nothing.

@@ -253,12 +253,21 @@ function Assert-ProcessesAddOn {
     if ($memory.Count -ne 1 -or $memory[0].items.Count -ne 10) { throw "The processes add-on did not list ten processes by memory: $($groups | ConvertTo-Json -Depth 4)" }
 }
 
+# The runner has no Bluetooth; the add-on then still runs and writes a report
+# without values.
+function Assert-BluetoothAddOn {
+    $addOn = Get-Service UsageControlBluetooth -ErrorAction SilentlyContinue
+    if (-not $addOn) { throw 'The Bluetooth add-on is not installed' }
+    Wait-Until { (Get-Service UsageControlBluetooth).Status -eq 'Running' } 'the Bluetooth add-on runs'
+    Wait-Until { Test-Path "$env:ProgramData\Usage Control\addons\bluetooth.json" } 'the Bluetooth add-on wrote its report'
+}
+
 Write-Host 'An UPDATE_CHECK other than true or false is refused, naming the option'
 Assert-InstallerRefuses "/i `"$Msi`" UPDATE_CHECK=no" 'UPDATE_CHECK must be true or false.', ".msi`" UPDATE_CHECK=true"
 if (Get-Service UsageControl -ErrorAction SilentlyContinue) { throw 'The refused install installed the service' }
 
-Write-Host 'Installing with the website and the power, gpu, kernel, pressure, Wi-Fi, memory, ports, smart and processes add-ons on'
-Invoke-Installer "/i `"$Msi`" PORT=8091 WEBSITE=1 DEVICE_NAME=Runner HUB_DEVICES=Pi=192.168.1.20:9393 RETENTION_DAYS=7 DISK_PATHS=$env:SystemDrive\ UPDATE_CHECK=false RESET_PASSWORD=true POWER=1 GPU=1 KERNEL=1 PRESSURE=1 WIFI=1 MEMORY=1 PORTS=1 SMART=1 PROCESSES=1"
+Write-Host 'Installing with the website and the power, gpu, kernel, pressure, Wi-Fi, memory, ports, smart, processes and Bluetooth add-ons on'
+Invoke-Installer "/i `"$Msi`" PORT=8091 WEBSITE=1 DEVICE_NAME=Runner HUB_DEVICES=Pi=192.168.1.20:9393 RETENTION_DAYS=7 DISK_PATHS=$env:SystemDrive\ UPDATE_CHECK=false RESET_PASSWORD=true POWER=1 GPU=1 KERNEL=1 PRESSURE=1 WIFI=1 MEMORY=1 PORTS=1 SMART=1 PROCESSES=1 BLUETOOTH=1"
 $service = Get-Service UsageControl
 if ($service.StartType -ne 'Automatic') { throw "The service starts $($service.StartType), not automatically" }
 Assert-Website 8091
@@ -276,6 +285,7 @@ Assert-MemoryAddOn
 Assert-PortsAddOn
 Assert-SmartAddOn
 Assert-ProcessesAddOn
+Assert-BluetoothAddOn
 
 Write-Host 'The tray icon pauses, resumes and stops the service'
 Assert-Tray
@@ -302,6 +312,7 @@ Assert-MemoryAddOn
 Assert-PortsAddOn
 Assert-SmartAddOn
 Assert-ProcessesAddOn
+Assert-BluetoothAddOn
 
 Write-Host 'The older bugfix refuses to install over the newer one'
 Assert-InstallerRefuses "/i `"$Msi`"" 'A newer bugfix of this version of Usage Control is already installed.'
@@ -362,6 +373,7 @@ Assert-MemoryAddOn
 Assert-PortsAddOn
 Assert-SmartAddOn
 Assert-ProcessesAddOn
+Assert-BluetoothAddOn
 Assert-Website 8091
 # The report the add-on left behind, so the check below sees a new one.
 Remove-Item "$env:ProgramData\Usage Control\addons\power.json" -ErrorAction SilentlyContinue
@@ -403,6 +415,7 @@ Assert-MemoryAddOn
 Assert-PortsAddOn
 Assert-SmartAddOn
 Assert-ProcessesAddOn
+Assert-BluetoothAddOn
 Assert-Website 8091
 
 Write-Host 'A bad remembered UPDATE_CHECK names the repair that fixes it, which does, and does not hold up an uninstall'
@@ -425,6 +438,7 @@ if (Get-Service UsageControlMemory -ErrorAction SilentlyContinue) { throw 'The m
 if (Get-Service UsageControlPorts -ErrorAction SilentlyContinue) { throw 'The ports add-on is still installed' }
 if (Get-Service UsageControlSmart -ErrorAction SilentlyContinue) { throw 'The smart add-on is still installed' }
 if (Get-Service UsageControlProcesses -ErrorAction SilentlyContinue) { throw 'The processes add-on is still installed' }
+if (Get-Service UsageControlBluetooth -ErrorAction SilentlyContinue) { throw 'The Bluetooth add-on is still installed' }
 if (Get-NetFirewallRule -DisplayName 'Usage Control' -ErrorAction SilentlyContinue) { throw 'The firewall rule is still there' }
 if (Get-ItemProperty 'HKLM:\SOFTWARE\Usage Control' -Name PORT -ErrorAction SilentlyContinue) { throw 'The remembered options are still there' }
 if (Test-Path $trayExe) { throw 'The tray program is still there' }
@@ -449,6 +463,7 @@ if (Get-Service UsageControlMemory -ErrorAction SilentlyContinue) { throw 'The m
 if (Get-Service UsageControlPorts -ErrorAction SilentlyContinue) { throw 'The ports add-on was installed without PORTS=1' }
 if (Get-Service UsageControlSmart -ErrorAction SilentlyContinue) { throw 'The smart add-on was installed without SMART=1' }
 if (Get-Service UsageControlProcesses -ErrorAction SilentlyContinue) { throw 'The processes add-on was installed without PROCESSES=1' }
+if (Get-Service UsageControlBluetooth -ErrorAction SilentlyContinue) { throw 'The Bluetooth add-on was installed without BLUETOOTH=1' }
 Invoke-Installer "/x `"$Msi`""
 
 Write-Host 'A router password is encrypted by the service and deleted from the registry'

@@ -10,6 +10,11 @@
   background: var(--mat-sys-surface-container);
 }
 
+/* Until there is history with values, there is nothing to show. */
+:host:empty {
+  display: none;
+}
+
 .rows {
   display: grid;
   grid-column: 1 / -1;

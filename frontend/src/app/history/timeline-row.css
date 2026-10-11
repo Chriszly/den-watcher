@@ -30,6 +30,8 @@
   height: 2.25rem;
   padding: 0.25rem 0;
   cursor: crosshair;
+  /* A sideways drag moves the crosshair instead of scrolling the page. */
+  touch-action: pan-y;
 }
 
 .strip::after {

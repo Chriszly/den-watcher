@@ -36,11 +36,14 @@ describe('Timeline', () => {
     });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Timeline);
+  });
+
+  function show(history: History = HISTORY): void {
     fixture.detectChanges();
     vi.advanceTimersByTime(0);
-    http.expectOne((r) => r.url === '/api/history').flush(HISTORY);
+    http.expectOne((r) => r.url === '/api/history').flush(history);
     fixture.detectChanges();
-  });
+  }
 
   afterEach(() => {
     http.verify();
@@ -65,6 +68,7 @@ describe('Timeline', () => {
   }
 
   it('shows every value as a row with its latest value, in the order of the categories', () => {
+    show();
     expect(rows()).toEqual([
       'CPU and memory · CPU: 20 %',
       'CPU and memory · Memory: 40 %',
@@ -73,6 +77,7 @@ describe('Timeline', () => {
   });
 
   it('shows every value at the time under the pointer, with a line across all rows', () => {
+    show();
     point(2, 0.5);
     expect(rows()).toEqual([
       'CPU and memory · CPU: 50 %',
@@ -89,6 +94,37 @@ describe('Timeline', () => {
     fixture.detectChanges();
     expect(rows()[0]).toBe('CPU and memory · CPU: 20 %');
     expect(host.style.getPropertyValue('--cursor-display')).toBe('none');
+  });
+
+  it('forgets the time under the pointer once the range no longer has it', () => {
+    show();
+    point(0, 0.5);
+    vi.advanceTimersByTime(5_000);
+    http.expectOne((r) => r.url === '/api/history').flush({ ...HISTORY, from: 1000, to: 1300 });
+    fixture.detectChanges();
+    expect(rows()[0]).toBe('CPU and memory · CPU: 20 %');
+    expect((fixture.nativeElement as HTMLElement).style.getPropertyValue('--cursor-display')).toBe(
+      'none',
+    );
+  });
+
+  it('colors the lines after the eighth from the start of the palette again', () => {
+    show({
+      ...HISTORY,
+      series: Array.from({ length: 9 }, (_, i) => ({
+        metric: `temperature:sensor${i}`,
+        points: [{ time: 0, value: 40 }],
+      })),
+    });
+    const strips = (fixture.nativeElement as HTMLElement).querySelectorAll('app-sparkline');
+    expect(strips[8].classList).toContain('series-0');
+  });
+
+  it('shows nothing while the history holds no values', () => {
+    show({ ...HISTORY, series: [] });
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('.axis')).toBeNull();
+    expect(host.querySelector('app-timeline-row')).toBeNull();
   });
 });
 

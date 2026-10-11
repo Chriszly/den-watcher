@@ -5,7 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { I18n } from '../i18n/i18n';
 import { HistoryStore } from './history-store';
 import { DeviceCharts } from './history';
-import { dateTimeFormat, needsYear } from './line-chart';
+import { COLORS, dateTimeFormat, needsYear, stepCenter } from './line-chart';
 import { TimelineLine, TimelineRow } from './timeline-row';
 
 /** Where the choice of the timeline over the cards is kept between visits, in localStorage. */
@@ -45,33 +45,35 @@ export class TimelineMode {
   imports: [DatePipe, TimelineRow],
   template: `
     @if (store.history(); as h) {
-      <div class="axis" aria-hidden="true">
-        <span>{{ h.from * 1000 | date: dateFormat() : undefined : i18n.language() }}</span>
-        @if (cursor(); as time) {
-          <span class="at">{{
-            time * 1000 | date: dateFormat() : undefined : i18n.language()
-          }}</span>
-        }
-        <span>{{ h.to * 1000 | date: dateFormat() : undefined : i18n.language() }}</span>
-      </div>
-      <div class="rows" role="list" [attr.aria-label]="i18n.t('timeline.label')">
-        @for (line of lines(); track $index) {
-          <app-timeline-row
-            [line]="line"
-            [from]="h.from"
-            [to]="h.to"
-            [step]="h.stepSeconds"
-            [cursor]="cursor()"
-            (hover)="cursor.set($event)"
-          />
-        }
-      </div>
+      @if (lines().length > 0) {
+        <div class="axis" aria-hidden="true">
+          <span>{{ h.from * 1000 | date: dateFormat() : undefined : i18n.language() }}</span>
+          @if (shownCursor(); as time) {
+            <span class="at">{{
+              time * 1000 | date: dateFormat() : undefined : i18n.language()
+            }}</span>
+          }
+          <span>{{ h.to * 1000 | date: dateFormat() : undefined : i18n.language() }}</span>
+        </div>
+        <div class="rows" role="list" [attr.aria-label]="i18n.t('timeline.label')">
+          @for (line of lines(); track $index) {
+            <app-timeline-row
+              [line]="line"
+              [from]="h.from"
+              [to]="h.to"
+              [step]="h.stepSeconds"
+              [cursor]="shownCursor()"
+              (hover)="cursor.set($event)"
+            />
+          }
+        </div>
+      }
     }
   `,
   styleUrl: './timeline.css',
   host: {
     '[style.--cursor]': 'cursorLeft()',
-    '[style.--cursor-display]': "cursor() === null ? 'none' : 'block'",
+    '[style.--cursor-display]': "shownCursor() === null ? 'none' : 'block'",
   },
 })
 export class Timeline {
@@ -92,25 +94,40 @@ export class Timeline {
         label: chart.lines.length > 1 ? `${chart.title} · ${line.label}` : chart.title,
         unit: chart.unit,
         points: line.points,
-        series: index,
+        series: index % COLORS,
       })),
     ),
   );
 
-  /** Where the crosshair is, in the middle of the step under the pointer. */
-  protected readonly cursorLeft = computed(() => {
+  /**
+   * The step under the pointer while it is a step of the shown history; one left from before the
+   * range or the device changed is not.
+   */
+  protected readonly shownCursor = computed(() => {
     const time = this.cursor();
     const history = this.store.history();
-    if (time === null || !history) {
-      return null;
-    }
-    return `${((time + history.stepSeconds / 2 - history.from) / (history.to - history.from)) * 100}%`;
+    const shown =
+      time !== null &&
+      history !== null &&
+      time % history.stepSeconds === 0 &&
+      time > history.from - history.stepSeconds &&
+      time < history.to;
+    return shown ? time : null;
+  });
+
+  /** Where the crosshair is, in the middle of the step under the pointer. */
+  protected readonly cursorLeft = computed(() => {
+    const time = this.shownCursor();
+    const history = this.store.history();
+    return time === null || !history
+      ? null
+      : `${stepCenter(time, history.from, history.to, history.stepSeconds)}%`;
   });
 
   protected readonly dateFormat = computed(() => {
     const history = this.store.history();
     const year = history !== null && needsYear(history.from, history.to);
-    return this.i18n.t(dateTimeFormat(this.store.span() <= 30 * 60, year));
+    return this.i18n.t(dateTimeFormat(history !== null && history.stepSeconds < 60, year));
   });
 
   constructor() {

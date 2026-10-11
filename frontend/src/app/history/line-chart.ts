@@ -20,7 +20,7 @@ const WIDTH = 1000;
 const HEIGHT = 100;
 
 /** How many colors the lines take in turn; lines after them are dashed. */
-const COLORS = 8;
+export const COLORS = 8;
 
 /**
  * Draws lines over time, from `from` to `to` (Unix seconds), with one point
@@ -115,7 +115,7 @@ export class LineChart {
     }
     return {
       time,
-      left: this.fraction(time + this.step() / 2) * 100,
+      left: stepCenter(time, this.from(), this.to(), this.step()),
       values: this.lines().map((line) => line.points.find((p) => p.time === time)?.value ?? null),
     };
   });
@@ -137,11 +137,6 @@ export class LineChart {
   protected onPointerLeave(): void {
     this.hoverTime.set(null);
   }
-
-  /** Where a time is on the time axis, from 0 (start) to 1 (end). */
-  private fraction(time: number): number {
-    return (time - this.from()) / (this.to() - this.from());
-  }
 }
 
 /**
@@ -154,6 +149,11 @@ export function stepUnder(event: PointerEvent, from: number, to: number, step: n
   const time = from + fraction * (to - from);
   // The right edge belongs to the last step, which starts before `to`.
   return Math.floor(Math.min(time, to - 1) / step) * step;
+}
+
+/** Where the middle of the step that starts at `time` is on a time axis, in percent of its width. */
+export function stepCenter(time: number, from: number, to: number, step: number): number {
+  return ((time + step / 2 - from) / (to - from)) * 100;
 }
 
 /**

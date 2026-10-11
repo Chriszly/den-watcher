@@ -578,7 +578,7 @@ describe('Dashboard', () => {
     respond(snapshot);
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('app-timeline')).not.toBeNull();
-    expect(element.querySelector('.category')).toBeNull();
+    expect(element.querySelector('.categories')).toBeNull();
     expect(element.querySelector('app-glance')).not.toBeNull();
     TestBed.inject(TimelineMode).toggle();
     localStorage.removeItem(TIMELINE_STORAGE_KEY);

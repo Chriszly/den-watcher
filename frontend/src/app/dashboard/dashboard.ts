@@ -189,12 +189,9 @@ export class Dashboard {
   /**
    * The categories of the page, each with its cards and then its charts, in the order the page
    * shows them. A device that has not answered since the page opened has no cards, but it can
-   * have charts up to its last reading. None while the timeline shows every value instead.
+   * have charts up to its last reading.
    */
   protected readonly sections = computed(() => {
-    if (this.timeline.on()) {
-      return [];
-    }
     const s = this.snapshot();
     const cards = s ? this.cards(s) : [];
     const charts = this.charts();

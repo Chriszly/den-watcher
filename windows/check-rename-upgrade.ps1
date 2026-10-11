@@ -8,7 +8,7 @@
 # process; then uninstalls it with DELETE_HISTORY=1, so
 # windows/check-installer.ps1 starts clean.
 #
-#   pwsh windows/check-rename-upgrade.ps1 -OldMsi usage-control-2.0.7a-x64.msi -Msi den-watcher-255.0.0-x64.msi
+#   pwsh windows/check-rename-upgrade.ps1 -OldMsi usage-control-2.0.7a-x64.msi -Msi den-watcher-255.0.0.msi
 param(
     [Parameter(Mandatory)] [string] $OldMsi,
     # An installer with a version above the old one's.

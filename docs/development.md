@@ -92,7 +92,7 @@ bash ci/check-demo-covers-addons.sh
 | --- | --- |
 | `ci.yml` | every check above, plus a build-only multi-arch Docker image on pull requests, whose amd64 image is then started with the `power` and `processes` add-on containers from `compose.yaml` until the page shows the processes add-on |
 | `docker.yml` | publishes `ghcr.io/chriszly/den-watcher:main` on every merge to main, and `X.Y.Z`, `X.Y` and `latest` on release tags (only `X.Y.Z-alpha` on a pre-release tag) |
-| `windows.yml` | the x64 and arm64 MSIs, installs and uninstalls them on Windows; attaches them to releases |
+| `windows.yml` | the MSI for x64 and arm64 PCs, installs and uninstalls it on Windows x64 and arm64; attaches it to releases |
 | `linux.yml` | the Linux archives, tests install, update and uninstall under systemd; attaches them to releases |
 | `vulnerabilities.yml` | every night, the updates that fix known vulnerabilities on main (`ci/fix-vulnerabilities.sh`), as one pull request; fails when a vulnerability has no fix yet |
 | `demo.yml` | publishes the demo of a release to the root of GitHub Pages on its release tag (not for a release marked as a pre-release, nor for a tag older than the newest release, such as a bugfix 1.0.5 after 1.1.0), and the demo of main to `main/` on every merge to main that changes the frontend; when a pre-release is later made a full release, run it by hand (*Run workflow*) on the tag |

@@ -48,10 +48,14 @@
   service, so its menu needs no administrator.
 
   Built by .github/workflows/windows.yml with WiX Toolset 5:
-    wix build windows/den-watcher.wxs -arch x64 -d Version=1.2.3 -d Bugfix=0 -d Binary=den-watcher.exe
-      -d TrayBinary=den-watcher-tray.exe -d AddOns=. -d Icon=den-watcher.ico
+    wix build windows/den-watcher.wxs -arch x64 -d Version=1.2.3 -d Bugfix=0 -d Programs=dist
+      -d Icon=den-watcher.ico
       -ext WixToolset.Firewall.wixext -ext WixToolset.Util.wixext -ext WixToolset.UI.wixext
       -o den-watcher.msi
+
+  Programs holds the programs built for each processor, each in a folder of
+  its own: amd64 and arm64, with den-watcher.exe, den-watcher-tray.exe and
+  the add-ons in addons.
 
   Version is the installer's version; a bugfix release such as 1.2.3a puts
   its letters in the fourth number (1.2.3.1), and Bugfix is that number, 0
@@ -155,6 +159,17 @@
     </Property>
     <Launch Condition="Installed OR NOT SAMEVERSION OR NOT INSTALLEDBUGFIX OR INSTALLEDBUGFIX &lt;= $(Bugfix)"
             Message="A newer bugfix of this version of Den-Watcher is already installed." />
+    <!--
+      One installer for x64 and arm64 PCs: it is an x64 package, which
+      Windows 11 on Arm installs too, and installs the programs built for the
+      PC's own processor (see OnArch). The installer may run emulated there,
+      where PROCESSOR_ARCHITECTURE reads AMD64, so it reads the system's own
+      value from the registry, which says ARM64.
+    -->
+    <Property Id="NATIVE_ARCH">
+      <RegistrySearch Id="NativeArch" Root="HKLM" Key="SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+                      Name="PROCESSOR_ARCHITECTURE" Type="raw" Bitness="always64" />
+    </Property>
     <MediaTemplate EmbedCab="yes" />
     <!-- The mascot, in Apps and Features. -->
     <Icon Id="UsageControl.ico" SourceFile="$(Icon)" />
@@ -363,11 +378,41 @@
       </Directory>
     </StandardDirectory>
 
-    <Component Directory="INSTALLFOLDER">
-      <File Source="$(Binary)" Name="den-watcher.exe" KeyPath="yes" />
+    <!--
+      Updating and uninstalling close the tray icons that run, so the file can
+      be replaced. A repair that only rewrites the registry (REINSTALLMODE=m,
+      as for RESET_PASSWORD) replaces no file, so it leaves them running;
+      one that changes an add-on checks the files too (AddOnFiles), so it
+      closes them.
+    -->
+    <util:CloseApplication Target="den-watcher-tray.exe" CloseMessage="yes" ElevatedCloseMessage="yes" RebootPrompt="no"
+                           Condition='NOT (REINSTALL AND REINSTALLMODE = "m")' />
+    <!-- The tray icon from before the rename, which an update from usage-control closes. -->
+    <util:CloseApplication Target="usage-control-tray.exe" CloseMessage="yes" ElevatedCloseMessage="yes" RebootPrompt="no"
+                           Condition='NOT (REINSTALL AND REINSTALLMODE = "m")' />
+
+    <!--
+      Each program comes twice, built for x64 and for arm64 PCs (Programs\amd64
+      and Programs\arm64), and installs to the same path: the components of
+      the PC's own processor install, those of the other one don't (OnArch).
+      Their GUIDs are written out, as the ones WiX would make up from the
+      path would be the same for both; the last two digits tell them apart
+      (ArchGuid).
+    -->
+    <?foreach Arch in amd64;arm64 ?>
+    <?if $(Arch) = arm64 ?>
+    <?define OnArch = NATIVE_ARCH ~= "ARM64" ?>
+    <?define ArchGuid = A6 ?>
+    <?else?>
+    <?define OnArch = NOT (NATIVE_ARCH ~= "ARM64") ?>
+    <?define ArchGuid = 64 ?>
+    <?endif?>
+
+    <Component Id="Service_$(Arch)" Directory="INSTALLFOLDER" Guid="865EC756-08EA-4A63-91C4-8BDD9659A9$(ArchGuid)" Condition='$(OnArch)'>
+      <File Id="Service_$(Arch)" Source="$(Programs)\$(Arch)\den-watcher.exe" Name="den-watcher.exe" KeyPath="yes" />
 
       <!-- A low-privilege account: reading the usage needs no administrator rights. -->
-      <ServiceInstall Name="UsageControl"
+      <ServiceInstall Id="Service_$(Arch)" Name="UsageControl"
                       DisplayName="Den-Watcher"
                       Description="Serves the usage of this computer on the local network."
                       Type="ownProcess"
@@ -378,14 +423,14 @@
           Windows' default rights for services, except that logged-in users
           (IU) may also start (RP) and stop (WP) this one, from the tray icon.
         -->
-        <PermissionEx Sddl="D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWRPWPLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)" />
+        <PermissionEx Id="Service_$(Arch)" Sddl="D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWRPWPLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)" />
         <util:ServiceConfig FirstFailureActionType="restart"
                             SecondFailureActionType="restart"
                             ThirdFailureActionType="restart"
                             RestartServiceDelayInSeconds="10"
                             ResetPeriodInDays="1" />
       </ServiceInstall>
-      <ServiceControl Name="UsageControl" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+      <ServiceControl Id="Service_$(Arch)" Name="UsageControl" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
 
       <!-- The service's settings, read by the program as environment variables. -->
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControl" Name="Environment" Type="multiString">
@@ -432,23 +477,11 @@
     </Component>
 
     <!-- The tray icon, started for everyone who logs in. -->
-    <Component Directory="INSTALLFOLDER">
-      <File Id="TrayExe" Source="$(TrayBinary)" Name="den-watcher-tray.exe" KeyPath="yes" />
+    <Component Id="Tray_$(Arch)" Directory="INSTALLFOLDER" Guid="E03ED10B-0B17-45EF-9C52-646F49860D$(ArchGuid)" Condition='$(OnArch)'>
+      <File Id="Tray_$(Arch)" Source="$(Programs)\$(Arch)\den-watcher-tray.exe" Name="den-watcher-tray.exe" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run" Name="Den-Watcher"
-                     Type="string" Value="&quot;[#TrayExe]&quot;" />
+                     Type="string" Value="&quot;[#Tray_$(Arch)]&quot;" />
     </Component>
-    <!--
-      Updating and uninstalling close the tray icons that run, so the file can
-      be replaced. A repair that only rewrites the registry (REINSTALLMODE=m,
-      as for RESET_PASSWORD) replaces no file, so it leaves them running;
-      one that changes an add-on checks the files too (AddOnFiles), so it
-      closes them.
-    -->
-    <util:CloseApplication Target="den-watcher-tray.exe" CloseMessage="yes" ElevatedCloseMessage="yes" RebootPrompt="no"
-                           Condition='NOT (REINSTALL AND REINSTALLMODE = "m")' />
-    <!-- The tray icon from before the rename, which an update from usage-control closes. -->
-    <util:CloseApplication Target="usage-control-tray.exe" CloseMessage="yes" ElevatedCloseMessage="yes" RebootPrompt="no"
-                           Condition='NOT (REINSTALL AND REINSTALLMODE = "m")' />
 
     <!--
       The power add-on, with POWER=1: a program the Den-Watcher service
@@ -468,8 +501,8 @@
       The repair stops the service before it changes the files and starts it
       after, which then starts the add-ons it finds.
     -->
-    <Component Directory="INSTALLFOLDER" Condition='POWER = "1"' Transitive="yes">
-      <File Source="$(AddOns)\den-watcher-power.exe" Name="den-watcher-power.exe" KeyPath="yes" />
+    <Component Id="Power_$(Arch)" Directory="INSTALLFOLDER" Guid="F2EF18FF-03D5-471A-ADFB-5B97ABC3E0$(ArchGuid)" Condition='POWER = "1" AND $(OnArch)' Transitive="yes">
+      <File Id="Power_$(Arch)" Source="$(Programs)\$(Arch)\addons\den-watcher-power.exe" Name="den-watcher-power.exe" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPower"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPower"
@@ -479,8 +512,8 @@
     <!--
       The gpu add-on, with GPU=1, like the power add-on.
     -->
-    <Component Directory="INSTALLFOLDER" Condition='GPU = "1"' Transitive="yes">
-      <File Source="$(AddOns)\den-watcher-gpu.exe" Name="den-watcher-gpu.exe" KeyPath="yes" />
+    <Component Id="Gpu_$(Arch)" Directory="INSTALLFOLDER" Guid="F13C9F08-941B-4D91-8EA3-BAA7EBE044$(ArchGuid)" Condition='GPU = "1" AND $(OnArch)' Transitive="yes">
+      <File Id="Gpu_$(Arch)" Source="$(Programs)\$(Arch)\addons\den-watcher-gpu.exe" Name="den-watcher-gpu.exe" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlGPU"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlGPU"
@@ -491,8 +524,8 @@
       The pressure add-on, with PRESSURE=1, like the power add-on. Any account
       may read the performance counters it reads.
     -->
-    <Component Directory="INSTALLFOLDER" Condition='PRESSURE = "1"' Transitive="yes">
-      <File Source="$(AddOns)\den-watcher-pressure.exe" Name="den-watcher-pressure.exe" KeyPath="yes" />
+    <Component Id="Pressure_$(Arch)" Directory="INSTALLFOLDER" Guid="8A1301AE-FC2F-4803-86A6-0DB4D1EC19$(ArchGuid)" Condition='PRESSURE = "1" AND $(OnArch)' Transitive="yes">
+      <File Id="Pressure_$(Arch)" Source="$(Programs)\$(Arch)\addons\den-watcher-pressure.exe" Name="den-watcher-pressure.exe" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPressure"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPressure"
@@ -504,8 +537,8 @@
       performance counters, GetPerformanceInfo and GetTcpStatisticsEx need
       no more than the Local Service account.
     -->
-    <Component Directory="INSTALLFOLDER" Condition='KERNEL = "1"' Transitive="yes">
-      <File Source="$(AddOns)\den-watcher-kernel.exe" Name="den-watcher-kernel.exe" KeyPath="yes" />
+    <Component Id="Kernel_$(Arch)" Directory="INSTALLFOLDER" Guid="F254E2D8-5E16-4935-BAC2-329977A02E$(ArchGuid)" Condition='KERNEL = "1" AND $(OnArch)' Transitive="yes">
+      <File Id="Kernel_$(Arch)" Source="$(Programs)\$(Arch)\addons\den-watcher-kernel.exe" Name="den-watcher-kernel.exe" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlKernel"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlKernel"
@@ -516,8 +549,8 @@
       The Wi-Fi add-on, with WIFI=1, in the same low-privilege account: the
       Native Wifi API lets any account read the signal of the connections.
     -->
-    <Component Directory="INSTALLFOLDER" Condition='WIFI = "1"' Transitive="yes">
-      <File Source="$(AddOns)\den-watcher-wifi.exe" Name="den-watcher-wifi.exe" KeyPath="yes" />
+    <Component Id="Wifi_$(Arch)" Directory="INSTALLFOLDER" Guid="7D906FE9-CDAD-4262-9D5C-2BC9A39678$(ArchGuid)" Condition='WIFI = "1" AND $(OnArch)' Transitive="yes">
+      <File Id="Wifi_$(Arch)" Source="$(Programs)\$(Arch)\addons\den-watcher-wifi.exe" Name="den-watcher-wifi.exe" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlWifi"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlWifi"
@@ -525,8 +558,8 @@
     </Component>
 
     <!-- The memory add-on, with MEMORY=1, set up like the power add-on. -->
-    <Component Directory="INSTALLFOLDER" Condition='MEMORY = "1"' Transitive="yes">
-      <File Source="$(AddOns)\den-watcher-memory.exe" Name="den-watcher-memory.exe" KeyPath="yes" />
+    <Component Id="Memory_$(Arch)" Directory="INSTALLFOLDER" Guid="5386E6A6-A46B-4804-8DD9-DC53493BAE$(ArchGuid)" Condition='MEMORY = "1" AND $(OnArch)' Transitive="yes">
+      <File Id="Memory_$(Arch)" Source="$(Programs)\$(Arch)\addons\den-watcher-memory.exe" Name="den-watcher-memory.exe" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlMemory"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlMemory"
@@ -534,8 +567,8 @@
     </Component>
 
     <!-- The ports add-on, with PORTS=1, like the power add-on. -->
-    <Component Directory="INSTALLFOLDER" Condition='PORTS = "1"' Transitive="yes">
-      <File Source="$(AddOns)\den-watcher-ports.exe" Name="den-watcher-ports.exe" KeyPath="yes" />
+    <Component Id="Ports_$(Arch)" Directory="INSTALLFOLDER" Guid="A3C734EC-E69D-4B42-90A5-D2D8472E61$(ArchGuid)" Condition='PORTS = "1" AND $(OnArch)' Transitive="yes">
+      <File Id="Ports_$(Arch)" Source="$(Programs)\$(Arch)\addons\den-watcher-ports.exe" Name="den-watcher-ports.exe" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPorts"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlPorts"
@@ -551,9 +584,9 @@
       Before reading a disk it asks Windows whether it has switched the disk
       off, and a SATA disk also whether it sleeps, and leaves it asleep.
     -->
-    <Component Directory="INSTALLFOLDER" Condition='SMART = "1"' Transitive="yes">
-      <File Source="$(AddOns)\den-watcher-smart.exe" Name="den-watcher-smart.exe" KeyPath="yes" />
-      <ServiceInstall Name="UsageControlSmart"
+    <Component Id="Smart_$(Arch)" Directory="INSTALLFOLDER" Guid="C8DD6298-F936-47CA-80BD-1E2CEBF94F$(ArchGuid)" Condition='SMART = "1" AND $(OnArch)' Transitive="yes">
+      <File Id="Smart_$(Arch)" Source="$(Programs)\$(Arch)\addons\den-watcher-smart.exe" Name="den-watcher-smart.exe" KeyPath="yes" />
+      <ServiceInstall Id="Smart_$(Arch)" Name="UsageControlSmart"
                       DisplayName="Den-Watcher smart add-on"
                       Description="Reads the health of this computer's disks for Den-Watcher."
                       Type="ownProcess"
@@ -566,7 +599,7 @@
                             RestartServiceDelayInSeconds="10"
                             ResetPeriodInDays="1" />
       </ServiceInstall>
-      <ServiceControl Name="UsageControlSmart" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+      <ServiceControl Id="Smart_$(Arch)" Name="UsageControlSmart" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\UsageControlSmart" Name="Environment" Type="multiString">
         <MultiStringValue Value="ADDONS_DIR=[ADDONSFOLDER]" />
       </RegistryValue>
@@ -581,8 +614,8 @@
       Service sees every process: it asks Windows for all of them in one call
       instead of opening each one.
     -->
-    <Component Directory="INSTALLFOLDER" Condition='PROCESSES = "1"' Transitive="yes">
-      <File Source="$(AddOns)\den-watcher-processes.exe" Name="den-watcher-processes.exe" KeyPath="yes" />
+    <Component Id="Processes_$(Arch)" Directory="INSTALLFOLDER" Guid="8EFD0890-09BA-44E7-B522-67E8FD436E$(ArchGuid)" Condition='PROCESSES = "1" AND $(OnArch)' Transitive="yes">
+      <File Id="Processes_$(Arch)" Source="$(Programs)\$(Arch)\addons\den-watcher-processes.exe" Name="den-watcher-processes.exe" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlProcesses"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlProcesses"
@@ -594,13 +627,17 @@
       Bluetooth API lets any account list the paired devices and whether they
       are connected; it only lists, and never searches for devices.
     -->
-    <Component Directory="INSTALLFOLDER" Condition='BLUETOOTH = "1"' Transitive="yes">
-      <File Source="$(AddOns)\den-watcher-bluetooth.exe" Name="den-watcher-bluetooth.exe" KeyPath="yes" />
+    <Component Id="Bluetooth_$(Arch)" Directory="INSTALLFOLDER" Guid="2116D785-B438-4F86-BA94-7407AB4610$(ArchGuid)" Condition='BLUETOOTH = "1" AND $(OnArch)' Transitive="yes">
+      <File Id="Bluetooth_$(Arch)" Source="$(Programs)\$(Arch)\addons\den-watcher-bluetooth.exe" Name="den-watcher-bluetooth.exe" KeyPath="yes" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlBluetooth"
                      Name="EventMessageFile" Type="expandable" Value="%SystemRoot%\System32\EventCreate.exe" />
       <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\EventLog\Application\UsageControlBluetooth"
                      Name="TypesSupported" Type="integer" Value="7" />
     </Component>
+
+    <?undef OnArch?>
+    <?undef ArchGuid?>
+    <?endforeach?>
 
     <!--
       The database: the history with WEBSITE=1, otherwise the minutes kept for
@@ -840,7 +877,7 @@
     <!-- A ticked box on the wizard's last page shows the tray icon right away. -->
     <SetProperty Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Show the icon in the taskbar now" After="CostFinalize" Sequence="ui" Condition="NOT Installed" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
-    <Property Id="WixShellExecTarget" Value="[#TrayExe]" />
+    <SetProperty Id="WixShellExecTarget" Value="[INSTALLFOLDER]den-watcher-tray.exe" After="CostFinalize" Sequence="ui" />
     <CustomAction Id="StartTray" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixShellExec" Impersonate="yes" Return="ignore" />
   </Fragment>
 </Wix>

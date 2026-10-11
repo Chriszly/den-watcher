@@ -26,7 +26,7 @@
 # a space clears DISK_PATHS, UPDATE_CHECK and PORT, and that uninstalling
 # deletes the password and keeps the history.
 #
-#   pwsh windows/check-installer.ps1 -Msi den-watcher-1.2.3-x64.msi -NewerMsi den-watcher-1.2.3a-x64.msi
+#   pwsh windows/check-installer.ps1 -Msi den-watcher-1.2.3.msi -NewerMsi den-watcher-1.2.3a.msi
 param(
     [Parameter(Mandatory)] [string] $Msi,
     # The same installer with the next bugfix version, to check an update.

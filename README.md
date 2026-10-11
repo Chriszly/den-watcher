@@ -5,7 +5,7 @@ A small website that shows the usage of the hardware it runs on: CPU, memory, di
 - **Lightweight:** one Go binary serves the page and the API, reads the machine only when asked (every 5 seconds, every 2 while a page is open), and keeps its history in a single SQLite file
 - **Local only:** answers only the local network, needs no account and no cloud; the only call outside is an optional daily check for a newer release
 - **Read-only:** it only reads hardware data and runs without privileges, in a read-only container or as an unprivileged service
-- **Several devices:** a hub polls each device every 5 seconds and keeps all history; Windows PCs only report to it
+- **Several devices:** a hub polls each device every 5 seconds and keeps all history; Windows PCs only report to it, and a compare page shows all devices side by side, as a table that sorts by any value and as charts with a line per device
 - **Your router too:** the hub reads its internet traffic over UPnP, every port over SNMP, a FRITZ!Box's line and clients, and an ASUS router's CPU, memory, Wi-Fi and clients with its login. Read from the router over the local network only. No data is sent to any server; everything stays on your own devices, and a router password is stored encrypted where the system allows it.
 - **Alerts on the page:** a full disk, hot or busy device, failing disk or server that stops answering shows as a red sign on the page, with a log of past alerts; nothing is sent anywhere
 - **Five languages:** British and American English, German, French and Spanish, switched in place

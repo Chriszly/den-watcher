@@ -63,11 +63,33 @@ describe('DevicePicker', () => {
       },
     ]);
 
-    expect(labels()).toEqual(['Host Hub', 'Living room Pi', 'Devices']);
+    expect(labels()).toEqual(['Host Hub', 'Living room Pi', 'Compare', 'Devices']);
 
     (fixture.nativeElement as HTMLElement).querySelectorAll('button')[1].click();
 
     expect(TestBed.inject(DeviceService).selected().name).toBe('Living room Pi');
+  });
+
+  it('compares the devices until one is picked', () => {
+    respond([
+      { id: 'local', name: '' },
+      { id: 'pi', name: 'Pi' },
+    ]);
+    const devices = TestBed.inject(DeviceService);
+    const buttons = () =>
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.choices button');
+    const pressed = () => Array.from(buttons(), (c) => c.getAttribute('aria-pressed') === 'true');
+
+    buttons()[2].click();
+    fixture.detectChanges();
+    expect(devices.comparing()).toBe(true);
+    expect(pressed()).toEqual([false, false, true]);
+
+    buttons()[1].click();
+    fixture.detectChanges();
+    expect(devices.comparing()).toBe(false);
+    expect(devices.selected().name).toBe('Pi');
+    expect(pressed()).toEqual([false, true, false]);
   });
 
   it('marks the picked device and the ones that do not answer', () => {
@@ -80,6 +102,7 @@ describe('DevicePicker', () => {
     const buttons = (fixture.nativeElement as HTMLElement).querySelectorAll('.choices button');
     expect(Array.from(buttons, (c) => c.getAttribute('aria-pressed') === 'true')).toEqual([
       true,
+      false,
       false,
       false,
     ]);
@@ -156,6 +179,6 @@ describe('DevicePicker', () => {
       { id: 'local', name: '' },
       { id: 'pi', name: 'Pi' },
     ]);
-    expect(labels()).toEqual(['Host Hub', 'Pi', 'Devices']);
+    expect(labels()).toEqual(['Host Hub', 'Pi', 'Compare', 'Devices']);
   });
 });

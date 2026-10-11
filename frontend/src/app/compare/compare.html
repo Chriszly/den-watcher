@@ -1,0 +1,146 @@
+<section aria-labelledby="compare-now">
+  <h2 id="compare-now">{{ i18n.t('compare.title') }}</h2>
+  <p class="detail">{{ i18n.t('compare.intro') }}</p>
+  <!-- On a phone the table scrolls sideways, with the names kept in view. -->
+  <div class="table" [class.stale]="connection.lost()">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{ i18n.t('compare.device') }}</th>
+          @for (column of columns; track column.id) {
+            <th scope="col" [attr.aria-sort]="sortedBy() === column.id ? 'descending' : null">
+              <button
+                type="button"
+                class="sort"
+                [attr.aria-pressed]="sortedBy() === column.id"
+                [title]="i18n.t('compare.sortBy')"
+                (click)="sort(column.id)"
+              >
+                {{ i18n.t(column.label) }}
+                @if (sortedBy() === column.id) {
+                  <span aria-hidden="true">↓</span>
+                }
+              </button>
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.device.id) {
+          <tr>
+            <th scope="row">
+              <button
+                type="button"
+                class="device"
+                [title]="i18n.t('compare.open')"
+                (click)="open(row.device)"
+              >
+                <span class="status" [class]="state(row.device)" aria-hidden="true"></span>
+                {{ deviceName(row.device) }}
+              </button>
+            </th>
+            @if (row.summary; as s) {
+              <td>
+                @if (s.cpu !== undefined) {
+                  {{ s.cpu | number: '1.1-1' : i18n.language() }} %
+                  <progress max="100" [value]="s.cpu"></progress>
+                } @else {
+                  <span class="none">–</span>
+                }
+              </td>
+              <td>
+                @if (s.memory !== undefined) {
+                  {{ s.memory | number: '1.1-1' : i18n.language() }} %
+                  <progress max="100" [value]="s.memory"></progress>
+                } @else {
+                  <span class="none">–</span>
+                }
+              </td>
+              <td>
+                @if (s.disk; as d) {
+                  {{ d.percent | number: '1.1-1' : i18n.language() }} %
+                  <span class="what" [title]="d.path">{{ d.path }}</span>
+                  <progress max="100" [value]="d.percent"></progress>
+                } @else {
+                  <span class="none">–</span>
+                }
+              </td>
+              <td>
+                @if (s.temperature; as t) {
+                  {{ t.celsius | number: '1.1-1' : i18n.language() }} °C
+                  <span class="what" [title]="t.sensor">{{ t.sensor }}</span>
+                } @else {
+                  <span class="none">–</span>
+                }
+              </td>
+              <td>
+                @if (s.network; as n) {
+                  <span class="rate">↓ {{ n.receive | bytes: i18n.language() }}/s</span>
+                  <span class="rate">↑ {{ n.send | bytes: i18n.language() }}/s</span>
+                } @else {
+                  <span class="none">–</span>
+                }
+              </td>
+              <td>
+                @if (s.uptimeSeconds; as up) {
+                  {{ uptime(up) }}
+                } @else {
+                  <span class="none">–</span>
+                }
+              </td>
+            } @else {
+              <td colspan="6" class="none">{{ noValues(row) }}</td>
+            }
+            <td>
+              @if (alertLevel(row.device); as level) {
+                <span class="alerts">
+                  <app-alert-icon [level]="level" aria-hidden="true" />
+                  {{
+                    i18n.plural(row.device.alerts!.length, 'alerts.count.one', 'alerts.count.other')
+                  }}
+                </span>
+              } @else {
+                <span class="none">–</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="compare-history">
+  <div class="toolbar">
+    <h2 id="compare-history">{{ i18n.t('compare.overTime') }}</h2>
+    <div class="choices" role="group" [attr.aria-label]="i18n.t('history.range')">
+      @for (r of ranges; track r.seconds) {
+        <button type="button" [attr.aria-pressed]="r === range()" (click)="range.set(r)">
+          {{ i18n.t(r.label) }}
+        </button>
+      }
+    </div>
+  </div>
+  @if (chartRange(); as h) {
+    <div class="charts" appEvenColumns [class.stale]="connection.lost()">
+      @for (chart of charts(); track chart.title) {
+        <div class="card">
+          <h3>{{ chart.title }}</h3>
+          <app-line-chart
+            [chartTitle]="chart.title"
+            [lines]="chart.lines"
+            [from]="h.from"
+            [to]="h.to"
+            [step]="h.step"
+            [unit]="chart.unit"
+            [max]="chart.max"
+          />
+        </div>
+      } @empty {
+        <p class="detail">{{ i18n.t('history.empty') }}</p>
+      }
+    </div>
+  } @else {
+    <p>{{ i18n.t('history.loading') }}</p>
+  }
+</section>

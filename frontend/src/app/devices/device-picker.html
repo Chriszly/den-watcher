@@ -3,9 +3,9 @@
     @for (device of devices.devices(); track device.id) {
       <button
         type="button"
-        [attr.aria-pressed]="device.id === devices.selectedId()"
+        [attr.aria-pressed]="!devices.comparing() && device.id === devices.selectedId()"
         [title]="status(device)"
-        (click)="devices.selectedId.set(device.id)"
+        (click)="pick(device)"
       >
         <span class="status" [class]="state(device)" aria-hidden="true"></span>
         {{ deviceName(device) }}
@@ -17,6 +17,14 @@
         }
       </button>
     }
+    <button
+      type="button"
+      class="compare"
+      [attr.aria-pressed]="devices.comparing()"
+      (click)="devices.comparing.set(true)"
+    >
+      {{ i18n.t('compare.button') }}
+    </button>
   </div>
 }
 <button type="button" class="manage" (click)="openDevices()">

@@ -292,6 +292,21 @@ export const en = {
   'categories.device': 'Time and uptime',
   'categories.cards.one': '{count} card',
   'categories.cards.other': '{count} cards',
+  'compare.button': 'Compare',
+  'compare.title': 'Compare devices',
+  'compare.intro':
+    'The main values of every device side by side. Sort by a column to see which device is the busiest, fullest or hottest, or pick a name to see the device on its own.',
+  'compare.device': 'Device',
+  'compare.cpu': 'CPU',
+  'compare.memory': 'Memory',
+  'compare.disk': 'Fullest disk',
+  'compare.temperature': 'Hottest sensor',
+  'compare.network': 'Network',
+  'compare.uptime': 'Uptime',
+  'compare.alerts': 'Alerts',
+  'compare.sortBy': 'Sort by this, largest first',
+  'compare.open': 'Show this device',
+  'compare.overTime': 'Over time',
 } as const;
 
 /** The key of one text on the website. */

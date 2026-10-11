@@ -128,6 +128,8 @@ export class DeviceService {
   readonly devices = signal<Device[]>([LOCAL_DEVICE]);
   readonly passwordSet = signal(false);
   readonly selectedId = signal(LOCAL_DEVICE.id);
+  /** Whether the page compares all devices instead of showing the picked one. */
+  readonly comparing = signal(false);
   readonly selected = computed(
     () => this.devices().find((d) => d.id === this.selectedId()) ?? LOCAL_DEVICE,
   );

@@ -75,3 +75,9 @@ button > app-alert-icon {
   --alert-icon-size: 1.125rem;
   margin-left: 0.375rem;
 }
+
+/* Comparing the devices is set apart from the devices by a line. */
+.choices > .compare {
+  margin-left: 0.25rem;
+  border-style: dashed;
+}

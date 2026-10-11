@@ -178,3 +178,46 @@ progress {
 .stale {
   opacity: 0.55;
 }
+
+/* A card with a value that needs attention gets a red frame, besides the sign at its title. */
+.card.alerting {
+  border: 2px solid light-dark(#c62828, #f85149);
+}
+
+.card.alerting:has(> h2 > app-alert-icon.warning) {
+  border-color: light-dark(#b26a00, #f0a030);
+}
+
+h2 > app-alert-icon {
+  --alert-icon-size: 1.5rem;
+  margin-left: 0.25rem;
+}
+
+/* The alerts of the picked device, above its cards, big enough to see from across the room. */
+.alerts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.alerts > li {
+  --alert-icon-size: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 1rem 0.5rem 0.5rem;
+  border: 2px solid light-dark(#c62828, #f85149);
+  border-radius: var(--mat-sys-corner-medium);
+  background: light-dark(#fdecea, #3a1210);
+  color: light-dark(#8e1c1c, #ffb4ab);
+  font: var(--mat-sys-title-medium);
+}
+
+.alerts > li.warning {
+  border-color: light-dark(#b26a00, #f0a030);
+  background: light-dark(#fff4e0, #33240a);
+  color: light-dark(#6d4100, #ffd28a);
+}

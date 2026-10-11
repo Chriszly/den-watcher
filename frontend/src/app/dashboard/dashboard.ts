@@ -4,6 +4,9 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, exhaustMap, of, switchMap, tap } from 'rxjs';
 
+import { Alert, AlertKind, AlertLevel } from '../alerts/alert';
+import { AlertIcon } from '../alerts/alert-icon';
+import { alertText, worstLevel } from '../alerts/alerts';
 import { HubConnection } from '../connection/connection';
 import { Availability, DeviceService, LOCAL_DEVICE, deviceName } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
@@ -93,7 +96,16 @@ type Problem = 'backend' | 'device';
 /** Shows the current usage of the picked device and refreshes it every few seconds. */
 @Component({
   selector: 'app-dashboard',
-  imports: [BytesPipe, CardInfo, DecimalPipe, EvenColumns, FitLabels, NgTemplateOutlet, ScrollRows],
+  imports: [
+    AlertIcon,
+    BytesPipe,
+    CardInfo,
+    DecimalPipe,
+    EvenColumns,
+    FitLabels,
+    NgTemplateOutlet,
+    ScrollRows,
+  ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -116,6 +128,8 @@ export class Dashboard {
   protected readonly isChecked = computed(() => !!this.devices.selected().checked);
   /** Whether the picked device runs no Den-Watcher, so it tells only some of what a device does. */
   protected readonly readsLess = computed(() => this.isRouter() || this.isChecked());
+  /** The values of the picked device that need attention now, most serious first. */
+  protected readonly deviceAlerts = computed(() => this.devices.selected().alerts ?? []);
   /** Whether the backend does not connect to the picked device, as its address is the hub's own. */
   protected readonly refused = computed(() => !!this.devices.selected().refused);
   /** How long the picked device did not answer since it was added; null for this device. */
@@ -178,6 +192,23 @@ export class Dashboard {
         takeUntilDestroyed(),
       )
       .subscribe((availability) => this.availability.set(availability));
+  }
+
+  /** The level of the picked device's alerts of a kind, for the sign on its card; null for none. */
+  protected alertOn(kind: AlertKind): AlertLevel | null {
+    return worstLevel(this.deviceAlerts().filter((a) => a.kind === kind));
+  }
+
+  /** What the alerts of a kind are about, as the tooltip of the sign on its card. */
+  protected alertTitle(kind: AlertKind): string {
+    return this.deviceAlerts()
+      .filter((a) => a.kind === kind)
+      .map((a) => alertText(a, this.i18n))
+      .join('\n');
+  }
+
+  protected alertText(alert: Alert): string {
+    return alertText(alert, this.i18n);
   }
 
   /** Whether the device tells its uptime: a router read over UPnP may not, a check never does. */

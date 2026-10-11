@@ -1,5 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 
+import { AlertsButton } from './alerts/alerts-button';
 import { ConnectionBanner } from './connection/connection-banner';
 import { Dashboard } from './dashboard/dashboard';
 import { DevicePicker } from './devices/device-picker';
@@ -13,6 +14,7 @@ import { UpdateNotice } from './update/update-notice';
 @Component({
   selector: 'app-root',
   imports: [
+    AlertsButton,
     ConnectionBanner,
     Dashboard,
     DevicePicker,

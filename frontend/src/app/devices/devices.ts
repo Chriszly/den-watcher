@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 
+import { Alert } from '../alerts/alert';
 import { I18n } from '../i18n/i18n';
 
 /**
@@ -45,6 +46,8 @@ export interface Device {
    * den-watcher; it is set in HUB_CHECKS.
    */
   checked?: boolean;
+  /** The values of the device that need attention now, most serious first. */
+  alerts?: Alert[];
 }
 
 /** The body of GET /api/availability: how long another device did not answer since it was added. */

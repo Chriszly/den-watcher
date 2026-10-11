@@ -1496,7 +1496,7 @@ const linuxNas: DemoMachine = {
       'extra:smart/zrt0abcd-reallocated': t < openedAt - 9 * 86400 ? 0 : 8,
       'disk:/': vary(t, step, 95, 31, [[0.3, 86400 * 5]]),
       'disk:/srv/data': vary(t, step, 96, 71, [[1.5, 86400 * 12]]),
-      'disk:/srv/backup': vary(t, step, 97, 83, [[2, 86400 * 6]]),
+      'disk:/srv/backup': vary(t, step, 97, 96.5, [[1.2, 86400 * 6]]),
       'disk.read:/': vary(t, step, 98, 20e3, [[20e3, 60]], 0, 1e9),
       'disk.write:/': vary(t, step, 99, 60e3, [[50e3, 30]], 0, 1e9),
       'disk.read:/srv/data': vary(t, step, 100, 3e6 + 60e6 * backup, [[4e6, 120]], 0, 1e9),

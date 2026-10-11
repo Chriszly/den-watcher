@@ -279,7 +279,8 @@ All answers are JSON with `Cache-Control: no-store`. Times in the history are Un
 | Method and path | Answers | Errors |
 | --- | --- | --- |
 | `GET /api/metrics[?device=<id>]` | the device's current usage: version, time, time zone, uptime, CPU, memory, temperatures, disks, network, GPUs, throttling, battery, fans, extras ([fields](data.md#the-snapshot)) | `404` unknown device, `503` another device that has not answered recently |
-| `GET /api/devices` | `{ devices: [{ id, name, address, kind, removable, unreachable, unreachableSince, refused }], passwordSet }` | |
+| `GET /api/devices` | `{ devices: [{ id, name, address, kind, removable, unreachable, unreachableSince, refused, router, checked, alerts }], passwordSet }`; `alerts` are the device's [alerts](data.md#alerts) that last now, as in `GET /api/alerts` | |
+| `GET /api/alerts` | `[{ id, device, deviceName, kind, subject, level, value, started, ended }]`: the newest 200 [alerts](data.md#alerts) of every device, newest first; `ended` is missing while one lasts | |
 | `GET /api/devices/suggestion` | `{ address, name, kind }`: the device the request came from, to offer adding it; see [Adding and removing devices](#adding-and-removing-devices) | `204` when there is none to offer |
 | `POST /api/devices` | body `{ name, address, kind, password }`, `kind` `server` (when left out) or `pc`; `201` with the new device | `400` name, address (also one of the hub itself), kind or password length, `403` wrong password, `409` name or address and port taken, or a device with the same name still being removed, `415` not JSON, `422` nothing answers at the address (why is only logged), `503` the hub is stopping |
 | `DELETE /api/devices/<id>` | body `{ password, keepHistory }`; `204` | `403` wrong password, `404` unknown device, `409` set in `HUB_DEVICES`, `503` the hub is stopping |

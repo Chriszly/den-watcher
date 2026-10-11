@@ -7,6 +7,7 @@ den-watcher reads only what the operating system offers to programs without extr
 - [What each system reports](#what-each-system-reports)
 - [GPUs](#gpus)
 - [What is kept in the history](#what-is-kept-in-the-history)
+- [Alerts](#alerts)
 
 ## Where the values come from
 
@@ -143,3 +144,19 @@ Examples: `disk:/`, `network.receive:eth0`, `temperature:cpu_thermal`. Adding a 
 Per device, the first 64 sensors, disks, network cards and GPUs each by name are kept (`HISTORY_MAX_ENTRIES`), and the first 512 values of extras with `history: true` by metric name (8 × `HISTORY_MAX_ENTRIES`), as a hub also keeps of the minutes it fetches; a device that reports more is logged once, and the dashboard still shows them all. A sensor, disk, network card or GPU whose name would make a metric name longer than 256 bytes is left out of the history, which is logged once.
 
 How these values are stored, averaged and deleted is described in [Database and history](database.md).
+
+## Alerts
+
+A device with the website (every hub) checks its own values and those of every device it collects from every 15 seconds. A value that needs attention is an alert: the page shows it as a red sign (amber for a warning) in the header with the number of alerts, at the device's name, above its cards and on the card it is about, and keeps it in the alert log, which the header's button opens. Nothing is sent anywhere: there are no e-mails or notifications.
+
+| Kind | Warning | Alert | Must last |
+| --- | --- | --- | --- |
+| Server, IoT device or check does not answer (not a PC or laptop) | | 2 minutes without an answer | |
+| Disk usage, per disk | 90 % | 95 % | |
+| Memory used | 90 % | 95 % | 2 minutes |
+| CPU usage | 95 % | | 5 minutes |
+| Temperature, per sensor | 85 °C | 95 °C | 1 minute |
+| Raspberry Pi throttling now | frequency capped, throttled or soft temperature limit | undervoltage | |
+| SMART check of a disk (smart add-on) | | failed, or the disk cannot be read | |
+
+A value must stay at or above the threshold for the time in *Must last* before it is an alert, so a short peak is none. An alert ends once the value is below the warning threshold by a margin (2 points for disks, 5 for memory and temperatures, 10 for the CPU), so a value hovering around a threshold does not start and end alerts all the time. A warning that rises past the alert threshold becomes an alert; the log keeps the highest level and value each one reached. While a device's values cannot be read for a moment, its alerts last on. The alerts that last are taken up again after a restart, and end at the first check that finds their value back to normal. The log keeps alerts for `RETENTION_DAYS` after they ended.

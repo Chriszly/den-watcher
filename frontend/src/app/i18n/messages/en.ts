@@ -117,6 +117,11 @@ export const en = {
   'devices.kind.pc': 'PC / laptop',
   'devices.manage': 'Devices',
   'devices.addOther': 'Add other devices',
+  'devices.group.server': 'Servers and IoT',
+  'devices.group.pc': 'PCs and laptops',
+  'sidebar.open': 'Show the devices',
+  'sidebar.collapse': 'Collapse the sidebar',
+  'sidebar.expand': 'Expand the sidebar',
   'devicesDialog.title': 'Devices',
   'devicesDialog.intro':
     'This device can show the usage of other devices on the local network that run Den-Watcher.',
@@ -294,7 +299,6 @@ export const en = {
   'categories.cards.other': '{count} cards',
   'categories.charts.one': '{count} chart',
   'categories.charts.other': '{count} charts',
-  'compare.button': 'Compare',
   'compare.title': 'Compare devices',
   'compare.intro':
     'The main values of every device side by side. Sort by a column to see which device is the busiest, fullest or hottest, or pick a name to see the device on its own.',

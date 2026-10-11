@@ -113,6 +113,11 @@ export const fr: Messages = {
   'devices.kind.pc': 'PC / portable',
   'devices.manage': 'Appareils',
   'devices.addOther': 'Ajouter d’autres appareils',
+  'devices.group.server': 'Serveurs et IoT',
+  'devices.group.pc': 'PC et portables',
+  'sidebar.open': 'Afficher les appareils',
+  'sidebar.collapse': 'Réduire la barre latérale',
+  'sidebar.expand': 'Déployer la barre latérale',
   'devicesDialog.title': 'Appareils',
   'devicesDialog.intro':
     'Cet appareil peut afficher l’utilisation d’autres appareils du réseau local sur lesquels Den-Watcher est lancé.',
@@ -294,7 +299,6 @@ export const fr: Messages = {
   'categories.cards.other': '{count} cartes',
   'categories.charts.one': '{count} graphique',
   'categories.charts.other': '{count} graphiques',
-  'compare.button': 'Comparer',
   'compare.title': 'Comparer les appareils',
   'compare.intro':
     'Les principales valeurs de chaque appareil côte à côte. Triez par une colonne pour voir l’appareil le plus occupé, le plus plein ou le plus chaud, ou choisissez un nom pour voir l’appareil seul.',

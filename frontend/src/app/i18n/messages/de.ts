@@ -115,6 +115,11 @@ export const de: Messages = {
   'devices.kind.pc': 'PC / Laptop',
   'devices.manage': 'Geräte',
   'devices.addOther': 'Weitere Geräte hinzufügen',
+  'devices.group.server': 'Server und IoT',
+  'devices.group.pc': 'PCs und Laptops',
+  'sidebar.open': 'Geräte anzeigen',
+  'sidebar.collapse': 'Seitenleiste einklappen',
+  'sidebar.expand': 'Seitenleiste ausklappen',
   'devicesDialog.title': 'Geräte',
   'devicesDialog.intro':
     'Dieses Gerät kann die Auslastung anderer Geräte im lokalen Netzwerk anzeigen, auf denen Den-Watcher läuft.',
@@ -296,7 +301,6 @@ export const de: Messages = {
   'categories.cards.other': '{count} Karten',
   'categories.charts.one': '{count} Diagramm',
   'categories.charts.other': '{count} Diagramme',
-  'compare.button': 'Vergleichen',
   'compare.title': 'Geräte vergleichen',
   'compare.intro':
     'Die wichtigsten Werte aller Geräte nebeneinander. Nach einer Spalte sortiert sieht man, welches Gerät am stärksten ausgelastet, am vollsten oder am heißesten ist; ein Klick auf den Namen zeigt das Gerät allein.',

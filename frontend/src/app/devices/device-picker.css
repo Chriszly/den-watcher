@@ -1,83 +1,90 @@
 :host {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-/* Styled as Material's outlined button, which would add Material's button code to the first load. */
-.manage {
-  height: 2.5rem;
-  margin-left: auto;
-  padding: 0 1.5rem;
-  border: 1px solid var(--mat-sys-outline);
-  border-radius: var(--mat-sys-corner-full);
+section {
+  display: grid;
+  gap: 0.25rem;
+}
+
+h2 {
+  margin: 0 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+ul {
+  display: grid;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Comparing the devices is set apart from them by a dashed line. */
+.compare {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 1px dashed var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
   background: transparent;
-  color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-surface);
   font: var(--mat-sys-label-large);
   cursor: pointer;
 }
 
-.manage:hover {
-  background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
+.compare:hover:where(:not([aria-pressed='true'])) {
+  background: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent);
 }
 
-.manage:focus-visible {
+.compare:focus-visible {
   outline: 2px solid var(--mat-sys-primary);
-  outline-offset: 2px;
 }
 
-.manage:active {
-  background: color-mix(in srgb, var(--mat-sys-primary) 10%, transparent);
+.compare[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
 }
 
-/*
- * In place of a check mark, a dot before the name: green while the device answers, red while
- * it does not, and grey for a PC or laptop that is switched off, which is no outage. While the
- * hub does not answer, the other devices get a hollow dot: nothing is known about them.
- */
-.status {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-right: 0.375rem;
-  border-radius: 50%;
-  /* A ring in the page's color keeps the dot apart from the filled, picked button. */
-  box-shadow: 0 0 0 2px var(--mat-sys-surface);
-  background: light-dark(#1b873f, #3fb950);
-  vertical-align: middle;
+.compare > svg {
+  flex: none;
+  width: 1.125rem;
+  fill: var(--mat-sys-primary);
 }
 
-.status.unreachable {
-  background: light-dark(#c62828, #f85149);
+app-manage-button {
+  align-self: flex-start;
+  margin-left: 0.75rem;
 }
 
-.status.notInUse {
-  background: var(--mat-sys-outline);
+/* Compact, only the rings show: the titles of the groups become lines between them. */
+:host(.compact) {
+  align-items: center;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
+:host(.compact) h2 {
+  width: 2.5rem;
+  height: 0;
+  margin: 0 auto 0.5rem;
   overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  border-top: 1px solid var(--mat-sys-outline-variant);
 }
 
-.status.unknown {
-  background: none;
-  box-shadow: inset 0 0 0 1.5px var(--mat-sys-outline);
+:host(.compact) .compare {
+  justify-content: center;
+  width: 2.75rem;
+  padding: 0;
 }
 
-button > app-alert-icon {
-  --alert-icon-size: 1.125rem;
-  margin-left: 0.375rem;
-}
-
-/* Comparing the devices is set apart from the devices by a line. */
-.choices > .compare {
-  margin-left: 0.25rem;
-  border-style: dashed;
+:host(.compact) app-manage-button {
+  align-self: center;
+  margin: 0;
 }

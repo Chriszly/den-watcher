@@ -1,5 +1,13 @@
+/* The sidebar with the devices, once there are several, and the page beside it. */
+:host {
+  display: flex;
+  align-items: flex-start;
+}
+
 /* Grows with the window without a limit, so big screens get more cards and charts per row. */
 main {
+  flex: 1;
+  min-width: 0;
   padding: 1.5rem clamp(1rem, 3vw, 3rem);
 }
 
@@ -20,7 +28,8 @@ h1 {
   font-size: 1.5rem;
 }
 
-.mascot {
+.mascot,
+.menu {
   display: flex;
   flex: none;
   padding: 0.25rem;
@@ -30,10 +39,35 @@ h1 {
   cursor: pointer;
 }
 
-.mascot:hover {
+.mascot:hover,
+.menu:hover {
   background: var(--mat-sys-surface-container-high);
 }
 
-.mascot:focus-visible {
+.mascot:focus-visible,
+.menu:focus-visible {
   outline: 2px solid var(--mat-sys-primary);
+}
+
+/* The sidebar shows beside the page on wide screens; on narrow ones this button opens it. */
+.menu {
+  padding: 0.5rem;
+  color: var(--mat-sys-on-surface);
+}
+
+.menu > svg {
+  width: 1.5rem;
+  fill: currentColor;
+}
+
+@media (width >= 48rem) {
+  .menu {
+    display: none;
+  }
+}
+
+app-manage-button {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
 }

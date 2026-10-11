@@ -1,13 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  TestRequest,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { HubConnection } from '../connection/connection';
-import { DEVICES_REFRESH_MS, DevicePicker } from './device-picker';
+import { Snapshot } from '../metrics/metrics';
+import { DevicePicker } from './device-picker';
 import { Device, DeviceService } from './devices';
 
 describe('DevicePicker', () => {
@@ -21,100 +18,103 @@ describe('DevicePicker', () => {
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     http = TestBed.inject(HttpTestingController);
-    fixture = TestBed.createComponent(DevicePicker);
   });
 
   afterEach(() => {
     http.verify();
     vi.useRealTimers();
-    vi.restoreAllMocks();
   });
 
-  /** The pending request for the list. */
-  function request(): TestRequest {
+  /** Shows the list with these devices, and answers the first read of their values with `cpu`. */
+  function show(devices: Device[], cpu: Record<string, number> = {}): void {
+    TestBed.inject(DeviceService).devices.set(devices);
+    fixture = TestBed.createComponent(DevicePicker);
+    fixture.detectChanges();
     vi.advanceTimersByTime(0);
-    return http.expectOne('/api/devices');
-  }
-
-  function respond(devices: Device[]): void {
-    request().flush({ devices, passwordSet: false });
+    for (const request of http.match((r) => r.url === '/api/metrics')) {
+      const id = request.request.params.get('device') ?? 'local';
+      request.flush(snapshot(cpu[id] ?? 0));
+    }
     fixture.detectChanges();
   }
 
-  function labels(): string[] {
-    const buttons = (fixture.nativeElement as HTMLElement).querySelectorAll('button');
-    return Array.from(buttons, (b) => b.textContent?.trim() ?? '');
+  function element(): HTMLElement {
+    return fixture.nativeElement as HTMLElement;
   }
 
-  it('only offers to add other devices when there are none', () => {
-    respond([{ id: 'local', name: '' }]);
+  function items(): HTMLButtonElement[] {
+    return Array.from(element().querySelectorAll('app-device-item button'));
+  }
 
-    expect(labels()).toEqual(['Add other devices']);
-  });
+  function text(node: Element): string {
+    return node.textContent!.replace(/\s+/g, ' ').trim();
+  }
 
-  it('lets the user pick a device once there are others', () => {
-    respond([
+  it('groups the devices into servers and PCs, between the comparison and the devices button', () => {
+    show([
       { id: 'local', name: '' },
-      {
-        id: 'living-room-pi',
-        name: 'Living room Pi',
-        address: '192.168.1.20:9393',
-        removable: true,
-      },
+      { id: 'laptop', name: 'Laptop', kind: 'pc' },
+      { id: 'nas', name: 'NAS', kind: 'server' },
+      { id: 'printer', name: 'Printer', checked: true },
     ]);
 
-    expect(labels()).toEqual(['Host Hub', 'Living room Pi', 'Compare', 'Devices']);
-
-    (fixture.nativeElement as HTMLElement).querySelectorAll('button')[1].click();
-
-    expect(TestBed.inject(DeviceService).selected().name).toBe('Living room Pi');
+    expect(Array.from(element().querySelectorAll('h2'), text)).toEqual([
+      'Servers and IoT',
+      'PCs and laptops',
+    ]);
+    expect(items().map((b) => text(b.querySelector('.name')!))).toEqual([
+      'Host Hub',
+      'NAS',
+      'Printer',
+      'Laptop',
+    ]);
+    expect(text(element().querySelector('.compare')!)).toBe('Compare devices');
+    expect(text(element().querySelector('app-manage-button')!)).toBe('Devices');
   });
 
-  it('compares the devices until one is picked', () => {
-    respond([
+  it('tells the CPU and hottest sensor of each device that answers', () => {
+    show(
+      [
+        { id: 'local', name: '' },
+        { id: 'pi', name: 'Pi' },
+      ],
+      { local: 12.4, pi: 80 },
+    );
+
+    expect(items().map((b) => text(b.querySelector('.detail')!))).toEqual([
+      'CPU 12 % 45 °C',
+      'CPU 80 % 45 °C',
+    ]);
+  });
+
+  it('shows the picked device, or the comparison until a device is picked', () => {
+    show([
       { id: 'local', name: '' },
       { id: 'pi', name: 'Pi' },
     ]);
     const devices = TestBed.inject(DeviceService);
-    const buttons = () =>
-      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.choices button');
-    const pressed = () => Array.from(buttons(), (c) => c.getAttribute('aria-pressed') === 'true');
+    const compare = element().querySelector<HTMLButtonElement>('.compare')!;
+    const pressed = () =>
+      [compare, ...items()].map((b) => b.getAttribute('aria-pressed') === 'true');
 
-    buttons()[2].click();
+    expect(pressed()).toEqual([false, true, false]);
+
+    compare.click();
     fixture.detectChanges();
     expect(devices.comparing()).toBe(true);
-    expect(pressed()).toEqual([false, false, true]);
+    expect(pressed()).toEqual([true, false, false]);
 
-    buttons()[1].click();
+    items()[1].click();
     fixture.detectChanges();
     expect(devices.comparing()).toBe(false);
     expect(devices.selected().name).toBe('Pi');
-    expect(pressed()).toEqual([false, true, false]);
+    expect(pressed()).toEqual([false, false, true]);
   });
 
-  it('marks the picked device and the ones that do not answer', () => {
-    respond([
+  it('tells why a device does not answer, and a PC that is off is just not in use', () => {
+    show([
       { id: 'local', name: '' },
-      { id: 'pi', name: 'Pi' },
-      { id: 'office-pc', name: 'Office PC', unreachable: true },
-    ]);
-
-    const buttons = (fixture.nativeElement as HTMLElement).querySelectorAll('.choices button');
-    expect(Array.from(buttons, (c) => c.getAttribute('aria-pressed') === 'true')).toEqual([
-      true,
-      false,
-      false,
-      false,
-    ]);
-    expect(buttons[1].getAttribute('title')).toBe('Reachable');
-    expect(buttons[2].getAttribute('title')).toBe('Not reachable');
-    expect(buttons[2].querySelector('.status')?.classList).toContain('unreachable');
-    expect(labels()[2]).toBe('Office PC (Not reachable)');
-  });
-
-  it('shows a PC that does not answer as not in use rather than unreachable', () => {
-    respond([
-      { id: 'local', name: '' },
+      { id: 'pi', name: 'Pi', unreachable: true },
       {
         id: 'laptop',
         name: 'Laptop',
@@ -123,16 +123,18 @@ describe('DevicePicker', () => {
         unreachableSince: '2026-10-02T11:00:00Z',
       },
     ]);
+    const [hub, pi, laptop] = items();
 
-    const laptop = (fixture.nativeElement as HTMLElement).querySelectorAll('.choices button')[1];
-    expect(laptop.getAttribute('title')).toMatch(/^Not in use since /);
-    expect(laptop.querySelector('.status')?.classList).toContain('notInUse');
-    expect(laptop.querySelector('.status')?.classList).not.toContain('unreachable');
-    expect(labels()[1]).toBe('Laptop (Not in use)');
+    expect(hub.getAttribute('title')).toBe('Reachable');
+    expect(pi.getAttribute('title')).toBe('Not reachable');
+    expect(text(pi.querySelector('.detail')!)).toBe('Not reachable');
+    expect(pi.querySelector('app-status-dot')?.classList).toContain('unreachable');
+    expect(text(laptop.querySelector('.detail')!)).toMatch(/^Not in use since /);
+    expect(laptop.querySelector('app-status-dot')?.classList).toContain('notInUse');
   });
 
   it('marks the hub unreachable and the other devices unknown while the hub does not answer', () => {
-    respond([
+    show([
       { id: 'local', name: '' },
       { id: 'pi', name: 'Pi' },
     ]);
@@ -140,45 +142,46 @@ describe('DevicePicker', () => {
     TestBed.inject(HubConnection).failed();
     fixture.detectChanges();
 
-    const buttons = (fixture.nativeElement as HTMLElement).querySelectorAll('.choices button');
-    expect(buttons[0].querySelector('.status')?.classList).toContain('unreachable');
-    expect(buttons[0].getAttribute('title')).toMatch(/^Not reachable since /);
-    expect(buttons[1].querySelector('.status')?.classList).toContain('unknown');
-    expect(buttons[1].getAttribute('title')).toBe('Unknown while Host Hub is not answering');
+    const [hub, pi] = items();
+    expect(hub.querySelector('app-status-dot')?.classList).toContain('unreachable');
+    expect(hub.getAttribute('title')).toMatch(/^Not reachable since /);
+    expect(pi.querySelector('app-status-dot')?.classList).toContain('unknown');
+    expect(pi.getAttribute('title')).toBe('Unknown while Host Hub is not answering');
 
     TestBed.inject(HubConnection).answered();
     fixture.detectChanges();
-    expect(buttons[0].querySelector('.status')?.classList).toContain('reachable');
-    expect(buttons[1].querySelector('.status')?.classList).toContain('reachable');
+    expect(hub.querySelector('app-status-dot')?.classList).toContain('reachable');
+    expect(pi.querySelector('app-status-dot')?.classList).toContain('reachable');
   });
 
-  it('shows only this device when the list cannot be read', () => {
-    request().flush('down', { status: 502, statusText: 'Bad Gateway' });
+  it('compact, shows each device as its initials, with its name and state for screen readers', () => {
+    show(
+      [
+        { id: 'local', name: '' },
+        { id: 'nas', name: 'Linux NAS', unreachable: true },
+      ],
+      { local: 30 },
+    );
+    fixture.componentRef.setInput('compact', true);
     fixture.detectChanges();
 
-    expect(labels()).toEqual(['Add other devices']);
-    expect(TestBed.inject(DeviceService).selected().id).toBe('local');
-  });
-
-  it('reads the list again every few seconds, but not while the page is hidden', () => {
-    let visibilityState: DocumentVisibilityState = 'visible';
-    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibilityState);
-    respond([{ id: 'local', name: '' }]);
-
-    vi.advanceTimersByTime(DEVICES_REFRESH_MS);
-    respond([{ id: 'local', name: '' }]);
-
-    visibilityState = 'hidden';
-    document.dispatchEvent(new Event('visibilitychange'));
-    vi.advanceTimersByTime(10 * DEVICES_REFRESH_MS);
-    http.expectNone('/api/devices');
-
-    visibilityState = 'visible';
-    document.dispatchEvent(new Event('visibilitychange'));
-    respond([
-      { id: 'local', name: '' },
-      { id: 'pi', name: 'Pi' },
-    ]);
-    expect(labels()).toEqual(['Host Hub', 'Pi', 'Compare', 'Devices']);
+    const [hub, nas] = items();
+    expect(text(hub.querySelector('.avatar')!)).toBe('HH');
+    expect(hub.querySelector('.usage')?.getAttribute('stroke-dasharray')).toBe('30 100');
+    expect(hub.getAttribute('title')).toBe('Host Hub · Reachable');
+    expect(text(nas)).toBe('LN Linux NAS (Not reachable)');
+    expect(nas.querySelector('.usage')).toBeNull();
   });
 });
+
+function snapshot(cpu: number): Snapshot {
+  return {
+    time: '2026-10-11T12:00:00Z',
+    uptimeSeconds: 60,
+    cpu: { usagePercent: cpu, cores: 4 },
+    memory: { totalBytes: 100, usedBytes: 50, usedPercent: 50 },
+    temperatures: [{ sensor: 'cpu', celsius: 45 }],
+    disks: [],
+    network: [],
+  };
+}

@@ -110,23 +110,8 @@ progress {
   font: var(--mat-sys-label-large);
 }
 
-/* The dot before the name, as on the device's button above the page. */
-.status {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
+app-status-dot {
   margin-right: 0.375rem;
-  border-radius: 50%;
-  background: light-dark(#1b873f, #3fb950);
-  vertical-align: middle;
-}
-
-.status.unreachable {
-  background: light-dark(#c62828, #f85149);
-}
-
-.status.notInUse {
-  background: var(--mat-sys-outline);
 }
 
 .toolbar {

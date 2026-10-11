@@ -3,7 +3,7 @@
 // machine, with their name, kind or battery, from BlueZ over the system
 // D-Bus on Linux, or only how many from /sys/class/bluetooth where BlueZ
 // cannot be asked, and through the Bluetooth API on Windows, where the
-// installer runs it as the service UsageControlBluetooth in the Local Service
+// den-watcher service runs it as its child process, in the Local Service
 // account. It writes them to the add-on folder (see package addons). On other
 // systems it reports nothing.
 //

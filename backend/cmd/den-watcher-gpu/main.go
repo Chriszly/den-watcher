@@ -3,7 +3,7 @@
 // and decoder, performance state and power limit of the NVIDIA GPUs through
 // nvidia-smi, and every few seconds it writes the last of them to the add-on
 // folder (see package addons). Without nvidia-smi it reports nothing. On
-// Windows the installer runs it as the service UsageControlGPU.
+// Windows the den-watcher service runs it as its child process.
 //
 // Settings come from environment variables:
 //

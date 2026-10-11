@@ -4,7 +4,7 @@
 // host's socket tables in /proc, which any user may read; with the Linux
 // archive it runs as root without capabilities only because it shares the
 // add-on folder with the other add-ons, and in Docker as the image's user.
-// On Windows the installer runs it as the service UsageControlPorts.
+// On Windows the den-watcher service runs it as its child process.
 //
 // Settings come from environment variables:
 //

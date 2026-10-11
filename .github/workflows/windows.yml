@@ -249,6 +249,9 @@ jobs:
     needs: [programs, tests]
     if: needs.programs.outputs.installer == 'true'
     runs-on: windows-latest
+    # The checks take about ten minutes; an installer stuck on a dialog no
+    # one answers fails the job instead of holding it for hours.
+    timeout-minutes: 30
     env:
       VERSION: ${{ needs.programs.outputs.version }}
       MSI_VERSION: ${{ needs.programs.outputs.msi_version }}

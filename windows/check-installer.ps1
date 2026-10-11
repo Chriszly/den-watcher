@@ -1,7 +1,8 @@
 # Checks the Windows installer on a Windows machine, as an administrator:
 # checks it refuses an UPDATE_CHECK the service cannot read, installs it
 # with the website and the power, gpu, kernel, pressure, Wi-Fi, memory,
-# ports, smart and processes add-ons on, checks the tray icon pauses,
+# ports, smart and processes add-ons on, checks the service runs all but
+# the smart add-on as its child processes, checks the tray icon pauses,
 # resumes and stops the service, updates it to a newer bugfix without
 # options and checks the options and the add-ons were kept, except
 # RESET_PASSWORD, and the tray icon was closed for the update, checks the
@@ -39,7 +40,13 @@ $NewerMsi = (Resolve-Path $NewerMsi).Path
 # Runs the installer silently, or with the user interface Ui, such as /qr,
 # the reduced one, which runs the wizard's actions without its pages.
 function Invoke-Installer([string] $Arguments, [string] $Ui = '/qn') {
-    $process = Start-Process msiexec.exe -ArgumentList "$Arguments $Ui /l*v msiexec.log" -Wait -PassThru
+    $process = Start-Process msiexec.exe -ArgumentList "$Arguments $Ui /l*v msiexec.log" -PassThru
+    # An installer waiting on a dialog no one answers would never end.
+    if (-not $process.WaitForExit(300000)) {
+        $process.Kill($true)
+        Get-Content msiexec.log -Tail 80
+        throw "msiexec $Arguments $Ui did not end within 5 minutes, as if waiting on a dialog"
+    }
     if ($process.ExitCode -ne 0) {
         Get-Content msiexec.log -Tail 80
         throw "msiexec $Arguments failed with exit code $($process.ExitCode)"
@@ -136,6 +143,25 @@ function Wait-Until([scriptblock] $Condition, [string] $What) {
     throw "Waited in vain until $What"
 }
 
+# Checks the add-on Name is installed and runs as a child process of the
+# service, which starts the add-ons it finds next to it, and not as the
+# service of its own OldService it was before.
+function Assert-ChildAddOn([string] $Name, [string] $OldService) {
+    if (-not (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-$Name.exe")) { throw "The $Name add-on is not installed" }
+    if (Get-Service $OldService -ErrorAction SilentlyContinue) { throw "The $Name add-on is still the service $OldService" }
+    Wait-Until {
+        $service = Get-ServiceProcessId
+        @(Get-CimInstance Win32_Process -Filter "Name = 'den-watcher-$Name.exe'" | Where-Object ParentProcessId -eq $service).Count -eq 1
+    } "the $Name add-on runs as a child process of the service"
+}
+
+# Checks no add-on the service starts runs, as after the service stopped.
+function Assert-NoChildAddOns {
+    Wait-Until {
+        @(Get-Process den-watcher-* -ErrorAction SilentlyContinue | Where-Object { $_.Name -notin 'den-watcher-tray', 'den-watcher-smart' }).Count -eq 0
+    } 'the add-ons stopped with the service'
+}
+
 function Start-Tray {
     Start-Process $trayExe
     Wait-Until { [Win32.Tray]::FindWindow('SystrayClass', '') -ne [IntPtr]::Zero } 'the tray icon started'
@@ -160,6 +186,7 @@ function Assert-Tray {
     # notice the change before the next click.
     Invoke-TrayMenu 7
     Wait-Until { (Get-Service UsageControl).Status -eq 'Stopped' } 'Pause stopped the service'
+    Assert-NoChildAddOns
     Start-Sleep -Seconds 6
     Invoke-TrayMenu 7
     Wait-Until { (Get-Service UsageControl).Status -eq 'Running' } 'Resume started the service'
@@ -170,31 +197,23 @@ function Assert-Tray {
 }
 
 function Assert-PowerAddOn {
-    $addOn = Get-Service UsageControlPower -ErrorAction SilentlyContinue
-    if (-not $addOn) { throw 'The power add-on is not installed' }
-    Wait-Until { (Get-Service UsageControlPower).Status -eq 'Running' } 'the power add-on runs'
+    Assert-ChildAddOn power UsageControlPower
     Wait-Until { Test-Path "$env:ProgramData\Usage Control\addons\power.json" } 'the power add-on wrote its report'
 }
 
 function Assert-GpuAddOn {
-    $addOn = Get-Service UsageControlGPU -ErrorAction SilentlyContinue
-    if (-not $addOn) { throw 'The gpu add-on is not installed' }
-    Wait-Until { (Get-Service UsageControlGPU).Status -eq 'Running' } 'the gpu add-on runs'
+    Assert-ChildAddOn gpu UsageControlGPU
     Wait-Until { Test-Path "$env:ProgramData\Usage Control\addons\gpu.json" } 'the gpu add-on wrote its report'
 }
 
 function Assert-KernelAddOn {
-    $addOn = Get-Service UsageControlKernel -ErrorAction SilentlyContinue
-    if (-not $addOn) { throw 'The kernel add-on is not installed' }
-    Wait-Until { (Get-Service UsageControlKernel).Status -eq 'Running' } 'the kernel add-on runs'
+    Assert-ChildAddOn kernel UsageControlKernel
     $report = "$env:ProgramData\Usage Control\addons\kernel.json"
     Wait-Until { (Test-Path $report) -and (Get-Content $report -Raw) -match '"context-switches"' } 'the kernel add-on wrote its report'
 }
 
 function Assert-PressureAddOn {
-    $addOn = Get-Service UsageControlPressure -ErrorAction SilentlyContinue
-    if (-not $addOn) { throw 'The pressure add-on is not installed' }
-    Wait-Until { (Get-Service UsageControlPressure).Status -eq 'Running' } 'the pressure add-on runs'
+    Assert-ChildAddOn pressure UsageControlPressure
     Wait-Until { Test-Path "$env:ProgramData\Usage Control\addons\pressure.json" } 'the pressure add-on wrote its report'
     Wait-Until { (Get-Content -Raw "$env:ProgramData\Usage Control\addons\pressure.json") -match '"cpu-queue"' } 'the pressure add-on read the processor queue'
 }
@@ -202,18 +221,14 @@ function Assert-PressureAddOn {
 # The runner has no Wi-Fi, and Windows Server may lack the WLAN API; the
 # add-on then still runs and writes a report without values.
 function Assert-WifiAddOn {
-    $addOn = Get-Service UsageControlWifi -ErrorAction SilentlyContinue
-    if (-not $addOn) { throw 'The Wi-Fi add-on is not installed' }
-    Wait-Until { (Get-Service UsageControlWifi).Status -eq 'Running' } 'the Wi-Fi add-on runs'
+    Assert-ChildAddOn wifi UsageControlWifi
     Wait-Until { Test-Path "$env:ProgramData\Usage Control\addons\wifi.json" } 'the Wi-Fi add-on wrote its report'
 }
 
 # The memory add-on reads the Memory performance counters as LocalService;
 # its report holds the committed memory once it could read them.
 function Assert-MemoryAddOn {
-    $addOn = Get-Service UsageControlMemory -ErrorAction SilentlyContinue
-    if (-not $addOn) { throw 'The memory add-on is not installed' }
-    Wait-Until { (Get-Service UsageControlMemory).Status -eq 'Running' } 'the memory add-on runs'
+    Assert-ChildAddOn memory UsageControlMemory
     $report = "$env:ProgramData\Usage Control\addons\memory.json"
     Wait-Until {
         try {
@@ -224,8 +239,7 @@ function Assert-MemoryAddOn {
 }
 
 function Assert-PortsAddOn {
-    if (-not (Get-Service UsageControlPorts -ErrorAction SilentlyContinue)) { throw 'The ports add-on is not installed' }
-    Wait-Until { (Get-Service UsageControlPorts).Status -eq 'Running' } 'the ports add-on runs'
+    Assert-ChildAddOn ports UsageControlPorts
     $report = "$env:ProgramData\Usage Control\addons\ports.json"
     Wait-Until { (Test-Path $report) -and (Get-Content $report -Raw) -match '"id":"ports"' } 'the ports add-on wrote its ports'
 }
@@ -243,9 +257,7 @@ function Assert-SmartAddOn {
 # The processes add-on lists ten processes by memory at once, and by CPU from
 # its second read on, as the Local Service account sees them.
 function Assert-ProcessesAddOn {
-    $addOn = Get-Service UsageControlProcesses -ErrorAction SilentlyContinue
-    if (-not $addOn) { throw 'The processes add-on is not installed' }
-    Wait-Until { (Get-Service UsageControlProcesses).Status -eq 'Running' } 'the processes add-on runs'
+    Assert-ChildAddOn processes UsageControlProcesses
     $report = "$env:ProgramData\Usage Control\addons\processes.json"
     Wait-Until { (Test-Path $report) -and (Get-Content $report -Raw) -like '*"processes-cpu"*' } 'the processes add-on reported the busiest processes'
     $groups = (Get-Content $report -Raw | ConvertFrom-Json).extras
@@ -256,9 +268,7 @@ function Assert-ProcessesAddOn {
 # The runner has no Bluetooth; the add-on then still runs and writes a report
 # without values.
 function Assert-BluetoothAddOn {
-    $addOn = Get-Service UsageControlBluetooth -ErrorAction SilentlyContinue
-    if (-not $addOn) { throw 'The Bluetooth add-on is not installed' }
-    Wait-Until { (Get-Service UsageControlBluetooth).Status -eq 'Running' } 'the Bluetooth add-on runs'
+    Assert-ChildAddOn bluetooth UsageControlBluetooth
     Wait-Until { Test-Path "$env:ProgramData\Usage Control\addons\bluetooth.json" } 'the Bluetooth add-on wrote its report'
 }
 
@@ -359,7 +369,7 @@ Remove-Item "$env:ProgramData\Usage Control\addons\*.json" -ErrorAction Silently
 # With the reduced user interface, as the wizard's actions bring the
 # remembered options along as if they were given.
 Invoke-Installer "/i `"$NewerMsi`" REINSTALL=ALL REINSTALLMODE=m POWER=0" '/qr'
-if (Get-Service UsageControlPower -ErrorAction SilentlyContinue) { throw 'The repair with POWER=0 left the power add-on installed' }
+Wait-Until { -not (Get-Process den-watcher-power -ErrorAction SilentlyContinue) } 'the repair with POWER=0 stopped the power add-on'
 if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-power.exe") {
     Show-InstallerLog 'den-watcher-power|UsageControlPower|Component: |Transitive|RemoveFiles|FileRemove|POWER|in use|reboot|REINSTALLMODE'
     throw 'The repair with POWER=0 left den-watcher-power.exe'
@@ -429,16 +439,16 @@ Set-ItemProperty 'HKLM:\SOFTWARE\Usage Control' -Name UPDATE_CHECK -Value 'no'
 Write-Host 'Uninstalling with DELETE_HISTORY=1'
 Invoke-Installer "/x `"$NewerMsi`" DELETE_HISTORY=1"
 if (Get-Service UsageControl -ErrorAction SilentlyContinue) { throw 'The service is still installed' }
-if (Get-Service UsageControlPower -ErrorAction SilentlyContinue) { throw 'The power add-on is still installed' }
-if (Get-Service UsageControlGPU -ErrorAction SilentlyContinue) { throw 'The gpu add-on is still installed' }
-if (Get-Service UsageControlKernel -ErrorAction SilentlyContinue) { throw 'The kernel add-on is still installed' }
-if (Get-Service UsageControlPressure -ErrorAction SilentlyContinue) { throw 'The pressure add-on is still installed' }
-if (Get-Service UsageControlWifi -ErrorAction SilentlyContinue) { throw 'The Wi-Fi add-on is still installed' }
-if (Get-Service UsageControlMemory -ErrorAction SilentlyContinue) { throw 'The memory add-on is still installed' }
-if (Get-Service UsageControlPorts -ErrorAction SilentlyContinue) { throw 'The ports add-on is still installed' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-power.exe") { throw 'The power add-on is still installed' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-gpu.exe") { throw 'The gpu add-on is still installed' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-kernel.exe") { throw 'The kernel add-on is still installed' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-pressure.exe") { throw 'The pressure add-on is still installed' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-wifi.exe") { throw 'The Wi-Fi add-on is still installed' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-memory.exe") { throw 'The memory add-on is still installed' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-ports.exe") { throw 'The ports add-on is still installed' }
 if (Get-Service UsageControlSmart -ErrorAction SilentlyContinue) { throw 'The smart add-on is still installed' }
-if (Get-Service UsageControlProcesses -ErrorAction SilentlyContinue) { throw 'The processes add-on is still installed' }
-if (Get-Service UsageControlBluetooth -ErrorAction SilentlyContinue) { throw 'The Bluetooth add-on is still installed' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-processes.exe") { throw 'The processes add-on is still installed' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-bluetooth.exe") { throw 'The Bluetooth add-on is still installed' }
 if (Get-NetFirewallRule -DisplayName 'Den-Watcher' -ErrorAction SilentlyContinue) { throw 'The firewall rule is still there' }
 if (Get-ItemProperty 'HKLM:\SOFTWARE\Usage Control' -Name PORT -ErrorAction SilentlyContinue) { throw 'The remembered options are still there' }
 if (Test-Path $trayExe) { throw 'The tray program is still there' }
@@ -454,16 +464,16 @@ $status = Get-StatusCode 'http://127.0.0.1:9393/'
 if ($status -ne 404) { throw "The website answered $status; without WEBSITE=1 it should be off" }
 Assert-FirewallPort 9393
 Assert-ServiceSetting DATA_ONLY 'true'
-if (Get-Service UsageControlPower -ErrorAction SilentlyContinue) { throw 'The power add-on was installed without POWER=1' }
-if (Get-Service UsageControlGPU -ErrorAction SilentlyContinue) { throw 'The gpu add-on was installed without GPU=1' }
-if (Get-Service UsageControlKernel -ErrorAction SilentlyContinue) { throw 'The kernel add-on was installed without KERNEL=1' }
-if (Get-Service UsageControlPressure -ErrorAction SilentlyContinue) { throw 'The pressure add-on was installed without PRESSURE=1' }
-if (Get-Service UsageControlWifi -ErrorAction SilentlyContinue) { throw 'The Wi-Fi add-on was installed without WIFI=1' }
-if (Get-Service UsageControlMemory -ErrorAction SilentlyContinue) { throw 'The memory add-on was installed without MEMORY=1' }
-if (Get-Service UsageControlPorts -ErrorAction SilentlyContinue) { throw 'The ports add-on was installed without PORTS=1' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-power.exe") { throw 'The power add-on was installed without POWER=1' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-gpu.exe") { throw 'The gpu add-on was installed without GPU=1' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-kernel.exe") { throw 'The kernel add-on was installed without KERNEL=1' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-pressure.exe") { throw 'The pressure add-on was installed without PRESSURE=1' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-wifi.exe") { throw 'The Wi-Fi add-on was installed without WIFI=1' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-memory.exe") { throw 'The memory add-on was installed without MEMORY=1' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-ports.exe") { throw 'The ports add-on was installed without PORTS=1' }
 if (Get-Service UsageControlSmart -ErrorAction SilentlyContinue) { throw 'The smart add-on was installed without SMART=1' }
-if (Get-Service UsageControlProcesses -ErrorAction SilentlyContinue) { throw 'The processes add-on was installed without PROCESSES=1' }
-if (Get-Service UsageControlBluetooth -ErrorAction SilentlyContinue) { throw 'The Bluetooth add-on was installed without BLUETOOTH=1' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-processes.exe") { throw 'The processes add-on was installed without PROCESSES=1' }
+if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-bluetooth.exe") { throw 'The Bluetooth add-on was installed without BLUETOOTH=1' }
 Invoke-Installer "/x `"$Msi`""
 
 Write-Host 'A router password is encrypted by the service and deleted from the registry'

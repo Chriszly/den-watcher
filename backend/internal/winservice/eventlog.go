@@ -77,3 +77,8 @@ func (h *eventLogHandler) WithGroup(name string) slog.Handler {
 	c.next, c.text = h.next.WithGroup(name), h.text.WithGroup(name)
 	return &c
 }
+
+// EventLogVariable is the environment variable a service sets to 1 for the
+// programs it starts, such as den-watcher for its add-ons, so LogWarnings
+// sends their warnings to the event log too.
+const EventLogVariable = "LOG_TO_EVENT_LOG"

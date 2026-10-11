@@ -110,7 +110,7 @@ docker run --rm -v den-watcher_data:/data -v "$PWD":/backup alpine cp /data/usag
 docker compose start
 ```
 
-The volume's name is the folder of `compose.yaml` followed by `_data`; `docker volume ls` lists it.
+The volume's name is the folder of `compose.yaml` followed by `_data`: `den-watcher_data` above, and `usage-control_data` in a folder from before the rename. `docker volume ls` lists it.
 
 A copy of a hub's file carries the hub's id (`hub_id`). Restoring it on the same hub is fine. When the copy starts a second hub while the first one still runs, both send the same id, and a data-only device takes them for one hub: it deletes the minutes either has fetched, so the other misses them while it cannot reach the device. Give the second hub an id of its own by deleting the row while it is stopped; it makes a new one at its next start. The image has no `sqlite3`, so with Docker:
 

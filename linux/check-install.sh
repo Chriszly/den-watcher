@@ -50,6 +50,12 @@ if [[ -n "$old_archive" ]]; then
   systemctl restart usage-control
   answer /api/devices | grep -q '"name":"Before the rename"' || { echo "the old archive did not take DEVICE_NAME" >&2; exit 1; }
   test -f /var/lib/usage-control/usage-control.db
+  # A mistyped option stops before the move, and the old install keeps running.
+  if "$folder/install.sh" --addons=nosuch < /dev/null; then
+    echo "install.sh took an add-on that does not exist" >&2
+    exit 1
+  fi
+  systemctl is-active --quiet usage-control || { echo "a mistyped option stopped usage-control" >&2; exit 1; }
   # Without --addons and without a terminal, as an unattended update.
   "$folder/install.sh" < /dev/null
   answer /api/metrics | grep -q "\"version\":\"$version\"" || { echo "the service does not report version $version after the move" >&2; exit 1; }
@@ -61,8 +67,22 @@ if [[ -n "$old_archive" ]]; then
     echo "the move left usage-control behind" >&2
     exit 1
   fi
-  sed -i 's/^DEVICE_NAME=.*/DEVICE_NAME=/' /etc/den-watcher.env
+  # An install removed with the old --uninstall kept its settings and
+  # history, which move too.
+  "$folder/install.sh" --uninstall --purge
+  "$old_folder/install.sh" --addons= < /dev/null
+  sed -i 's/^DEVICE_NAME=.*/DEVICE_NAME=Uninstalled before the rename/' /etc/usage-control.env
+  systemctl restart usage-control
+  answer /api/devices | grep -q '"name":"Uninstalled before the rename"' || { echo "the old archive did not take DEVICE_NAME" >&2; exit 1; }
+  "$old_folder/install.sh" --uninstall
   "$folder/install.sh" --addons= < /dev/null
+  answer /api/devices | grep -q '"name":"Uninstalled before the rename"' || { echo "the move after the old --uninstall lost DEVICE_NAME" >&2; exit 1; }
+  test -f /var/lib/den-watcher/usage-control.db || { echo "the move after the old --uninstall lost the history" >&2; exit 1; }
+  if [[ -e /etc/usage-control.env || -e /var/lib/usage-control || -e /var/lib/private/usage-control ]]; then
+    echo "the move after the old --uninstall left usage-control behind" >&2
+    exit 1
+  fi
+  sed -i 's/^DEVICE_NAME=.*/DEVICE_NAME=/' /etc/den-watcher.env
 fi
 
 "$folder/install.sh"

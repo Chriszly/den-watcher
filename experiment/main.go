@@ -68,6 +68,10 @@ func (s service) Execute(_ []string, r <-chan svc.ChangeRequest, status chan<- s
 func main() {
 	switch os.Args[1] {
 	case "child":
+		if exe, _ := os.Executable(); strings.EqualFold(filepath.Base(exe), "svc-e.exe") {
+			dir := filepath.Dir(exe)
+			spawn("nojob", []string{filepath.Join(dir, "svc-e-other.exe"), filepath.Join(os.Getenv("WINDIR"), "System32", "PING.EXE")})
+		}
 		time.Sleep(time.Hour)
 	case "spawn":
 		spawn(os.Args[2], os.Args[3:])

@@ -18,7 +18,7 @@ jobs:
           $t = $env:RUNNER_TEMP
           go build -ldflags=-H=windowsgui -o "$t\tree-a.exe" .
           # The same program under other names, to tell a name apart from a tree.
-          foreach ($n in 'tree-a-other','svc-a','svc-a-other','svc-b','svc-b-other','svc-c','svc-c-other','svc-d','svc-d-other') { Copy-Item "$t\tree-a.exe" "$t\$n.exe" }
+          foreach ($n in 'tree-a-other','svc-a','svc-a-other','svc-b','svc-b-other','svc-c','svc-c-other','svc-d','svc-d-other','svc-e','svc-e-other') { Copy-Item "$t\tree-a.exe" "$t\$n.exe" }
           icacls $t /grant "*S-1-5-19:(OI)(CI)RX" | Out-Null
       - name: Install Den-Watcher 2.0.10a with add-ons
         env:
@@ -48,6 +48,10 @@ jobs:
           Svc TmC svc-c job 'NT AUTHORITY\LocalService' @("$t\svc-c.exe", "$t\svc-c-other.exe")
           # E: LocalService, a child of another exe and a Windows program.
           Svc TmD svc-d nojob 'NT AUTHORITY\LocalService' @("$t\svc-d-other.exe", $ping)
+          # F: LocalService that starts its own exe as a supervisor, which starts the others.
+          $bin = "`"$t\svc-e.exe`" service nojob `"$t\svc-e.exe`""
+          sc.exe create TmE binPath= $bin obj= 'NT AUTHORITY\LocalService' | Out-Null
+          sc.exe start TmE | Out-Null
           Start-Sleep 8
           Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'tree-*' -or $_.Name -like 'svc-*' -or $_.Name -like 'den-watcher*' -or $_.Name -eq 'PING.EXE' } | Select-Object ProcessId, ParentProcessId, SessionId, Name | Format-Table -AutoSize
       - name: Open Task Manager

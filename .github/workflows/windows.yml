@@ -125,6 +125,11 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      # Embedded with the website and served at /go-licenses.txt.
+      - name: Collect the licenses of the Go modules
+        working-directory: backend
+        run: go run ./cmd/licenses
+
       # The tray icon is the website's mascot in the colors of the theme just
       # built; the plain one is the installer's icon.
       - name: Draw the tray icons

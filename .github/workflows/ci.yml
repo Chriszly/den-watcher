@@ -77,6 +77,11 @@ jobs:
       - name: Check go.mod and go.sum are tidy
         run: go mod tidy -diff
 
+      # The release builds embed these notices; a new module without a
+      # license file fails here instead of in a release.
+      - name: Collect the licenses of the Go modules
+        run: go run ./cmd/licenses -out "$RUNNER_TEMP/go-licenses.txt"
+
       # Only reports vulnerabilities in code the backend actually calls.
       - name: Check dependencies for known vulnerabilities
         run: go tool govulncheck ./...

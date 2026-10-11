@@ -73,6 +73,11 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      # Embedded with the website and served at /go-licenses.txt.
+      - name: Collect the licenses of the Go modules
+        working-directory: backend
+        run: go run ./cmd/licenses
+
       - name: Build the archives
         env:
           VERSION: ${{ steps.version.outputs.version }}

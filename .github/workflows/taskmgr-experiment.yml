@@ -18,21 +18,38 @@ jobs:
           $t = $env:RUNNER_TEMP
           go build -ldflags=-H=windowsgui -o "$t\tree-a.exe" .
           # The same program under other names, to tell a name apart from a tree.
-          foreach ($n in 'tree-a-other','svc-a','svc-a-other','svc-b','svc-b-other') { Copy-Item "$t\tree-a.exe" "$t\$n.exe" }
+          foreach ($n in 'tree-a-other','svc-a','svc-a-other','svc-b','svc-b-other','svc-c','svc-c-other','svc-d','svc-d-other') { Copy-Item "$t\tree-a.exe" "$t\$n.exe" }
+          icacls $t /grant "*S-1-5-19:(OI)(CI)RX" | Out-Null
+      - name: Install Den-Watcher 2.0.10a with add-ons
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download 2.0.10a --repo $env:GITHUB_REPOSITORY --pattern '*x64.msi' --dir msi
+          $msi = (Get-ChildItem msi\*.msi)[0].FullName
+          $p = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn KERNEL=1 MEMORY=1 PORTS=1" -PassThru
+          $p.WaitForExit(300000) | Out-Null
+          Write-Host "msiexec exit $($p.ExitCode)"
       - name: Start the test parents
         run: |
           $t = $env:RUNNER_TEMP
-          # A: a background program with one child of its own exe, one of another exe.
-          Start-Process "$t\tree-a.exe" -ArgumentList spawn,"$t\tree-a.exe","$t\tree-a-other.exe"
-          # B: a LocalService service with the same two kinds of children.
-          sc.exe create TmExperiment binPath= "`"$t\svc-a.exe`" service `"$t\svc-a.exe`" `"$t\svc-a-other.exe`"" obj= "NT AUTHORITY\LocalService" | Out-Host
-          icacls $t /grant "*S-1-5-19:(OI)(CI)RX" | Out-Null
-          sc.exe start TmExperiment | Out-Host
-          # C: a LocalSystem service with the same two kinds.
-          sc.exe create TmExperiment2 binPath= "`"$t\svc-b.exe`" service `"$t\svc-b.exe`" `"$t\svc-b-other.exe`"" | Out-Host
-          sc.exe start TmExperiment2 | Out-Host
-          Start-Sleep 5
-          Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'tree-*' -or $_.Name -like 'svc-*' } | Select-Object ProcessId, ParentProcessId, SessionId, Name | Format-Table -AutoSize
+          $ping = "$env:WINDIR\System32\PING.EXE"
+          # A: a background program; children of another exe, one a Windows program.
+          Start-Process "$t\tree-a.exe" -ArgumentList spawn,nojob,"$t\tree-a-other.exe",$ping
+          function Svc($name, $exe, $mode, $obj, $kids) {
+            $bin = "`"$t\$exe.exe`" service $mode " + (($kids | ForEach-Object { "`"$_`"" }) -join ' ')
+            if ($obj) { sc.exe create $name binPath= $bin obj= $obj | Out-Null } else { sc.exe create $name binPath= $bin | Out-Null }
+            sc.exe start $name | Out-Null
+          }
+          # B: LocalService, plain (as in the run before).
+          Svc TmA svc-a nojob 'NT AUTHORITY\LocalService' @("$t\svc-a.exe", "$t\svc-a-other.exe")
+          # C: LocalSystem, plain (svc-b-other showed flat before).
+          Svc TmB svc-b nojob $null @("$t\svc-b.exe", "$t\svc-b-other.exe")
+          # D: LocalService, children in a kill-on-close job, as den-watcher does.
+          Svc TmC svc-c job 'NT AUTHORITY\LocalService' @("$t\svc-c.exe", "$t\svc-c-other.exe")
+          # E: LocalService, a child of another exe and a Windows program.
+          Svc TmD svc-d nojob 'NT AUTHORITY\LocalService' @("$t\svc-d-other.exe", $ping)
+          Start-Sleep 8
+          Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'tree-*' -or $_.Name -like 'svc-*' -or $_.Name -like 'den-watcher*' -or $_.Name -eq 'PING.EXE' } | Select-Object ProcessId, ParentProcessId, SessionId, Name | Format-Table -AutoSize
       - name: Open Task Manager
         run: |
           Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes

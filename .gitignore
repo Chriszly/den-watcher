@@ -14,6 +14,8 @@ backend/internal/web/files/build/
 
 # Tray icons, drawn from the mascot by backend/cmd/tray-icons at build time
 backend/cmd/den-watcher-tray/icons/*.ico
+# The Windows icon resources of the programs, made from den-watcher.ico at build time
+backend/cmd/*/rsrc_windows_*.syso
 
 # History database written when running the backend locally
 *.db

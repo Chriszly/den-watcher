@@ -140,6 +140,17 @@ jobs:
           mkdir -p ../dist
           cp cmd/den-watcher-tray/icons/den-watcher.ico ../dist/
 
+      # Every program carries the plain icon, which Task Manager and Explorer
+      # show for it, as a resource Go links from a .syso file in its folder.
+      - name: Give the programs their icon
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          for cmd in cmd/den-watcher cmd/den-watcher-*/; do
+            (cd "$cmd" && go tool go-winres simply --arch amd64,arm64 --manifest none \
+              --icon "$GITHUB_WORKSPACE/dist/den-watcher.ico")
+          done
+
       # The tray program is a windowless GUI program, so no console opens with
       # it. The test program runs the Windows-only tests on the Windows runner.
       - name: Build the programs

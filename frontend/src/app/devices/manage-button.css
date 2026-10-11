@@ -1,0 +1,45 @@
+/* Styled as Material's outlined button, which would add Material's button code to the first load. */
+button {
+  height: 2.5rem;
+  padding: 0 1.5rem;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: var(--mat-sys-corner-full);
+  background: transparent;
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-large);
+  cursor: pointer;
+}
+
+button:hover {
+  background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+button:active {
+  background: color-mix(in srgb, var(--mat-sys-primary) 10%, transparent);
+}
+
+:host(.compact) button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  padding: 0;
+}
+
+svg {
+  width: 1.25rem;
+  fill: currentColor;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

@@ -1,5 +1,25 @@
+@let several = devices.devices().length > 1;
+@if (several) {
+  <app-sidebar [label]="i18n.t('devices.label')">
+    <app-device-picker [compact]="sidebar.collapsed()" />
+  </app-sidebar>
+}
 <main>
   <header>
+    @if (several) {
+      <button
+        type="button"
+        class="menu"
+        [attr.aria-expanded]="sidebar.open()"
+        [title]="i18n.t('sidebar.open')"
+        (click)="sidebar.open.set(true)"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
+        </svg>
+        <span class="visually-hidden">{{ i18n.t('sidebar.open') }}</span>
+      </button>
+    }
     <button
       type="button"
       class="mascot"
@@ -15,8 +35,10 @@
   </header>
   <app-connection-banner />
   <app-update-notice />
-  <app-device-picker />
-  @if (devices.comparing() && devices.devices().length > 1) {
+  @if (!several) {
+    <app-manage-button />
+  }
+  @if (devices.comparing() && several) {
     <!-- The comparison is loaded only when it is opened, so the page loads fast. -->
     @defer {
       <app-compare />

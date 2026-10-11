@@ -117,6 +117,11 @@ export const en = {
   'devices.kind.pc': 'PC / laptop',
   'devices.manage': 'Devices',
   'devices.addOther': 'Add other devices',
+  'devices.group.server': 'Servers and IoT',
+  'devices.group.pc': 'PCs and laptops',
+  'sidebar.open': 'Show the devices',
+  'sidebar.collapse': 'Collapse the sidebar',
+  'sidebar.expand': 'Expand the sidebar',
   'devicesDialog.title': 'Devices',
   'devicesDialog.intro':
     'This device can show the usage of other devices on the local network that run Den-Watcher.',

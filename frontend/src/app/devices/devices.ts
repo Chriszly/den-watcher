@@ -1,9 +1,10 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { EMPTY, Observable, catchError, exhaustMap, tap } from 'rxjs';
 
 import { Alert } from '../alerts/alert';
 import { I18n } from '../i18n/i18n';
+import { PageVisibility } from '../page-visibility';
 
 /**
  * What another device is used as. The times a server does not answer are
@@ -112,6 +113,26 @@ export function notInUse(device: Device): boolean {
   return device.kind === 'pc' && !!device.unreachable;
 }
 
+/**
+ * Whether a device answers, for the dot before its name. While the hub does not answer, nothing is
+ * known about the devices it collects from.
+ */
+export type DeviceState = 'reachable' | 'unreachable' | 'notInUse' | 'unknown';
+
+/** The state of a device; `hubLost` tells that the hub, which reads all of them, does not answer. */
+export function deviceState(device: Device, hubLost = false): DeviceState {
+  if (hubLost) {
+    return device.id === LOCAL_DEVICE.id ? 'unreachable' : 'unknown';
+  }
+  if (!device.unreachable) {
+    return 'reachable';
+  }
+  return notInUse(device) ? 'notInUse' : 'unreachable';
+}
+
+/** How often the list is read again, so the page shows which devices answer. */
+export const DEVICES_REFRESH_MS = 5000;
+
 /** The shortest password that can be chosen; the backend checks it too. */
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -133,6 +154,14 @@ export class DeviceService {
   readonly selected = computed(
     () => this.devices().find((d) => d.id === this.selectedId()) ?? LOCAL_DEVICE,
   );
+
+  /**
+   * Reads the list again and again while it is subscribed to and the page is shown; without the
+   * list only this device is shown. A failed read is skipped.
+   */
+  readonly polling = inject(PageVisibility)
+    .ticks(DEVICES_REFRESH_MS)
+    .pipe(exhaustMap(() => this.load().pipe(catchError(() => EMPTY))));
 
   /** Reads the list of devices from the backend. */
   load(): Observable<DeviceList> {

@@ -1,32 +1,31 @@
-@if (devices.devices().length > 1) {
-  <div class="choices" role="group" [attr.aria-label]="i18n.t('devices.label')">
-    @for (device of devices.devices(); track device.id) {
-      <button
-        type="button"
-        [attr.aria-pressed]="!devices.comparing() && device.id === devices.selectedId()"
-        [title]="status(device)"
-        (click)="pick(device)"
-      >
-        <span class="status" [class]="state(device)" aria-hidden="true"></span>
-        {{ deviceName(device) }}
-        @if (alertLevel(device); as level) {
-          <app-alert-icon [level]="level" role="img" [attr.aria-label]="i18n.t('alerts.onCard')" />
-        }
-        @if (state(device) !== 'reachable') {
-          <span class="visually-hidden">({{ shortStatus(device) }})</span>
-        }
-      </button>
-    }
-    <button
-      type="button"
-      class="compare"
-      [attr.aria-pressed]="devices.comparing()"
-      (click)="devices.comparing.set(true)"
-    >
-      {{ i18n.t('compare.button') }}
-    </button>
-  </div>
-}
-<button type="button" class="manage" (click)="openDevices()">
-  {{ i18n.t(devices.devices().length > 1 ? 'devices.manage' : 'devices.addOther') }}
+<button
+  type="button"
+  class="compare"
+  [attr.aria-pressed]="devices.comparing()"
+  [title]="i18n.t('compare.title')"
+  (click)="devices.comparing.set(true)"
+>
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
+  </svg>
+  <span class="label">{{ i18n.t('compare.title') }}</span>
 </button>
+@for (group of groups(); track group.kind) {
+  <section [attr.aria-labelledby]="'device-group-' + group.kind">
+    <h2 [id]="'device-group-' + group.kind">{{ i18n.t(`devices.group.${group.kind}`) }}</h2>
+    <ul>
+      @for (device of group.devices; track device.id) {
+        <li>
+          <app-device-item
+            [device]="device"
+            [summary]="fleet.summaries().get(device.id)"
+            [selected]="!devices.comparing() && device.id === devices.selectedId()"
+            [compact]="compact()"
+            (picked)="pick(device)"
+          />
+        </li>
+      }
+    </ul>
+  </section>
+}
+<app-manage-button [compact]="compact()" />

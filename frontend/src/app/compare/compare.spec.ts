@@ -4,7 +4,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { DeviceService } from '../devices/devices';
 import { History, Snapshot } from '../metrics/metrics';
-import { Compare, Row, largest, sortRows, summarize } from './compare';
+import { summarize } from '../metrics/summary';
+import { Compare, Row, largest, sortRows } from './compare';
 
 const snapshot: Snapshot = {
   time: '2026-10-02T17:00:00Z',

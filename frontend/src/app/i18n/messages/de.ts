@@ -115,6 +115,11 @@ export const de: Messages = {
   'devices.kind.pc': 'PC / Laptop',
   'devices.manage': 'Geräte',
   'devices.addOther': 'Weitere Geräte hinzufügen',
+  'devices.group.server': 'Server und IoT',
+  'devices.group.pc': 'PCs und Laptops',
+  'sidebar.open': 'Geräte anzeigen',
+  'sidebar.collapse': 'Seitenleiste einklappen',
+  'sidebar.expand': 'Seitenleiste ausklappen',
   'devicesDialog.title': 'Geräte',
   'devicesDialog.intro':
     'Dieses Gerät kann die Auslastung anderer Geräte im lokalen Netzwerk anzeigen, auf denen Den-Watcher läuft.',

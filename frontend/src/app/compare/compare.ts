@@ -8,51 +8,25 @@ import { AlertIcon } from '../alerts/alert-icon';
 import { worstLevel } from '../alerts/alerts';
 import { HubConnection } from '../connection/connection';
 import { formatUptime } from '../dashboard/dashboard';
-import { Device, DeviceService, deviceName, notInUse } from '../devices/devices';
+import {
+  Device,
+  DeviceService,
+  DeviceState,
+  deviceName,
+  deviceState,
+  notInUse,
+} from '../devices/devices';
+import { StatusDot } from '../devices/status-dot';
+import { FleetValues } from '../devices/fleet-values';
 import { I18n } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
 import { EvenColumns } from '../layout/even-columns';
 import { BytesPipe } from '../metrics/bytes.pipe';
-import { History, MetricsService, Point, Series, Snapshot } from '../metrics/metrics';
+import { History, MetricsService, Point, Series } from '../metrics/metrics';
+import { Summary } from '../metrics/summary';
 import { PageVisibility } from '../page-visibility';
 import { refreshIntervalMs } from '../history/history';
 import { ChartLine, ChartUnit, LineChart } from '../history/line-chart';
-
-/** How often the current values of all devices are read again, as often as the hub reads them. */
-export const COMPARE_REFRESH_MS = 5000;
-
-/** The main values of one device, to compare; a value the device does not report is missing. */
-export interface Summary {
-  cpu?: number;
-  memory?: number;
-  /** The fullest disk. */
-  disk?: { path: string; percent: number };
-  /** The hottest sensor. */
-  temperature?: { sensor: string; celsius: number };
-  /** All network cards together, in bytes per second. */
-  network?: { receive: number; send: number };
-  uptimeSeconds?: number;
-}
-
-/** The main values of a snapshot. A router or a check reports only some, the others are missing. */
-export function summarize(s: Snapshot): Summary {
-  const fullest = [...s.disks].sort((a, b) => b.usedPercent - a.usedPercent)[0];
-  const hottest = [...s.temperatures].sort((a, b) => b.celsius - a.celsius)[0];
-  return {
-    cpu: s.cpu.cores > 0 ? s.cpu.usagePercent : undefined,
-    memory: s.memory.totalBytes > 0 ? s.memory.usedPercent : undefined,
-    disk: fullest && { path: fullest.path, percent: fullest.usedPercent },
-    temperature: hottest && { sensor: hottest.sensor, celsius: hottest.celsius },
-    network:
-      s.network.length > 0
-        ? {
-            receive: s.network.reduce((sum, n) => sum + n.receiveBytesPerSecond, 0),
-            send: s.network.reduce((sum, n) => sum + n.sendBytesPerSecond, 0),
-          }
-        : undefined,
-    uptimeSeconds: s.uptimeSeconds > 0 ? s.uptimeSeconds : undefined,
-  };
-}
 
 /** A column of the table the rows can be sorted by, largest first. */
 export type Column = 'cpu' | 'memory' | 'disk' | 'temperature' | 'network' | 'uptime' | 'alerts';
@@ -169,7 +143,7 @@ interface Histories {
  */
 @Component({
   selector: 'app-compare',
-  imports: [AlertIcon, BytesPipe, DecimalPipe, EvenColumns, LineChart],
+  imports: [AlertIcon, BytesPipe, DecimalPipe, EvenColumns, LineChart, StatusDot],
   templateUrl: './compare.html',
   styleUrl: './compare.css',
 })
@@ -185,8 +159,8 @@ export class Compare {
   protected readonly sortedBy = signal<Column | null>(null);
   protected readonly range = signal(RANGES[2]);
 
-  /** The values of each device read; null for one whose values could not be read. */
-  private readonly summaries = signal<ReadonlyMap<string, Summary | null>>(new Map());
+  private readonly fleet = inject(FleetValues);
+  private readonly summaries = this.fleet.summaries;
   protected readonly rows = computed(() =>
     sortRows(
       this.devices.devices().map((device) => ({
@@ -224,13 +198,7 @@ export class Compare {
   protected readonly chartRange = computed(() => this.histories());
 
   constructor() {
-    this.page
-      .ticks(COMPARE_REFRESH_MS)
-      .pipe(
-        exhaustMap(() => this.readSummaries()),
-        takeUntilDestroyed(),
-      )
-      .subscribe((summaries) => this.summaries.set(summaries));
+    this.fleet.watch.pipe(takeUntilDestroyed()).subscribe();
 
     toObservable(computed(() => ({ range: this.range(), devices: this.charted() })))
       .pipe(
@@ -242,22 +210,6 @@ export class Compare {
         takeUntilDestroyed(),
       )
       .subscribe((histories) => this.histories.set(histories));
-  }
-
-  /** The values of every device that answers; the hub does not ask for those of one that does not. */
-  private readSummaries(): Observable<Map<string, Summary | null>> {
-    const answering = this.devices.devices().filter((d) => !d.unreachable);
-    if (answering.length === 0) {
-      return of(new Map());
-    }
-    return forkJoin(
-      answering.map((d) =>
-        this.metrics.current(d.id).pipe(
-          map((s): [string, Summary | null] => [d.id, summarize(s)]),
-          catchError(() => of<[string, null]>([d.id, null])),
-        ),
-      ),
-    ).pipe(map((entries) => new Map(entries)));
   }
 
   private readHistories(seconds: number, devices: Device[]): Observable<Histories> {
@@ -286,7 +238,7 @@ export class Compare {
     this.sortedBy.update((c) => (c === column ? null : column));
   }
 
-  /** Shows one device on its own, as when its button above is picked. */
+  /** Shows one device on its own, as when it is picked in the list of devices. */
   protected open(device: Device): void {
     this.devices.selectedId.set(device.id);
     this.devices.comparing.set(false);
@@ -296,12 +248,8 @@ export class Compare {
     return deviceName(device, this.i18n);
   }
 
-  /** The dot before the name, as on the device's button above. */
-  protected state(device: Device): 'reachable' | 'unreachable' | 'notInUse' {
-    if (!device.unreachable) {
-      return 'reachable';
-    }
-    return notInUse(device) ? 'notInUse' : 'unreachable';
+  protected state(device: Device): DeviceState {
+    return deviceState(device);
   }
 
   protected alertLevel(device: Device): AlertLevel | null {

@@ -35,7 +35,7 @@
                 [title]="i18n.t('compare.open')"
                 (click)="open(row.device)"
               >
-                <span class="status" [class]="state(row.device)" aria-hidden="true"></span>
+                <app-status-dot [state]="state(row.device)" />
                 {{ deviceName(row.device) }}
               </button>
             </th>

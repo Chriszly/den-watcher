@@ -113,6 +113,11 @@ export const fr: Messages = {
   'devices.kind.pc': 'PC / portable',
   'devices.manage': 'Appareils',
   'devices.addOther': 'Ajouter d’autres appareils',
+  'devices.group.server': 'Serveurs et IoT',
+  'devices.group.pc': 'PC et portables',
+  'sidebar.open': 'Afficher les appareils',
+  'sidebar.collapse': 'Réduire la barre latérale',
+  'sidebar.expand': 'Déployer la barre latérale',
   'devicesDialog.title': 'Appareils',
   'devicesDialog.intro':
     'Cet appareil peut afficher l’utilisation d’autres appareils du réseau local sur lesquels Den-Watcher est lancé.',

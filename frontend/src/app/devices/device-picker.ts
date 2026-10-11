@@ -1,107 +1,46 @@
-import { formatDate } from '@angular/common';
-import { Component, Injector, inject } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { EMPTY, catchError, exhaustMap } from 'rxjs';
 
-import { AlertLevel } from '../alerts/alert';
-import { AlertIcon } from '../alerts/alert-icon';
-import { worstLevel } from '../alerts/alerts';
-import { HubConnection } from '../connection/connection';
 import { I18n } from '../i18n/i18n';
-import { PageVisibility } from '../page-visibility';
-import { Device, DeviceService, LOCAL_DEVICE, deviceName, hubName, notInUse } from './devices';
+import { DeviceItem } from './device-item';
+import { DEVICE_KINDS, Device, DeviceService } from './devices';
+import { FleetValues } from './fleet-values';
+import { ManageButton } from './manage-button';
 
 /**
- * The dot before a device's name. While the hub does not answer, the hub is
- * unreachable and nothing is known about the devices it collects from.
- */
-type DeviceState = 'reachable' | 'unreachable' | 'notInUse' | 'unknown';
-
-/** How often the list is read again, so the buttons show which devices answer. */
-export const DEVICES_REFRESH_MS = 5000;
-
-/**
- * Chips to pick the device whose usage is shown, once the hub collects from
- * other devices, and a button that opens the list of devices to add or remove one.
+ * The list of devices to pick the one whose usage is shown, once the hub collects from other
+ * devices, grouped into servers and PCs, with the comparison of all of them first and the button to
+ * add or remove devices last. Compact, it shows the devices as rings.
  */
 @Component({
   selector: 'app-device-picker',
-  imports: [AlertIcon],
+  imports: [DeviceItem, ManageButton],
   templateUrl: './device-picker.html',
   styleUrl: './device-picker.css',
+  host: { '[class.compact]': 'compact()' },
 })
 export class DevicePicker {
+  readonly compact = input(false);
+
   protected readonly devices = inject(DeviceService);
+  protected readonly fleet = inject(FleetValues);
   protected readonly i18n = inject(I18n);
-  private readonly injector = inject(Injector);
-  private readonly connection = inject(HubConnection);
+
+  /** The devices by kind, servers first; the hub and things without a kind count as servers. */
+  protected readonly groups = computed(() =>
+    DEVICE_KINDS.map((kind) => ({
+      kind,
+      devices: this.devices.devices().filter((d) => (d.kind ?? 'server') === kind),
+    })).filter((group) => group.devices.length > 0),
+  );
 
   constructor() {
-    // Without the list only this device is shown.
-    inject(PageVisibility)
-      .ticks(DEVICES_REFRESH_MS)
-      .pipe(
-        exhaustMap(() => this.devices.load().pipe(catchError(() => EMPTY))),
-        takeUntilDestroyed(),
-      )
-      .subscribe();
-  }
-
-  /** The dialogs are loaded only when they are opened, so the page loads fast. */
-  protected async openDevices(): Promise<void> {
-    const { openDevicesDialog } = await import('./devices-dialog');
-    openDevicesDialog(this.injector);
+    this.fleet.watch.pipe(takeUntilDestroyed()).subscribe();
   }
 
   /** Shows the device on its own, also when the devices were being compared. */
   protected pick(device: Device): void {
     this.devices.selectedId.set(device.id);
     this.devices.comparing.set(false);
-  }
-
-  /** How serious the device's alerts are, for the sign after its name; null for none. */
-  protected alertLevel(device: Device): AlertLevel | null {
-    return worstLevel(device.alerts ?? []);
-  }
-
-  protected deviceName(device: Device): string {
-    return deviceName(device, this.i18n);
-  }
-
-  protected state(device: Device): DeviceState {
-    if (this.connection.lost()) {
-      return device.id === LOCAL_DEVICE.id ? 'unreachable' : 'unknown';
-    }
-    if (!device.unreachable) {
-      return 'reachable';
-    }
-    return notInUse(device) ? 'notInUse' : 'unreachable';
-  }
-
-  /** For screen readers, after the name of a device that does not answer. */
-  protected shortStatus(device: Device): string {
-    const state = this.state(device);
-    return state === 'unknown' ? this.status(device) : this.i18n.t(`devices.${state}`);
-  }
-
-  /** Whether the device answers, and since when it does not or is not in use. */
-  protected status(device: Device): string {
-    const lostSince = this.connection.lostSince();
-    if (lostSince) {
-      if (device.id !== LOCAL_DEVICE.id) {
-        return this.i18n.t('devices.unknown', { hub: hubName(this.devices.devices(), this.i18n) });
-      }
-      const since = formatDate(lostSince, 'short', this.i18n.language());
-      return this.i18n.t('devices.unreachableSince', { since });
-    }
-    if (!device.unreachable) {
-      return this.i18n.t('devices.reachable');
-    }
-    const idle = notInUse(device);
-    if (!device.unreachableSince) {
-      return this.i18n.t(idle ? 'devices.notInUse' : 'devices.unreachable');
-    }
-    const since = formatDate(device.unreachableSince, 'short', this.i18n.language());
-    return this.i18n.t(idle ? 'devices.notInUseSince' : 'devices.unreachableSince', { since });
   }
 }

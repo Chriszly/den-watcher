@@ -164,3 +164,12 @@ func TestEveryValueIsInOneGroup(t *testing.T) {
 		}
 	}
 }
+
+func TestEveryGroupTellsWhatItShows(t *testing.T) {
+	for _, g := range groups {
+		d := descriptions[g.id]
+		if d.en == "" || d.other["de"] == "" || d.other["fr"] == "" || d.other["es"] == "" {
+			t.Errorf("group %q has no description in English, German, French and Spanish", g.id)
+		}
+	}
+}

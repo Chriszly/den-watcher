@@ -182,7 +182,8 @@ func (u *UPnPReader) read(ctx context.Context) (metrics.Snapshot, error) {
 	if len(items) > 0 {
 		snapshot.Extras = []metrics.Extra{{
 			ID: "internet", Title: "Internet connection", Items: items,
-			Titles: map[string]string{"de": "Internetverbindung", "fr": "Connexion Internet", "es": "Conexión a Internet"},
+			Titles:      map[string]string{"de": "Internetverbindung", "fr": "Connexion Internet", "es": "Conexión a Internet"},
+			Description: internetDescription, Descriptions: internetDescriptions,
 		}}
 	}
 	return snapshot, nil
@@ -483,4 +484,14 @@ func xmlEscape(text string) string {
 	var escaped strings.Builder
 	_ = xml.EscapeText(&escaped, []byte(text))
 	return escaped.String()
+}
+
+// internetDescription and internetDescriptions tell what the group of the
+// internet connection shows, for every kind of router.
+const internetDescription = "The router's line to the internet: how fast it is and how long it has been connected."
+
+var internetDescriptions = map[string]string{
+	"de": "Die Leitung des Routers ins Internet: wie schnell sie ist und wie lange sie schon verbunden ist.",
+	"fr": "La ligne du routeur vers Internet : son débit et depuis combien de temps elle est connectée.",
+	"es": "La línea del router a Internet: su velocidad y cuánto tiempo lleva conectada.", //nolint:misspell // Spanish
 }

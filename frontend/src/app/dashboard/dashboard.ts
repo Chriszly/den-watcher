@@ -21,6 +21,7 @@ import {
   TimeZone,
 } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
+import { CardInfo } from './card-info';
 import { FitLabels } from './fit-labels';
 
 /** How often the dashboard asks the backend for new values. */
@@ -82,7 +83,7 @@ type Problem = 'backend' | 'device';
 /** Shows the current usage of the picked device and refreshes it every few seconds. */
 @Component({
   selector: 'app-dashboard',
-  imports: [BytesPipe, DecimalPipe, EvenColumns, FitLabels, NgTemplateOutlet, ScrollRows],
+  imports: [BytesPipe, CardInfo, DecimalPipe, EvenColumns, FitLabels, NgTemplateOutlet, ScrollRows],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -210,6 +211,14 @@ export class Dashboard {
       .filter((n) => total(n) > 0)
       .sort((a, b) => total(b) - total(a) || a.name.localeCompare(b.name));
     return { shown, idle: s.network.length - shown.length };
+  }
+
+  /** What the uptime card shows: the uptime, and how much the device answered or was in use if it tells. */
+  protected uptimeInfo(a: Availability | null): string {
+    const info = this.i18n.t('dashboard.info.uptime');
+    return a
+      ? `${info} ${this.i18n.t(a.kind === 'pc' ? 'dashboard.info.usage' : 'dashboard.info.availability')}`
+      : info;
   }
 
   /** A title or label of an extra in the page's language. */

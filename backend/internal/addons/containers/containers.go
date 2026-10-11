@@ -450,14 +450,26 @@ func dockerName(path string) string {
 // their memory, each value under the container's itemID.
 func Extras(containers []Container) []metrics.Extra {
 	cpu := metrics.Extra{
-		ID:     "containers-cpu",
-		Title:  "Containers: CPU",
-		Titles: map[string]string{"de": "Container: CPU", "fr": "Conteneurs : processeur", "es": "Contenedores: CPU"}, //nolint:misspell // French
+		ID:          "containers-cpu",
+		Title:       "Containers: CPU",
+		Titles:      map[string]string{"de": "Container: CPU", "fr": "Conteneurs : processeur", "es": "Contenedores: CPU"}, //nolint:misspell // French
+		Description: "How much CPU each running container uses.",
+		Descriptions: map[string]string{
+			"de": "Wie viel CPU jeder laufende Container nutzt.",
+			"fr": "L'utilisation du processeur par chaque conteneur en cours d'exécution.",
+			"es": "Cuánta CPU usa cada contenedor en ejecución.",
+		},
 	}
 	memory := metrics.Extra{
-		ID:     "containers-memory",
-		Title:  "Containers: memory",
-		Titles: map[string]string{"de": "Container: Arbeitsspeicher", "fr": "Conteneurs : mémoire", "es": "Contenedores: memoria"}, //nolint:misspell // French
+		ID:          "containers-memory",
+		Title:       "Containers: memory",
+		Titles:      map[string]string{"de": "Container: Arbeitsspeicher", "fr": "Conteneurs : mémoire", "es": "Contenedores: memoria"}, //nolint:misspell // French
+		Description: "How much memory each running container uses.",
+		Descriptions: map[string]string{
+			"de": "Wie viel Arbeitsspeicher jeder laufende Container belegt.",
+			"fr": "La mémoire utilisée par chaque conteneur en cours d'exécution.",
+			"es": "Cuánta memoria usa cada contenedor en ejecución.",
+		},
 	}
 	used := map[string]bool{}
 	for _, c := range containers {

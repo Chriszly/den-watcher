@@ -235,4 +235,29 @@ export const fr: Messages = {
   'format.dayMonthYear': 'd MMM y',
   'format.dateTimeYear': 'EEE d MMM y, HH:mm',
   'format.dateTimeSecondsYear': 'EEE d MMM y, HH:mm:ss',
+  'dashboard.cardInfo': 'À propos de cette carte',
+  'dashboard.info.cpu':
+    "L'occupation du processeur, au total et par cœur, avec sa fréquence, la charge moyenne et les processus.",
+  'dashboard.info.memory':
+    "La part de la mémoire vive (RAM) utilisée et celle encore disponible, ainsi que l'espace d'échange sur le disque.",
+  'dashboard.info.disks':
+    "Le remplissage de chaque disque ou partition, et la vitesse de lecture et d'écriture actuelle.",
+  'dashboard.info.network':
+    "La vitesse de réception et d'envoi actuelle de chaque interface réseau, la plus utilisée en premier, avec ses adresses et son débit de liaison.",
+  'dashboard.info.gpu':
+    "L'occupation de chaque carte graphique, avec sa mémoire et sa température.",
+  'dashboard.info.temperature':
+    'Les températures indiquées par les capteurs de la machine, la plus élevée en premier.',
+  'dashboard.info.fans': 'La vitesse de chaque ventilateur, en tours par minute.',
+  'dashboard.info.battery':
+    "La charge de la batterie, si la machine est branchée, la puissance de charge ou de décharge, et la part de sa capacité d'origine que la batterie conserve.",
+  'dashboard.info.power':
+    "Si le Raspberry Pi a manqué d'alimentation ou a trop chauffé et s'est ralenti, maintenant ou depuis son démarrage.",
+  'dashboard.info.time': "L'heure de l'horloge de l'appareil, dans son fuseau horaire.",
+  'dashboard.info.uptime':
+    "Depuis combien de temps l'appareil fonctionne depuis son dernier démarrage, et la version d'Usage Control qu'il utilise.",
+  'dashboard.info.availability':
+    "La part du temps depuis son ajout pendant laquelle l'appareil a répondu ; les périodes sans réponse sont des pannes.",
+  'dashboard.info.usage':
+    "La part du temps depuis son ajout pendant laquelle le PC ou le portable était allumé ; éteint, il n'était simplement pas utilisé.",
 };

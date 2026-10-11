@@ -32,7 +32,13 @@ func connectedExtra(clients []client) metrics.Extra {
 	})
 	extra := metrics.Extra{
 		ID: "connected", Title: "Online now",
-		Titles: map[string]string{"de": "Gerade online", "fr": "En ligne maintenant", "es": "En línea ahora"},
+		Titles:      map[string]string{"de": "Gerade online", "fr": "En ligne maintenant", "es": "En línea ahora"},
+		Description: "The devices online in the router's network right now, each with how it is connected.",
+		Descriptions: map[string]string{
+			"de": "Die Geräte, die gerade im Netz des Routers online sind, jeweils mit ihrer Verbindungsart.",
+			"fr": "Les appareils en ligne sur le réseau du routeur en ce moment, chacun avec son type de connexion.",
+			"es": "Los dispositivos en línea en la red del router ahora mismo, cada uno con su tipo de conexión.",
+		},
 	}
 	for i, c := range clients {
 		text, texts := c.connection()

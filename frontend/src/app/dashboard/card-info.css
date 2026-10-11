@@ -1,0 +1,53 @@
+/* In the title's line; the text is placed by the card, which is the nearest positioned box. */
+:host {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.info {
+  display: flex;
+  padding: 1px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--mat-sys-on-surface-variant);
+  cursor: pointer;
+}
+
+.info:hover {
+  color: var(--mat-sys-on-surface);
+}
+
+.info:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 1px;
+}
+
+/* As Material's rich tooltip: across the card, just under the title, over the values. */
+.tip {
+  position: absolute;
+  z-index: 2;
+  top: 0.75rem;
+  right: 0.5rem;
+  left: 0.5rem;
+  display: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-highest);
+  box-shadow: var(--mat-sys-level2);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  white-space: normal;
+}
+
+.tip.open,
+.info:focus-visible + .tip {
+  display: block;
+}
+
+/* Only where the pointer can hover: on touch a tap would leave the hover behind after the text closed. */
+@media (hover: hover) {
+  .info:hover + .tip {
+    display: block;
+  }
+}

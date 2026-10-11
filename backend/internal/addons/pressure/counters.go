@@ -47,9 +47,15 @@ var (
 // group returns the group of extras the add-on reports, without items.
 func group() metrics.Extra {
 	return metrics.Extra{
-		ID:     "pressure",
-		Title:  "Pressure",
-		Titles: map[string]string{"de": "Engpässe", "fr": "Saturation", "es": "Saturación"},
+		ID:          "pressure",
+		Title:       "Pressure",
+		Titles:      map[string]string{"de": "Engpässe", "fr": "Saturation", "es": "Saturación"},
+		Description: "Whether the machine runs short of CPU, memory or disks: how much tasks had to wait for them. Values above zero mean that part holds the machine back.",
+		Descriptions: map[string]string{
+			"de": "Ob dem Gerät CPU, Arbeitsspeicher oder Datenträger knapp werden: wie viel Prozesse auf sie warten mussten. Werte über null heißen, dass dieser Teil das Gerät bremst.",
+			"fr": "Si la machine manque de processeur, de mémoire ou de disque : combien les tâches ont dû les attendre. Au-dessus de zéro, cette partie freine la machine.",
+			"es": "Si al equipo le falta CPU, memoria o disco: cuánto tuvieron que esperarlos las tareas. Por encima de cero, esa parte frena el equipo.", //nolint:misspell // Spanish
+		},
 	}
 }
 

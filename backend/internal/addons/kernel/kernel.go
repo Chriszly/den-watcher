@@ -60,6 +60,45 @@ var groups = []struct {
 	{"kernel-tcp", "Kernel: TCP", map[string]string{"de": "Kernel: TCP", "fr": "Noyau : TCP", "es": "Núcleo: TCP"}, []string{tcpEstablished, retransmissions}},
 }
 
+// descriptions tell what each group shows, by its id.
+var descriptions = map[string]struct {
+	en    string
+	other map[string]string
+}{
+	"kernel": {
+		"How often per second the kernel switches between threads and handles interrupts.",
+		map[string]string{
+			"de": "Wie oft pro Sekunde der Kernel zwischen Threads wechselt und Interrupts bearbeitet.",
+			"fr": "Combien de fois par seconde le noyau change de thread et traite des interruptions.",
+			"es": "Cuántas veces por segundo el núcleo cambia de hilo y atiende interrupciones.",
+		},
+	},
+	"kernel-processes": {
+		"How many new processes and threads start per second.",
+		map[string]string{
+			"de": "Wie viele neue Prozesse und Threads pro Sekunde starten.",
+			"fr": "Le nombre de nouveaux processus et threads lancés par seconde.",
+			"es": "Cuántos procesos e hilos nuevos se inician por segundo.",
+		},
+	},
+	"kernel-in-use": {
+		"How many files, handles and sockets are open on the machine.",
+		map[string]string{
+			"de": "Wie viele Dateien, Handles und Sockets auf dem Gerät offen sind.",
+			"fr": "Le nombre de fichiers, handles et sockets ouverts sur la machine.",
+			"es": "Cuántos archivos, handles y sockets hay abiertos en el equipo.",
+		},
+	},
+	"kernel-tcp": {
+		"The TCP connections that are open, and how many packets per second had to be sent again. Many retransmissions point to a bad network.",
+		map[string]string{
+			"de": "Die offenen TCP-Verbindungen und wie viele Pakete pro Sekunde erneut gesendet werden mussten. Viele Neuübertragungen deuten auf ein schlechtes Netz hin.",
+			"fr": "Les connexions TCP ouvertes et le nombre de paquets renvoyés par seconde. Beaucoup de retransmissions signalent un mauvais réseau.",
+			"es": "Las conexiones TCP abiertas y cuántos paquetes por segundo hubo que reenviar. Muchas retransmisiones indican una mala red.",
+		},
+	},
+}
+
 // rates are the values shown per second, from the change of a counter.
 var rates = map[string]bool{contextSwitches: true, interrupts: true, newProcesses: true, retransmissions: true}
 
@@ -139,7 +178,10 @@ func (r *Reader) Read(now time.Time) map[string]float64 {
 func Extras(values map[string]float64) []metrics.Extra {
 	var extras []metrics.Extra
 	for _, g := range groups {
-		group := metrics.Extra{ID: g.id, Title: g.title, Titles: g.titles}
+		group := metrics.Extra{
+			ID: g.id, Title: g.title, Titles: g.titles,
+			Description: descriptions[g.id].en, Descriptions: descriptions[g.id].other,
+		}
 		for _, id := range g.values {
 			value, ok := values[id]
 			if !ok {

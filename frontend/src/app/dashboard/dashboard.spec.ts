@@ -69,8 +69,15 @@ describe('Dashboard', () => {
     fixture.detectChanges();
   }
 
+  /** The text of an element as the page shows it, without the texts behind the (i) of the cards. */
+  function shown(element: Element): string {
+    const copy = element.cloneNode(true) as Element;
+    copy.querySelectorAll('.tip').forEach((tip) => tip.remove());
+    return copy.textContent ?? '';
+  }
+
   function text(): string {
-    return (fixture.nativeElement as HTMLElement).textContent ?? '';
+    return shown(fixture.nativeElement);
   }
 
   it('shows the values from the backend', () => {
@@ -243,7 +250,7 @@ describe('Dashboard', () => {
   function rows(title: string): string[] {
     const card = fixture.debugElement
       .queryAll(By.css('.card'))
-      .find((c) => c.query(By.css('h2')).nativeElement.textContent.trim() === title)!;
+      .find((c) => shown(c.query(By.css('h2')).nativeElement).trim() === title)!;
     return card
       .queryAll(By.css('.sensor, .section'))
       .map((row) => (row.nativeElement as HTMLElement).textContent!.trim());
@@ -348,6 +355,42 @@ describe('Dashboard', () => {
     expect(values.find((v) => v.textContent === '1')!.classList).not.toContain('label');
   });
 
+  it('tells at the (i) of every card what it shows, and of an extra what the device tells', () => {
+    respond({
+      ...snapshot,
+      extras: [
+        {
+          id: 'ports',
+          title: 'Listening ports',
+          description: 'The ports programs listen on.',
+          descriptions: { de: 'Die Ports, auf denen Programme lauschen.' },
+          items: [{ id: 'count', label: 'Listening ports', unit: 'number', value: 4 }],
+        },
+        {
+          id: 'newer',
+          title: 'Newer',
+          items: [{ id: 'a', label: 'A', unit: 'number', value: 1 }],
+        },
+      ],
+    });
+
+    const tip = (title: string) =>
+      fixture.debugElement
+        .queryAll(By.css('.card'))
+        .find((c) => shown(c.query(By.css('h2')).nativeElement).trim() === title)!
+        .query(By.css('.tip'))?.nativeElement.textContent;
+    expect(tip('CPU')).toContain('How busy the processor is');
+    expect(tip('Temperature')).toContain('hottest first');
+    expect(tip('Listening ports')).toBe('The ports programs listen on.');
+    expect(tip('Newer')).toBeUndefined();
+    expect(tip('Uptime')).toContain('How long the device has been running');
+
+    TestBed.inject(I18n).use('de');
+    fixture.detectChanges();
+    expect(tip('CPU')).toContain('Wie ausgelastet der Prozessor ist');
+    localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+  });
+
   it('fits the names on every card that has names, not only the temperatures', () => {
     respond({
       ...snapshot,
@@ -365,7 +408,7 @@ describe('Dashboard', () => {
     const named = fixture.debugElement
       .queryAll(By.css('.card'))
       .filter((card) => card.query(By.css('.label')));
-    expect(named.map((card) => card.query(By.css('h2')).nativeElement.textContent)).toEqual([
+    expect(named.map((card) => shown(card.query(By.css('h2')).nativeElement).trim())).toEqual([
       'Disks',
       'Network',
       'GPU',
@@ -502,7 +545,9 @@ describe('Dashboard', () => {
   it('leaves out the GPU card when there is no GPU, or the device runs an older version', () => {
     respond({ ...snapshot, gpus: [] });
     const titles = () =>
-      [...(fixture.nativeElement as HTMLElement).querySelectorAll('h2')].map((h) => h.textContent);
+      [...(fixture.nativeElement as HTMLElement).querySelectorAll('h2')].map((h) =>
+        shown(h).trim(),
+      );
 
     expect(titles()).not.toContain('GPU');
 
@@ -700,7 +745,7 @@ describe('Dashboard', () => {
 
     const titles = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('.card h2'),
-      (h) => h.textContent?.trim(),
+      (h) => shown(h).trim(),
     );
     expect(titles).toEqual(['Network', 'Availability']);
     expect(text()).toContain('WAN');
@@ -807,14 +852,14 @@ describe('Dashboard', () => {
 
     const card = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.card'),
-    ).find((c) => c.querySelector('h2')?.textContent?.trim() === 'Uptime');
+    ).find((c) => shown(c.querySelector('h2')!).trim() === 'Uptime');
     expect(card?.textContent).toContain('3 d 4 h');
     expect(card?.querySelector('.availability')?.textContent).toContain('Availability');
     expect(card?.querySelector('.availability')?.textContent).toContain('99 %');
     expect(card?.textContent).toContain('1 outage, the last on');
     const titles = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('.card h2'),
-      (h) => h.textContent?.trim(),
+      (h) => shown(h).trim(),
     );
     expect(titles).not.toContain('Availability');
   });

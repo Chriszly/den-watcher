@@ -79,14 +79,26 @@ var warnedTooMany atomic.Bool
 // their history is kept under.
 func Extras(disks []Disk) []metrics.Extra {
 	checks := metrics.Extra{
-		ID:     "smart-checks",
-		Title:  "SMART checks",
-		Titles: map[string]string{"de": "SMART-Prüfungen", "fr": "Contrôles SMART", "es": "Comprobaciones SMART"},
+		ID:          "smart-checks",
+		Title:       "SMART checks",
+		Titles:      map[string]string{"de": "SMART-Prüfungen", "fr": "Contrôles SMART", "es": "Comprobaciones SMART"},
+		Description: "Whether each disk passes its own SMART self-assessment. A failed check means the disk expects to fail soon.",
+		Descriptions: map[string]string{
+			"de": "Ob jedes Laufwerk seine eigene SMART-Prüfung besteht. Eine nicht bestandene Prüfung heißt, dass das Laufwerk bald auszufallen droht.",
+			"fr": "Si chaque disque réussit son propre contrôle SMART. Un contrôle échoué signifie que le disque risque de tomber en panne bientôt.",
+			"es": "Si cada disco supera su propia comprobación SMART. Una comprobación fallida significa que el disco podría fallar pronto.",
+		},
 	}
 	group := metrics.Extra{
-		ID:     "smart",
-		Title:  "Disk health",
-		Titles: map[string]string{"de": "Laufwerkszustand", "fr": "Santé des disques", "es": "Salud de los discos"},
+		ID:          "smart",
+		Title:       "Disk health",
+		Titles:      map[string]string{"de": "Laufwerkszustand", "fr": "Santé des disques", "es": "Salud de los discos"},
+		Description: "What each disk reports about itself: its temperature, hours in use, replaced sectors, media errors and how worn an SSD is. Rising error counts are an early warning.",
+		Descriptions: map[string]string{
+			"de": "Was jedes Laufwerk über sich meldet: Temperatur, Betriebsstunden, ersetzte Sektoren, Medienfehler und den Verschleiß einer SSD. Steigende Fehlerzahlen sind eine frühe Warnung.",
+			"fr": "Ce que chaque disque indique sur lui-même : sa température, ses heures de fonctionnement, ses secteurs réalloués, ses erreurs de support et l'usure d'un SSD. Des erreurs en hausse sont un signe avant-coureur.",
+			"es": "Lo que cada disco informa de sí mismo: su temperatura, horas de funcionamiento, sectores reasignados, errores de medio y el desgaste de un SSD. Si los errores aumentan, es una señal de alerta.",
+		},
 	}
 	used := map[string]bool{}
 	for _, disk := range disks {

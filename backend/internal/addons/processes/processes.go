@@ -169,9 +169,15 @@ func cpuGroup(processes []Process, previous map[key]uint64, since, total uint64)
 		}
 	}
 	return group(metrics.Extra{
-		ID:     "processes-cpu",
-		Title:  "Top processes by CPU",
-		Titles: map[string]string{"de": "Prozesse mit der meisten CPU-Last", "fr": "Processus les plus gourmands en CPU", "es": "Procesos con más uso de CPU"},
+		ID:          "processes-cpu",
+		Title:       "Top processes by CPU",
+		Titles:      map[string]string{"de": "Prozesse mit der meisten CPU-Last", "fr": "Processus les plus gourmands en CPU", "es": "Procesos con más uso de CPU"},
+		Description: "The processes that use the most CPU right now.",
+		Descriptions: map[string]string{
+			"de": "Die Prozesse, die gerade am meisten CPU nutzen.",
+			"fr": "Les processus qui utilisent le plus le processeur en ce moment.",
+			"es": "Los procesos que más CPU usan ahora mismo.",
+		},
 	}, busy, metrics.UnitPercent)
 }
 
@@ -184,9 +190,15 @@ func memoryGroup(processes []Process) metrics.Extra {
 		}
 	}
 	return group(metrics.Extra{
-		ID:     "processes-memory",
-		Title:  "Top processes by memory",
-		Titles: map[string]string{"de": "Prozesse mit dem meisten Arbeitsspeicher", "fr": "Processus les plus gourmands en mémoire", "es": "Procesos con más uso de memoria"},
+		ID:          "processes-memory",
+		Title:       "Top processes by memory",
+		Titles:      map[string]string{"de": "Prozesse mit dem meisten Arbeitsspeicher", "fr": "Processus les plus gourmands en mémoire", "es": "Procesos con más uso de memoria"},
+		Description: "The processes that use the most memory right now.",
+		Descriptions: map[string]string{
+			"de": "Die Prozesse, die gerade am meisten Arbeitsspeicher belegen.",
+			"fr": "Les processus qui utilisent le plus de mémoire en ce moment.",
+			"es": "Los procesos que más memoria usan ahora mismo.",
+		},
 	}, large, metrics.UnitBytes)
 }
 

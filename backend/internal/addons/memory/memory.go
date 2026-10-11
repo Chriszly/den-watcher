@@ -162,12 +162,62 @@ var groups = []struct {
 	},
 }
 
+// descriptions tell what each group shows, by its id.
+var descriptions = map[string]struct {
+	en    string
+	other map[string]string
+}{
+	"memory": {
+		"What the working memory holds besides programs: kernel caches and pools, shared memory and page tables.",
+		map[string]string{
+			"de": "Was der Arbeitsspeicher außer Programmen enthält: Kernel-Caches und -Pools, gemeinsamen Speicher und Seitentabellen.",
+			"fr": "Ce que la mémoire contient en dehors des programmes : caches et pools du noyau, mémoire partagée et tables de pages.",
+			"es": "Lo que contiene la memoria además de los programas: cachés y bloques del núcleo, memoria compartida y tablas de páginas.",
+		},
+	},
+	"memory-committed": {
+		"How much memory programs have been promised, which can be more than there is.",
+		map[string]string{
+			"de": "Wie viel Speicher den Programmen zugesagt ist; das kann mehr sein, als vorhanden ist.",
+			"fr": "La mémoire promise aux programmes, qui peut dépasser celle disponible.",
+			"es": "Cuánta memoria se ha prometido a los programas, que puede ser más de la que hay.",
+		},
+	},
+	"memory-writeback": {
+		"Changed data in memory that is not written to disk yet, and what is being written now.",
+		map[string]string{
+			"de": "Geänderte Daten im Arbeitsspeicher, die noch nicht auf den Datenträger geschrieben sind, und was gerade geschrieben wird.",
+			"fr": "Les données modifiées en mémoire pas encore écrites sur le disque, et celles en cours d'écriture.",
+			"es": "Los datos modificados en memoria que aún no se han escrito en el disco, y los que se están escribiendo.",
+		},
+	},
+	"memory-faults": {
+		"How often per second programs touch memory that is not mapped for them yet. Most are handled without the disk.",
+		map[string]string{
+			"de": "Wie oft pro Sekunde Programme auf Speicher zugreifen, der ihnen noch nicht zugeordnet ist. Die meisten werden ohne Datenträger erledigt.",
+			"fr": "Combien de fois par seconde les programmes accèdent à de la mémoire qui ne leur est pas encore attribuée. La plupart sont traités sans le disque.",
+			"es": "Cuántas veces por segundo los programas acceden a memoria que aún no tienen asignada. La mayoría se resuelven sin el disco.",
+		},
+	},
+	"memory-disk": {
+		"How much memory has to be read from or written to disk per second. A lot of it means the machine is short of memory.",
+		map[string]string{
+			"de": "Wie viel Speicher pro Sekunde vom Datenträger gelesen oder dorthin geschrieben werden muss. Viel davon heißt, dass dem Gerät Arbeitsspeicher fehlt.",
+			"fr": "La quantité de mémoire lue ou écrite sur le disque par seconde. Beaucoup signifie que la machine manque de mémoire.",
+			"es": "Cuánta memoria hay que leer del disco o escribir en él por segundo. Mucha indica que al equipo le falta memoria.",
+		},
+	},
+}
+
 // grouped returns the groups of extras holding items, in their order,
 // leaving out groups without items.
 func grouped(items []metrics.ExtraItem) []metrics.Extra {
 	var extras []metrics.Extra
 	for _, g := range groups {
-		group := metrics.Extra{ID: g.id, Title: g.title, Titles: g.titles}
+		group := metrics.Extra{
+			ID: g.id, Title: g.title, Titles: g.titles,
+			Description: descriptions[g.id].en, Descriptions: descriptions[g.id].other,
+		}
 		for _, item := range items {
 			if slices.Contains(g.ids, item.ID) {
 				group.Items = append(group.Items, item)

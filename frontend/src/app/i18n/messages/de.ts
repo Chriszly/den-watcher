@@ -236,4 +236,29 @@ export const de: Messages = {
   'format.dayMonthYear': 'd. MMM y',
   'format.dateTimeYear': 'EEE d. MMM y, HH:mm',
   'format.dateTimeSecondsYear': 'EEE d. MMM y, HH:mm:ss',
+  'dashboard.cardInfo': 'Über diese Karte',
+  'dashboard.info.cpu':
+    'Wie ausgelastet der Prozessor ist: insgesamt und je Kern, mit Taktrate, durchschnittlicher Last und den Prozessen.',
+  'dashboard.info.memory':
+    'Wie viel Arbeitsspeicher (RAM) belegt und wie viel noch verfügbar ist, und der Auslagerungsspeicher auf dem Datenträger.',
+  'dashboard.info.disks':
+    'Wie voll jedes Laufwerk oder jede Partition ist und wie schnell gerade gelesen und geschrieben wird.',
+  'dashboard.info.network':
+    'Wie schnell jede Netzwerkschnittstelle gerade empfängt und sendet, die meistgenutzte zuerst, mit ihren Adressen und ihrer Verbindungsgeschwindigkeit.',
+  'dashboard.info.gpu':
+    'Wie ausgelastet jede Grafikkarte ist, mit ihrem Speicher und ihrer Temperatur.',
+  'dashboard.info.temperature':
+    'Die Temperaturen, die die Sensoren des Geräts melden, die höchste zuerst.',
+  'dashboard.info.fans': 'Wie schnell sich jeder Lüfter dreht, in Umdrehungen pro Minute.',
+  'dashboard.info.battery':
+    'Wie voll der Akku ist, ob das Gerät am Netz hängt, mit welcher Leistung er lädt oder entlädt und wie viel seiner ursprünglichen Kapazität der Akku noch hat.',
+  'dashboard.info.power':
+    'Ob der Raspberry Pi zu wenig Strom bekam oder zu heiß wurde und sich deshalb verlangsamt hat, jetzt oder seit dem Start.',
+  'dashboard.info.time': 'Die Uhrzeit nach der eigenen Uhr des Geräts, in seiner Zeitzone.',
+  'dashboard.info.uptime':
+    'Wie lange das Gerät seit dem letzten Start läuft, und die Version von Usage Control darauf.',
+  'dashboard.info.availability':
+    'Wie viel der Zeit seit dem Hinzufügen das Gerät geantwortet hat; die Zeiten ohne Antwort sind Ausfälle.',
+  'dashboard.info.usage':
+    'Wie viel der Zeit seit dem Hinzufügen der PC oder Laptop eingeschaltet war; ausgeschaltet war er nur nicht in Gebrauch.',
 };

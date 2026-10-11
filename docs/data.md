@@ -97,6 +97,7 @@ Each extra is a group shown as one card:
 | --- | --- |
 | `id` | the group's name, such as `pressure`: lowercase letters, digits, `-` and `_`, up to 40 characters |
 | `title`, `titles` | the card's title in English, and in other languages by language code (`de`, `fr`, `es`, `en-US`) |
+| `description`, `descriptions` | optional: a sentence or two on what the card shows, in English and in other languages (like `title` and `titles`), shown at the (i) next to the title; cut to 300 characters |
 | `items` | the values: `id` (as above), `label` and `labels` (like `title` and `titles`), `unit`, then `value`, or `text` for the unit `text` with `texts` for its translations (like `titles`), `history: true` to keep its history, and `section` when the group holds the values of several things, such as disks: the page shows the values of one section under it, each label without the section and `: ` before it |
 
 Units: `percent`, `celsius`, `bytes`, `bytesPerSecond`, `watts`, `milliseconds`, `perSecond`, `number` and `text`. A unit the hub does not know is shown as a plain number.

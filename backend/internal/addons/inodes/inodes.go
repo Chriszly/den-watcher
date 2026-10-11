@@ -397,9 +397,15 @@ func Extras(usages []Usage) []metrics.Extra {
 		return nil
 	}
 	group := metrics.Extra{
-		ID:     "inodes",
-		Title:  "Inodes (files) in use",
-		Titles: map[string]string{"de": "Belegte Inodes (Dateien)", "fr": "Inodes (fichiers) utilisés", "es": "Inodos (archivos) en uso"},
+		ID:          "inodes",
+		Title:       "Inodes (files) in use",
+		Titles:      map[string]string{"de": "Belegte Inodes (Dateien)", "fr": "Inodes (fichiers) utilisés", "es": "Inodos (archivos) en uso"},
+		Description: "How many of the inodes of each file system are in use. Every file and folder takes one, so a file system can be full while space is still free.",
+		Descriptions: map[string]string{
+			"de": "Wie viele Inodes jedes Dateisystems belegt sind. Jede Datei und jeder Ordner braucht einen, sodass ein Dateisystem voll sein kann, obwohl noch Platz frei ist.",
+			"fr": "La part des inodes de chaque système de fichiers utilisée. Chaque fichier et dossier en prend un : un système de fichiers peut être plein alors qu'il reste de la place.",
+			"es": "Cuántos inodos de cada sistema de archivos están en uso. Cada archivo y carpeta ocupa uno, así que un sistema de archivos puede llenarse aunque quede espacio.",
+		},
 	}
 	for _, u := range usages {
 		percent := u.UsedPercent

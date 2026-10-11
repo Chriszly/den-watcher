@@ -7,7 +7,10 @@
 <ng-template #uptimeCard let-s let-a="availability">
   <div class="card">
     @if (s) {
-      <h2>{{ i18n.t('dashboard.uptime') }}</h2>
+      <h2>
+        {{ i18n.t('dashboard.uptime') }}
+        <app-card-info [text]="uptimeInfo(a)" />
+      </h2>
       <p class="value">{{ formatUptime(s.uptimeSeconds) }}</p>
       @if (s.version) {
         <p class="detail">{{ i18n.t('dashboard.version', { version: s.version }) }}</p>
@@ -20,7 +23,14 @@
           ><span>{{ availablePercent(a) | number: '1.0-2' : i18n.language() }} %</span>
         </p>
       } @else {
-        <h2>{{ i18n.t(a.kind === 'pc' ? 'dashboard.usage' : 'dashboard.availability') }}</h2>
+        <h2>
+          {{ i18n.t(a.kind === 'pc' ? 'dashboard.usage' : 'dashboard.availability') }}
+          <app-card-info
+            [text]="
+              i18n.t(a.kind === 'pc' ? 'dashboard.info.usage' : 'dashboard.info.availability')
+            "
+          />
+        </h2>
         <p class="value">{{ availablePercent(a) | number: '1.0-2' : i18n.language() }} %</p>
       }
       <p class="detail">
@@ -89,7 +99,10 @@
   <div class="cards" appEvenColumns [class.stale]="connection.lost()">
     @if (!isRouter() || s.cpu.cores > 0) {
       <div class="card">
-        <h2>{{ i18n.t('dashboard.cpu') }}</h2>
+        <h2>
+          {{ i18n.t('dashboard.cpu') }}
+          <app-card-info [text]="i18n.t('dashboard.info.cpu')" />
+        </h2>
         <p class="value">{{ s.cpu.usagePercent | number: '1.0-1' : i18n.language() }} %</p>
         <progress
           max="100"
@@ -153,7 +166,10 @@
 
     @if (!isRouter() || s.memory.totalBytes > 0) {
       <div class="card">
-        <h2>{{ i18n.t('dashboard.memory') }}</h2>
+        <h2>
+          {{ i18n.t('dashboard.memory') }}
+          <app-card-info [text]="i18n.t('dashboard.info.memory')" />
+        </h2>
         <p class="value">{{ s.memory.usedPercent | number: '1.0-1' : i18n.language() }} %</p>
         <progress
           max="100"
@@ -209,7 +225,10 @@
 
     @if (!isRouter() || s.disks.length > 0) {
       <div class="card" [appFitLabels]="s.disks">
-        <h2>{{ i18n.t('dashboard.disks') }}</h2>
+        <h2>
+          {{ i18n.t('dashboard.disks') }}
+          <app-card-info [text]="i18n.t('dashboard.info.disks')" />
+        </h2>
         <app-scroll-rows>
           @for (d of s.disks; track d.path) {
             <div class="disk">
@@ -271,7 +290,10 @@
 
     @let network = activeInterfaces(s);
     <div class="card" [appFitLabels]="network.shown">
-      <h2>{{ i18n.t('dashboard.network') }}</h2>
+      <h2>
+        {{ i18n.t('dashboard.network') }}
+        <app-card-info [text]="i18n.t('dashboard.info.network')" />
+      </h2>
       <app-scroll-rows>
         @for (n of network.shown; track n.name) {
           <div class="interface">
@@ -303,7 +325,10 @@
 
     @if (s.gpus?.length) {
       <div class="card" [appFitLabels]="s.gpus">
-        <h2>{{ i18n.t('dashboard.gpu') }}</h2>
+        <h2>
+          {{ i18n.t('dashboard.gpu') }}
+          <app-card-info [text]="i18n.t('dashboard.info.gpu')" />
+        </h2>
         <app-scroll-rows>
           @for (g of s.gpus; track g.name) {
             <div class="gpu">
@@ -337,7 +362,10 @@
 
     @if (!isRouter() || s.temperatures.length > 0) {
       <div class="card" [appFitLabels]="s.temperatures">
-        <h2>{{ i18n.t('dashboard.temperature') }}</h2>
+        <h2>
+          {{ i18n.t('dashboard.temperature') }}
+          <app-card-info [text]="i18n.t('dashboard.info.temperature')" />
+        </h2>
         <app-scroll-rows>
           @for (t of hottestFirst(s.temperatures); track t.sensor) {
             <p class="sensor">
@@ -353,7 +381,10 @@
 
     @if (s.fans?.length) {
       <div class="card" [appFitLabels]="s.fans">
-        <h2>{{ i18n.t('dashboard.fans') }}</h2>
+        <h2>
+          {{ i18n.t('dashboard.fans') }}
+          <app-card-info [text]="i18n.t('dashboard.info.fans')" />
+        </h2>
         <app-scroll-rows>
           @for (f of s.fans; track f.name) {
             <p class="sensor">
@@ -367,7 +398,10 @@
 
     @if (s.battery; as b) {
       <div class="card">
-        <h2>{{ i18n.t('dashboard.battery') }}</h2>
+        <h2>
+          {{ i18n.t('dashboard.battery') }}
+          <app-card-info [text]="i18n.t('dashboard.info.battery')" />
+        </h2>
         <p class="value">{{ b.percent | number: '1.0-0' : i18n.language() }} %</p>
         <progress
           max="100"
@@ -396,7 +430,10 @@
 
     @if (s.throttling; as t) {
       <div class="card">
-        <h2>{{ i18n.t('dashboard.power') }}</h2>
+        <h2>
+          {{ i18n.t('dashboard.power') }}
+          <app-card-info [text]="i18n.t('dashboard.info.power')" />
+        </h2>
         @let earlier = earlierConditions(t);
         @if (t.now.length > 0 || earlier.length > 0) {
           <p class="value" [class.problem]="t.now.length > 0">
@@ -422,7 +459,12 @@
     <!-- Values beyond the fixed ones, which the device describes itself, so newer devices' values show too. -->
     @for (group of s.extras; track group.id) {
       <div class="card" [appFitLabels]="group.items">
-        <h2>{{ extraText(group.title, group.titles) }}</h2>
+        <h2>
+          {{ extraText(group.title, group.titles) }}
+          @if (group.description) {
+            <app-card-info [text]="extraText(group.description, group.descriptions)" />
+          }
+        </h2>
         <!-- Texts, such as the addresses of a port, can be long, so they fit like the names. -->
         <app-scroll-rows>
           @for (part of extraSections(group); track part.section) {
@@ -448,7 +490,10 @@
 
     @if (s.timeZone; as zone) {
       <div class="card">
-        <h2>{{ i18n.t('dashboard.time') }}</h2>
+        <h2>
+          {{ i18n.t('dashboard.time') }}
+          <app-card-info [text]="i18n.t('dashboard.info.time')" />
+        </h2>
         <p class="value">{{ deviceTime(s.time, zone, 'shortTime') }}</p>
         <p class="detail">{{ deviceTime(s.time, zone, 'fullDate') }} · {{ zoneLabel(zone) }}</p>
       </div>

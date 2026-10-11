@@ -236,4 +236,29 @@ export const es: Messages = {
   'format.dayMonthYear': 'd MMM y',
   'format.dateTimeYear': 'EEE d MMM y, HH:mm',
   'format.dateTimeSecondsYear': 'EEE d MMM y, HH:mm:ss',
+  'dashboard.cardInfo': 'Acerca de esta tarjeta',
+  'dashboard.info.cpu':
+    'Lo ocupado que está el procesador, en total y por núcleo, con su frecuencia, la carga media y los procesos.',
+  'dashboard.info.memory':
+    'Cuánta memoria (RAM) está en uso y cuánta queda disponible, y el espacio de intercambio en el disco.',
+  'dashboard.info.disks':
+    'Lo lleno que está cada disco o partición, y a qué velocidad se lee y escribe ahora mismo.',
+  'dashboard.info.network':
+    'A qué velocidad recibe y envía ahora cada interfaz de red, la más usada primero, con sus direcciones y la velocidad del enlace.',
+  'dashboard.info.gpu':
+    'Lo ocupada que está cada tarjeta gráfica, con su memoria y su temperatura.',
+  'dashboard.info.temperature':
+    'Las temperaturas que indican los sensores del equipo, la más alta primero.',
+  'dashboard.info.fans': 'A qué velocidad gira cada ventilador, en revoluciones por minuto.',
+  'dashboard.info.battery':
+    'Lo cargada que está la batería, si el equipo está enchufado, la potencia con la que carga o descarga y cuánta de su capacidad original conserva la batería.',
+  'dashboard.info.power':
+    'Si la Raspberry Pi recibió poca alimentación o se calentó demasiado y se ralentizó, ahora o desde que arrancó.',
+  'dashboard.info.time': 'La hora del reloj del propio dispositivo, en su zona horaria.',
+  'dashboard.info.uptime':
+    'Cuánto tiempo lleva funcionando el dispositivo desde su último arranque, y la versión de Usage Control que tiene.',
+  'dashboard.info.availability':
+    'Cuánto del tiempo desde que se añadió respondió el dispositivo; los periodos sin respuesta son caídas.',
+  'dashboard.info.usage':
+    'Cuánto del tiempo desde que se añadió estuvo encendido el PC o portátil; apagado, simplemente no estaba en uso.',
 };

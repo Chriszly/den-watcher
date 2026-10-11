@@ -244,9 +244,15 @@ func Parse(out string) []GPU {
 // history stays with the card when the indexes change at boot.
 func Extras(gpus []GPU) []metrics.Extra {
 	group := metrics.Extra{
-		ID:     "gpu",
-		Title:  "Graphics card",
-		Titles: map[string]string{"de": "Grafikkarte", "fr": "Carte graphique", "es": "Tarjeta gráfica"},
+		ID:          "gpu",
+		Title:       "Graphics card",
+		Titles:      map[string]string{"de": "Grafikkarte", "fr": "Carte graphique", "es": "Tarjeta gráfica"},
+		Description: "More of what the graphics card reports: its fan, clock speeds and how busy its video encoder and decoder are.",
+		Descriptions: map[string]string{
+			"de": "Mehr von dem, was die Grafikkarte meldet: Lüfter, Taktraten und wie ausgelastet Video-Encoder und -Decoder sind.",
+			"fr": "D'autres valeurs de la carte graphique : son ventilateur, ses fréquences et l'occupation de l'encodeur et du décodeur vidéo.",
+			"es": "Más de lo que informa la tarjeta gráfica: su ventilador, sus frecuencias y la carga del codificador y el decodificador de vídeo.",
+		},
 	}
 	for _, gpu := range gpus {
 		prefix := ""

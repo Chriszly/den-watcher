@@ -27,6 +27,9 @@ export interface Extra {
   id: string;
   title: string;
   titles?: Record<string, string>;
+  /** What the card shows, in a sentence or two, and the same in other languages. */
+  description?: string;
+  descriptions?: Record<string, string>;
   items: ExtraItem[];
 }
 

@@ -147,3 +147,16 @@ func TestCleanExtrasCutsTheSection(t *testing.T) {
 		t.Errorf("section has %d characters, want %d", len(got), MaxTextLength)
 	}
 }
+
+func TestCleanExtrasKeepsLongerDescriptions(t *testing.T) {
+	long := strings.Repeat("d", MaxDescriptionLength+5)
+	extras := []Extra{{
+		ID: "power", Title: "Power", Description: long, Descriptions: map[string]string{"de": long, "bad code": "x"},
+		Items: []ExtraItem{{ID: "a", Label: "x", Unit: UnitWatts, Value: number(1)}},
+	}}
+
+	got := CleanExtras(extras, 64)[0]
+	if len(got.Description) != MaxDescriptionLength || len(got.Descriptions["de"]) != MaxDescriptionLength || len(got.Descriptions) != 1 {
+		t.Errorf("CleanExtras() = %q %v, want the descriptions cut to %d characters", got.Description, got.Descriptions, MaxDescriptionLength)
+	}
+}

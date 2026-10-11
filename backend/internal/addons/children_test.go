@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -14,14 +15,15 @@ import (
 )
 
 // childVariable makes the test program act as an add-on den-watcher starts:
-// it writes its report, with what LOG_TO_EVENT_LOG holds, and waits to be
-// killed.
+// it writes its report, with what LOG_TO_EVENT_LOG holds and the arguments it
+// was started with, and waits to be killed.
 const childVariable = "ADDONS_TEST_CHILD"
 
 func TestMain(m *testing.M) {
 	if os.Getenv(childVariable) == "1" {
 		report := filepath.Join(os.Getenv("ADDONS_DIR"), "fake.json")
-		if err := os.WriteFile(report, []byte(os.Getenv(winservice.EventLogVariable)), 0o600); err != nil { //nolint:gosec // the test's own folder
+		got := strings.Join(append([]string{os.Getenv(winservice.EventLogVariable)}, os.Args[1:]...), " ")
+		if err := os.WriteFile(report, []byte(got), 0o600); err != nil { //nolint:gosec // the test's own folder
 			os.Exit(2)
 		}
 		time.Sleep(time.Minute)
@@ -42,27 +44,48 @@ func TestChildName(t *testing.T) {
 }
 
 func TestStartChildrenRunsTheAddOnAndRemovesItsReportWhenStopped(t *testing.T) {
+	program, dir := fakeAddOn(t)
+	stop := startChildren(dir, []string{program}, time.Minute, time.Minute)
+	assertRunsUntilStopped(t, dir, stop, "1")
+}
+
+func TestStartHostRunsTheHostAndRemovesTheReportsWhenStopped(t *testing.T) {
+	program, dir := fakeAddOn(t)
+	stop := startHost(dir, program, []string{HostArgument}, []string{"fake"}, time.Minute, time.Minute)
+	assertRunsUntilStopped(t, dir, stop, "1 "+HostArgument)
+}
+
+// fakeAddOn is a copy of the test program that acts as an add-on (see
+// childVariable), and the add-on folder it writes to.
+func fakeAddOn(t *testing.T) (program, dir string) {
+	t.Helper()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
-	program := filepath.Join(t.TempDir(), "den-watcher-fake"+filepath.Ext(exe))
+	program = filepath.Join(t.TempDir(), "den-watcher-fake"+filepath.Ext(exe))
 	copyFile(t, exe, program)
-	dir := t.TempDir()
+	dir = t.TempDir()
 	t.Setenv("ADDONS_DIR", dir)
 	t.Setenv(childVariable, "1")
+	return program, dir
+}
 
-	stop := startChildren(dir, []string{program}, time.Minute, time.Minute)
+// assertRunsUntilStopped checks the fake add-on writes want to its report in
+// dir, and that stop ends it and removes the report.
+func assertRunsUntilStopped(t *testing.T, dir string, stop func(), want string) {
+	t.Helper()
 	report := filepath.Join(dir, "fake.json")
 	var got []byte
+	var err error
 	for deadline := time.Now().Add(20 * time.Second); time.Now().Before(deadline); time.Sleep(50 * time.Millisecond) {
 		if got, err = os.ReadFile(report); err == nil && len(got) > 0 { //nolint:gosec // the test's own folder
 			break
 		}
 	}
-	if string(got) != "1" {
+	if string(got) != want {
 		stop()
-		t.Fatalf("the add-on wrote %q, want the %s=1 it was started with", got, winservice.EventLogVariable)
+		t.Fatalf("the add-on wrote %q, want %q: %s=1 and the arguments it was started with", got, want, winservice.EventLogVariable)
 	}
 
 	stopped := make(chan struct{})

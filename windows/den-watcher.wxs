@@ -11,9 +11,9 @@
 
   Add-ons are optional programs that track more, each writing to
   C:\ProgramData\Usage Control\addons, which den-watcher shows. The service
-  starts the installed add-ons as its child processes, so Task Manager shows
-  them under it, except the smart add-on, which needs more rights and is a
-  service of its own. The Add-ons page offers each one as a box, and each
+  starts the installed add-ons through the add-on host, a den-watcher.exe of
+  its own, so Task Manager groups them under it, except the smart add-on,
+  which needs more rights and is a service of its own. The Add-ons page offers each one as a box, and each
   has an install option. POWER=1 installs the power add-on,
   den-watcher-power.exe, which reads the power the energy meters Windows
   offers report (CPU, memory and laptop meters), what the battery gives
@@ -452,9 +452,9 @@
 
     <!--
       The power add-on, with POWER=1: a program the Den-Watcher service
-      starts as its child process when it finds it next to itself, so it
+      starts, through its add-on host, when it finds it next to itself, so it
       runs in the service's low-privilege account, shows under it in Task
-      Manager and stops with it (see addons.StartChildren); it writes to the
+      Manager and stops with it (see addons.StartHost); it writes to the
       add-on folder, and its warnings to the event log under its own name.
       An install from before it was a child had it as a service of its own,
       which the update removes with the old version. An update

@@ -2,7 +2,7 @@
 # checks it refuses an UPDATE_CHECK the service cannot read, installs it
 # with the website and the power, gpu, kernel, pressure, Wi-Fi, memory,
 # ports, smart and processes add-ons on, checks the service runs all but
-# the smart add-on as its child processes, checks the tray icon pauses,
+# the smart add-on as child processes of its add-on host, checks the tray icon pauses,
 # resumes and stops the service, updates it to a newer bugfix without
 # options and checks the options and the add-ons were kept, except
 # RESET_PASSWORD, and the tray icon was closed for the update, checks the
@@ -107,6 +107,12 @@ function Get-ServiceProcessId {
     (Get-CimInstance Win32_Service -Filter "Name = 'UsageControl'").ProcessId
 }
 
+# The add-on host: the den-watcher.exe the service starts the add-ons through.
+function Get-AddOnHostProcessId {
+    $service = Get-ServiceProcessId
+    @(Get-CimInstance Win32_Process -Filter "Name = 'den-watcher.exe'" | Where-Object ParentProcessId -eq $service).ProcessId
+}
+
 function Get-StatusCode([string] $Url) {
     (Invoke-WebRequest $Url -UseBasicParsing -SkipHttpErrorCheck).StatusCode
 }
@@ -144,15 +150,15 @@ function Wait-Until([scriptblock] $Condition, [string] $What) {
 }
 
 # Checks the add-on Name is installed and runs as a child process of the
-# service, which starts the add-ons it finds next to it, and not as the
-# service of its own OldService it was before.
+# service's add-on host, a den-watcher.exe that starts the add-ons it finds
+# next to it, and not as the service of its own OldService it was before.
 function Assert-ChildAddOn([string] $Name, [string] $OldService) {
     if (-not (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-$Name.exe")) { throw "The $Name add-on is not installed" }
     if (Get-Service $OldService -ErrorAction SilentlyContinue) { throw "The $Name add-on is still the service $OldService" }
     Wait-Until {
-        $service = Get-ServiceProcessId
-        @(Get-CimInstance Win32_Process -Filter "Name = 'den-watcher-$Name.exe'" | Where-Object ParentProcessId -eq $service).Count -eq 1
-    } "the $Name add-on runs as a child process of the service"
+        $hosts = @(Get-AddOnHostProcessId)
+        $hosts.Count -eq 1 -and @(Get-CimInstance Win32_Process -Filter "Name = 'den-watcher-$Name.exe'" | Where-Object ParentProcessId -eq $hosts[0]).Count -eq 1
+    } "the $Name add-on runs as a child process of the service's add-on host"
 }
 
 # Checks no add-on the service starts runs, as after the service stopped.

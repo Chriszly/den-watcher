@@ -47,11 +47,41 @@ if ! command -v systemctl > /dev/null || [[ ! -d /run/systemd/system ]]; then
   exit 1
 fi
 
+# The options and the archive's files are checked before anything changes,
+# so a mistyped option leaves an install from before the rename running.
+case "${1:-}" in
+  --uninstall | "") ;;
+  --addons=*)
+    IFS=, read -r -a picked <<< "${1#--addons=}"
+    for addon in "${picked[@]}"; do
+      if [[ $addon != cub && ! -f "$here/den-watcher-$addon.service" ]]; then
+        echo "There is no add-on called '$addon' in this archive." >&2
+        exit 1
+      fi
+    done
+    ;;
+  *)
+    echo "Unknown option $1. Use --addons=<names>, --uninstall or --uninstall --purge." >&2
+    exit 1
+    ;;
+esac
+if [[ "${1:-}" != --uninstall ]]; then
+  for file in den-watcher den-watcher.service den-watcher.env.example; do
+    if [[ ! -f "$here/$file" ]]; then
+      echo "$here/$file is missing; run install.sh from the unpacked release archive." >&2
+      exit 1
+    fi
+  done
+fi
+
 # Moves an install from before the rename (usage-control, 2.0.7a and older)
 # to the new names, once: its settings, router password, settings made with
 # systemctl edit and history move along, and its add-on services are taken
-# over as the den-watcher ones, which the install below then replaces.
-if [[ -e /etc/systemd/system/usage-control.service || -e /usr/local/bin/usage-control ]]; then
+# over as the den-watcher ones, which the install below then replaces. An
+# install removed with --uninstall left its settings and history, which move
+# too.
+if [[ -e /etc/systemd/system/usage-control.service || -e /usr/local/bin/usage-control || -e /etc/usage-control.env ]] ||
+  [[ (-d /var/lib/private/usage-control || -d /var/lib/usage-control) && ! -e /var/lib/private/den-watcher && ! -e /var/lib/den-watcher ]]; then
   echo "Moving usage-control to its new name, den-watcher, with its settings, add-ons and history."
   for old in /etc/systemd/system/usage-control*.service; do
     if [[ -f "$old" ]]; then
@@ -78,6 +108,8 @@ if [[ -e /etc/systemd/system/usage-control.service || -e /usr/local/bin/usage-co
     rm -f /var/lib/usage-control
   elif [[ -d /var/lib/usage-control && ! -L /var/lib/usage-control && ! -e /var/lib/den-watcher ]]; then
     mv /var/lib/usage-control /var/lib/den-watcher
+  elif [[ -d /var/lib/private/usage-control || -d /var/lib/usage-control ]]; then
+    echo "den-watcher already has a history, so the one from usage-control stays in /var/lib/private/usage-control (or /var/lib/usage-control); delete it once it is no longer needed." >&2
   fi
   rm -f /usr/local/bin/usage-control /usr/local/bin/usage-control-* /etc/systemd/system/usage-control.service
   rm -rf /run/usage-control-addons
@@ -145,9 +177,6 @@ if [[ "${1:-}" == --addons=* ]]; then
     fi
     wanted[$addon]=1
   done
-elif [[ -n "${1:-}" ]]; then
-  echo "Unknown option $1. Use --addons=<names>, --uninstall or --uninstall --purge." >&2
-  exit 1
 elif [[ -t 0 ]]; then
   # Grizzly is the default when one of its add-ons is installed already.
   edition=1
@@ -285,12 +314,6 @@ if [[ -t 0 && "${1:-}" != --addons=* && ! "$data_only" =~ ^(1|t|T|true|TRUE|True
   fi
 fi
 
-for file in den-watcher den-watcher.service den-watcher.env.example; do
-  if [[ ! -f "$here/$file" ]]; then
-    echo "$here/$file is missing; run install.sh from the unpacked release archive." >&2
-    exit 1
-  fi
-done
 for addon in "${!wanted[@]}"; do
   for file in "den-watcher-$addon" "den-watcher-$addon.service"; do
     if [[ ! -f "$here/$file" ]]; then

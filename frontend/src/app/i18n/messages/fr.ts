@@ -84,6 +84,7 @@ export const fr: Messages = {
   'dashboard.linkGbps': '{speed} Gbit/s',
   'dashboard.fans': 'Ventilateurs',
   'dashboard.moreBelow': 'Faire défiler pour voir plus',
+  'dashboard.moreAbove': 'Faire défiler vers le haut pour voir plus',
   'dashboard.rpm': '{rpm} tr/min',
   'dashboard.batteryCharging': 'En charge à {watts} W',
   'dashboard.batteryDrawing': 'Consomme {watts} W',

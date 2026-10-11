@@ -1,8 +1,8 @@
-// Package addons runs an add-on of usage-control: a separate program that
-// every few seconds reads values usage-control itself does not and writes
-// them as extras to the add-on folder, which usage-control shows on its page
+// Package addons runs an add-on of den-watcher: a separate program that
+// every few seconds reads values den-watcher itself does not and writes
+// them as extras to the add-on folder, which den-watcher shows on its page
 // and a hub keeps in its history. Each add-on is a package below this one
-// with its own command in cmd/usage-control-<name>.
+// with its own command in cmd/den-watcher-<name>.
 package addons
 
 import (
@@ -19,11 +19,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
-	"github.com/Chriszly/usage-control/backend/internal/winservice"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/winservice"
 )
 
-// Interval is how often an add-on reads, as often as usage-control reads the
+// Interval is how often an add-on reads, as often as den-watcher reads the
 // rest.
 const Interval = 5 * time.Second
 
@@ -75,7 +75,7 @@ func Main(name, service string, newRead func() Read) {
 }
 
 // Serve writes what read returns to the add-on folder until ctx is done, then
-// removes the file, so usage-control stops showing old values at once. It
+// removes the file, so den-watcher stops showing old values at once. It
 // fails at once when the folder is missing, so the program exits and its
 // service manager can start it again; a write that fails later is logged and
 // tried again at the next interval.
@@ -104,7 +104,7 @@ func DefaultDir() string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(os.Getenv("ProgramData"), "Usage Control", "addons")
 	}
-	return "/run/usage-control-addons"
+	return "/run/den-watcher-addons"
 }
 
 // run writes a report every interval until ctx is done. A failed write is

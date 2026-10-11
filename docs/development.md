@@ -28,13 +28,13 @@ Backend packages, in `backend/internal/`:
 | `web` | the built website, embedded into the binary |
 | `sysfile` | reads the small one-value files under `/sys` and `/proc`, for `metrics` and the add-ons |
 
-`backend/cmd/usage-control/main.go` reads the settings and wires these together; on Windows `service_windows.go` runs it as a service. `backend/cmd/usage-control-tray` is the Windows tray icon, and `backend/cmd/tray-icons` draws its icons. `backend/cmd/licenses` writes the license notices of the Go modules into the built website (see [Open-source projects](third-party.md)). How the parts work together is in [How it works](architecture.md).
+`backend/cmd/den-watcher/main.go` reads the settings and wires these together; on Windows `service_windows.go` runs it as a service. `backend/cmd/den-watcher-tray` is the Windows tray icon, and `backend/cmd/tray-icons` draws its icons. `backend/cmd/licenses` writes the license notices of the Go modules into the built website (see [Open-source projects](third-party.md)). How the parts work together is in [How it works](architecture.md).
 
 ## Run it while developing
 
 ```bash
 # Terminal 1: the backend, serving the API on http://localhost:9393
-cd backend && go run ./cmd/usage-control
+cd backend && go run ./cmd/den-watcher
 
 # Terminal 2: the website with live reload on http://localhost:4200, forwarding /api to the backend
 cd frontend && npm ci && npm start
@@ -44,7 +44,7 @@ cd frontend && npm ci && npm start
 
 ## Demo page
 
-`npm run build:demo` in `frontend/` builds the demo into `frontend/dist/demo/`. The Demo page workflow publishes two to the `gh-pages` branch, which GitHub Pages serves: the latest release at https://chriszly.github.io/usage-control/ and main at https://chriszly.github.io/usage-control/main/. A release tag replaces only the root and a change to main only `main/`. For GitHub Pages to serve that branch, the repository's *Settings › Pages* must have *Source* set to *Deploy from a branch*, with `gh-pages` and `/ (root)`; with *GitHub Actions* as the source, pushes to `gh-pages` are never published and the site keeps the last demo deployed before. It passes `--base-href` and, through `--define`, the release's version (`DEMO_RELEASE`) or main's commit (`DEMO_COMMIT`) for the notice above the page, which links to the other one, and for the version the sample devices report (`src/demo/demo-build.ts`). It is the real page, started from `src/demo/main.ts`, which answers the page's requests with made-up devices from `src/demo/fleet.ts` instead of a backend; devices cannot be added or removed there. The normal build does not contain any of it. When a new value is added to the API, give the sample devices that report it a value in `fleet.ts` too, so the demo shows it. A new add-on needs a function named after its folder in `fleet.ts`, such as `bluetoothAddOn()` for `backend/internal/addons/bluetooth`, used by at least one sample device; `ci/check-demo-covers-addons.sh` checks that in CI.
+`npm run build:demo` in `frontend/` builds the demo into `frontend/dist/demo/`. The Demo page workflow publishes two to the `gh-pages` branch, which GitHub Pages serves: the latest release at https://chriszly.github.io/den-watcher/ and main at https://chriszly.github.io/den-watcher/main/. A release tag replaces only the root and a change to main only `main/`. For GitHub Pages to serve that branch, the repository's *Settings › Pages* must have *Source* set to *Deploy from a branch*, with `gh-pages` and `/ (root)`; with *GitHub Actions* as the source, pushes to `gh-pages` are never published and the site keeps the last demo deployed before. It passes `--base-href` and, through `--define`, the release's version (`DEMO_RELEASE`) or main's commit (`DEMO_COMMIT`) for the notice above the page, which links to the other one, and for the version the sample devices report (`src/demo/demo-build.ts`). It is the real page, started from `src/demo/main.ts`, which answers the page's requests with made-up devices from `src/demo/fleet.ts` instead of a backend; devices cannot be added or removed there. The normal build does not contain any of it. When a new value is added to the API, give the sample devices that report it a value in `fleet.ts` too, so the demo shows it. A new add-on needs a function named after its folder in `fleet.ts`, such as `bluetoothAddOn()` for `backend/internal/addons/bluetooth`, used by at least one sample device; `ci/check-demo-covers-addons.sh` checks that in CI.
 
 ## Tray icon and theme colors
 
@@ -53,10 +53,10 @@ The Windows tray icon is the website's mascot (`frontend/src/app/mascot/mascot.h
 ```bash
 cd frontend && npm ci && npm run build
 cd ../backend && go run ./cmd/tray-icons
-GOOS=windows go build -ldflags=-H=windowsgui ./cmd/usage-control-tray
+GOOS=windows go build -ldflags=-H=windowsgui ./cmd/den-watcher-tray
 ```
 
-`tray-icons` writes `usage-control.ico` (the installer's icon) and `running.ico`, `stopped.ico` and `paused.ico`, the bear with a green, red or grey status dot, into `backend/cmd/usage-control-tray/icons/`. They are not committed. It understands the circles, ellipses and paths (`M`, `L`, `H`, `V`, `A`) the mascot uses and stops with an error on anything else. The menu's words are in `backend/cmd/usage-control-tray/tray.go`, in the same four languages as the website.
+`tray-icons` writes `den-watcher.ico` (the installer's icon) and `running.ico`, `stopped.ico` and `paused.ico`, the bear with a green, red or grey status dot, into `backend/cmd/den-watcher-tray/icons/`. They are not committed. It understands the circles, ellipses and paths (`M`, `L`, `H`, `V`, `A`) the mascot uses and stops with an error on anything else. The menu's words are in `backend/cmd/den-watcher-tray/tray.go`, in the same four languages as the website.
 
 ## Translations
 
@@ -91,7 +91,7 @@ bash ci/check-demo-covers-addons.sh
 | Workflow | Builds |
 | --- | --- |
 | `ci.yml` | every check above, plus a build-only multi-arch Docker image on pull requests, whose amd64 image is then started with the `power` and `processes` add-on containers from `compose.yaml` until the page shows the processes add-on |
-| `docker.yml` | publishes `ghcr.io/chriszly/usage-control:main` on every merge to main, and `X.Y.Z`, `X.Y` and `latest` on release tags (only `X.Y.Z-alpha` on a pre-release tag) |
+| `docker.yml` | publishes `ghcr.io/chriszly/den-watcher:main` on every merge to main, and `X.Y.Z`, `X.Y` and `latest` on release tags (only `X.Y.Z-alpha` on a pre-release tag) |
 | `windows.yml` | the x64 and arm64 MSIs, installs and uninstalls them on Windows; attaches them to releases |
 | `linux.yml` | the Linux archives, tests install, update and uninstall under systemd; attaches them to releases |
 | `vulnerabilities.yml` | every night, the updates that fix known vulnerabilities on main (`ci/fix-vulnerabilities.sh`), as one pull request; fails when a vulnerability has no fix yet |

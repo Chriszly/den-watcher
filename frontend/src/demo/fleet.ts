@@ -1040,7 +1040,7 @@ const piHub: DemoMachine = {
     ]),
     ...processesAddOn(
       [
-        [812, 'usage-control'],
+        [812, 'den-watcher'],
         [655, 'dockerd'],
         [1432, 'pihole-FTL'],
         [610, 'containerd'],
@@ -1050,7 +1050,7 @@ const piHub: DemoMachine = {
       [
         [655, 'dockerd'],
         [1432, 'pihole-FTL'],
-        [812, 'usage-control'],
+        [812, 'den-watcher'],
         [610, 'containerd'],
         [433, 'systemd-journald'],
         [1, 'systemd'],

@@ -1,4 +1,4 @@
-// Package update tells whether a newer release of usage-control exists. It
+// Package update tells whether a newer release of den-watcher exists. It
 // asks GitHub's public releases API once a day, without an account, and only
 // reads the answer; it never downloads or installs anything.
 package update
@@ -19,9 +19,9 @@ import (
 
 const (
 	// latestURL answers with the newest release that is not a pre-release.
-	latestURL = "https://api.github.com/repos/Chriszly/usage-control/releases/latest"
+	latestURL = "https://api.github.com/repos/Chriszly/den-watcher/releases/latest"
 	// releaseURL is the page of one release, for its tag.
-	releaseURL = "https://github.com/Chriszly/usage-control/releases/tag/"
+	releaseURL = "https://github.com/Chriszly/den-watcher/releases/tag/"
 	// Interval is how often GitHub is asked.
 	Interval = 24 * time.Hour
 	// RetryInterval is how soon a failed check is tried again, so a network
@@ -122,7 +122,7 @@ func (c *Checker) check(ctx context.Context) error {
 		return err
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
-	request.Header.Set("User-Agent", "usage-control/"+c.current)
+	request.Header.Set("User-Agent", "den-watcher/"+c.current)
 	response, err := c.client.Do(request)
 	if err != nil {
 		return err

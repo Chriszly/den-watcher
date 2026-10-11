@@ -42,7 +42,7 @@ var dots = []dot{
 func main() {
 	mascot := flag.String("mascot", "../frontend/src/app/mascot", "folder with mascot.html and mascot.css")
 	site := flag.String("site", "internal/web/files/build", "the built website, for the theme's colors")
-	out := flag.String("out", "cmd/usage-control-tray/icons", "folder to write the icons to")
+	out := flag.String("out", "cmd/den-watcher-tray/icons", "folder to write the icons to")
 	flag.Parse()
 	if err := run(*mascot, *site, *out); err != nil {
 		fmt.Fprintln(os.Stderr, "tray-icons:", err)
@@ -60,7 +60,7 @@ func run(mascotDir, siteDir, outDir string) error {
 		return err
 	}
 	// The plain bear is the installer's icon, for the list of installed apps.
-	if err := writeIcon(filepath.Join(outDir, "usage-control.ico"), bear, nil); err != nil {
+	if err := writeIcon(filepath.Join(outDir, "den-watcher.ico"), bear, nil); err != nil {
 		return err
 	}
 	for _, d := range dots {

@@ -1,4 +1,4 @@
-# usage-control documentation
+# den-watcher documentation
 
 | Page | What it covers |
 | --- | --- |
@@ -9,4 +9,4 @@
 | [Development](development.md) | code layout, running it while developing, translations, checks, releases |
 | [Open-source projects](third-party.md) | the projects it is built on, their licenses, and the license notices each build carries |
 
-Only install usage-control on devices you own or are allowed to monitor; see [Intended use](../README.md#intended-use).
+Only install den-watcher on devices you own or are allowed to monitor; see [Intended use](../README.md#intended-use).

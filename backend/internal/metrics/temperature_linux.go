@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Chriszly/usage-control/backend/internal/sysfile"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 	"github.com/shirou/gopsutil/v4/sensors"
 )
 
@@ -91,7 +91,7 @@ var reportedAwake = &sensorsReported{reported: map[string]bool{}}
 
 // get reports whether the sensor in file reported a temperature when it was
 // last read awake, or true when it was never read awake: its device has
-// slept since usage-control started.
+// slept since den-watcher started.
 func (s *sensorsReported) get(file string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()

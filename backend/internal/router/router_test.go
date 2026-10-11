@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 func TestParseConfigs(t *testing.T) {
@@ -90,8 +90,8 @@ func TestPasswordsPath(t *testing.T) {
 	if path := PasswordsPath(); path != "" {
 		t.Errorf("got %q without a setting", path)
 	}
-	t.Setenv("CREDENTIALS_DIRECTORY", "/run/credentials/usage-control.service")
-	if path, want := PasswordsPath(), filepath.Join("/run/credentials/usage-control.service", PasswordsFile); path != want {
+	t.Setenv("CREDENTIALS_DIRECTORY", "/run/credentials/den-watcher.service")
+	if path, want := PasswordsPath(), filepath.Join("/run/credentials/den-watcher.service", PasswordsFile); path != want {
 		t.Errorf("got %q, want %q", path, want)
 	}
 	t.Setenv("ROUTER_PASSWORDS_FILE", "/run/secrets/router-passwords")

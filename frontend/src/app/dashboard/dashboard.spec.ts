@@ -693,7 +693,7 @@ describe('Dashboard', () => {
     fixture.detectChanges();
 
     expect(text()).toContain('Router has not answered recently. Is it on, and are its address');
-    expect(text()).not.toContain('usage-control running');
+    expect(text()).not.toContain('Den-Watcher running');
   });
 
   it('points to HUB_DEVICES for a device at an address of the hub, without its availability', () => {

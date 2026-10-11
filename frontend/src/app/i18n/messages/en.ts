@@ -11,7 +11,7 @@ export const en = {
     'Since {since}, nothing on this page is live, because the values of all devices come through {hub}. The page keeps trying and catches up as soon as it answers again.',
   'dashboard.unreachable': 'The backend cannot be reached. Showing the last known values.',
   'dashboard.deviceUnreachable':
-    '{device} has not answered recently. Is usage-control running on it?',
+    '{device} has not answered recently. Is Den-Watcher running on it?',
   'dashboard.routerUnreachable':
     '{device} has not answered recently. Is it on, and are its address and login right?',
   'dashboard.deviceRefused':
@@ -117,7 +117,7 @@ export const en = {
   'devices.addOther': 'Add other devices',
   'devicesDialog.title': 'Devices',
   'devicesDialog.intro':
-    'This device can show the usage of other devices on the local network that run usage-control.',
+    'This device can show the usage of other devices on the local network that run Den-Watcher.',
   'devicesDialog.remove': 'Remove',
   'devicesDialog.fixed': 'Set in .env',
   'devicesDialog.router': 'Router',
@@ -145,7 +145,7 @@ export const en = {
     "This address is the hub itself. Write the device's address on the local network, such as 192.168.1.20:9393.",
   'devices.problem.kind': 'Pick whether the device is a server or IoT device, or a PC or laptop.',
   'devices.problem.unreachable':
-    'No usage-control answers at this address. Is it running, and is the address on the local network?',
+    'No Den-Watcher answers at this address. Is it running, and is the address on the local network?',
   'devices.problem.hostUnknown':
     "The device doesn't answer to this name. In Docker, that includes the machine's hostname on its own. Write its IP address or its .local name, such as raspberrypi.local:9393, or add the name to ALLOWED_HOSTS on the device.",
   'devices.problem.fixed': "This device is set in the hub's .env file. Remove it there.",
@@ -254,7 +254,7 @@ export const en = {
     'Whether the Raspberry Pi got too little power or got too hot and slowed itself down, now or since it started.',
   'dashboard.info.time': "The time on the device's own clock, in its time zone.",
   'dashboard.info.uptime':
-    'How long the device has been running since it last started, and the version of Usage Control on it.',
+    'How long the device has been running since it last started, and the version of Den-Watcher on it.',
   'dashboard.info.availability':
     'How much of the time since it was added the device answered; the times it did not are outages.',
   'dashboard.info.usage':

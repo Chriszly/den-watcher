@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // Minute is the average of a device's readings over one SampleInterval, as

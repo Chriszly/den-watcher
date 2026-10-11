@@ -10,10 +10,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
-// DefaultPort is the port usage-control listens on unless it is set up
+// DefaultPort is the port den-watcher listens on unless it is set up
 // otherwise.
 const DefaultPort = 9393
 
@@ -23,7 +23,7 @@ const suggestTimeout = 2 * time.Second
 
 // Suggestion is a device the page offers to add: the one that opened it.
 type Suggestion struct {
-	// Address is where its usage-control would be reachable, as host:port.
+	// Address is where its den-watcher would be reachable, as host:port.
 	Address string `json:"address"`
 	// Name is what the device calls itself, or its name in the local DNS;
 	// empty when neither is known.
@@ -42,7 +42,7 @@ type suggester struct {
 	ownAddrs func() ([]net.Addr, error)
 	// gateways lists the default gateways of the machine's network.
 	gateways func() []netip.Addr
-	// ask asks the usage-control at address for its usage.
+	// ask asks the den-watcher at address for its usage.
 	ask func(ctx context.Context, address string) (metrics.Snapshot, error)
 	// lookupAddr and lookupHost are reverse and forward DNS lookups.
 	lookupAddr func(ctx context.Context, addr string) ([]string, error)

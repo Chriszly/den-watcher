@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// startSwitchableDevice runs a usage-control that answers while up is set.
+// startSwitchableDevice runs a den-watcher that answers while up is set.
 func startSwitchableDevice(t *testing.T, up *atomic.Bool) string {
 	t.Helper()
 	device := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

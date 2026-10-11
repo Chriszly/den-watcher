@@ -37,7 +37,7 @@ export interface Device {
   refused?: boolean;
   /**
    * Set for a router, which the hub reads itself over the local network, as it runs no
-   * usage-control; it is set in HUB_ROUTERS.
+   * den-watcher; it is set in HUB_ROUTERS.
    */
   router?: boolean;
 }
@@ -73,7 +73,7 @@ export interface DeviceList {
  * which the hub offers to add when it does not collect from it yet.
  */
 export interface Suggestion {
-  /** Where its usage-control would be reachable, as host:port. */
+  /** Where its den-watcher would be reachable, as host:port. */
   address: string;
   /** What the device calls itself, or its name in the local DNS; empty when neither is known. */
   name: string;

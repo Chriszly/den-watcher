@@ -6,7 +6,7 @@
 #   - no file of router passwords (router-passwords, *.cred)
 #   - no line starting with "-----BEGIN ... PRIVATE KEY-----"
 #   - no line in a tracked .env file or example, such as
-#     linux/usage-control.env.example, giving a *PASSWORD, *KEY, *TOKEN or
+#     linux/den-watcher.env.example, giving a *PASSWORD, *KEY, *TOKEN or
 #     *SECRET a value
 #
 # Run: bash ci/check-no-secrets.sh [DIR]

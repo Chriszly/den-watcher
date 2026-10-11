@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 func TestClassKind(t *testing.T) {

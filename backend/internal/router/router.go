@@ -1,4 +1,4 @@
-// Package router reads the usage of routers, which cannot run usage-control,
+// Package router reads the usage of routers, which cannot run den-watcher,
 // in a language they already speak, so a hub can show them as devices of
 // their own: UPnP, which most home routers answer without a login, SNMP,
 // TR-064 of a FRITZ!Box and the web interface of ASUS routers.
@@ -24,8 +24,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/lan"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/lan"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // Protocol is how a router is read.

@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/addons"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/addons"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // counters are the kernel's running totals, of which the add-on shows the

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/Chriszly/usage-control/backend/internal/hub"
+	"github.com/Chriszly/den-watcher/backend/internal/hub"
 )
 
 // hubLink remembers where the page of the hub that collects from this machine

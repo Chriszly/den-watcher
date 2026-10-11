@@ -1,4 +1,4 @@
-module github.com/Chriszly/usage-control/backend
+module github.com/Chriszly/den-watcher/backend
 
 go 1.27.2
 

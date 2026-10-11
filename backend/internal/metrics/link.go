@@ -54,7 +54,7 @@ type route struct {
 // parseRoutes reads the networks each interface reaches from the text of
 // /proc/net/route, leaving out default routes. Addresses in it are
 // hexadecimal numbers in the byte order of the machine, little-endian on
-// every system usage-control runs on.
+// every system den-watcher runs on.
 func parseRoutes(text string) []route {
 	var routes []route
 	for line := range strings.Lines(text) {

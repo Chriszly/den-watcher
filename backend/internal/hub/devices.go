@@ -1,5 +1,5 @@
 // Package hub collects the usage of other devices on the local network, each
-// of which runs usage-control, so one device can show them all.
+// of which runs den-watcher, so one device can show them all.
 package hub
 
 import (
@@ -12,7 +12,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Chriszly/usage-control/backend/internal/history"
+	"github.com/Chriszly/den-watcher/backend/internal/history"
 )
 
 // addressPattern matches host:port, where the host is a name or IPv4 address
@@ -30,11 +30,11 @@ type Device struct {
 	ID string
 	// Name is how the device is shown on the page.
 	Name string
-	// Address is where its usage-control is reachable, as host:port, or
+	// Address is where its den-watcher is reachable, as host:port, or
 	// the address of a router.
 	Address string
 	// Source, when set, reads the device's usage in place of asking a
-	// usage-control at Address: a router, which the hub reads in a language
+	// den-watcher at Address: a router, which the hub reads in a language
 	// it speaks. Routers come from HUB_ROUTERS.
 	Source Usage
 }

@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/hub"
-	"github.com/Chriszly/usage-control/backend/internal/lan"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
-	"github.com/Chriszly/usage-control/backend/internal/update"
+	"github.com/Chriszly/den-watcher/backend/internal/hub"
+	"github.com/Chriszly/den-watcher/backend/internal/lan"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/update"
 )
 
 // Collector reads the current usage of the machine.
@@ -50,7 +50,7 @@ type Device struct {
 	// collected from when listed in HUB_DEVICES instead.
 	Refused bool `json:"refused,omitempty"`
 	// Router is set for a router, which the hub reads itself, as it runs
-	// no usage-control.
+	// no den-watcher.
 	Router  bool          `json:"router,omitempty"`
 	Metrics Collector     `json:"-"`
 	History HistoryReader `json:"-"`

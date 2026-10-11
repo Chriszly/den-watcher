@@ -50,7 +50,7 @@ func parseProcNet(text, protocol string) []Socket {
 
 // parseHexAddress reads an address such as "0100007F:0016" (127.0.0.1 port
 // 22). The address is in 32-bit words in the machine's byte order, which is
-// little-endian on every machine usage-control runs on; the port is plain.
+// little-endian on every machine den-watcher runs on; the port is plain.
 func parseHexAddress(field string) (netip.Addr, uint32, bool) {
 	hexAddress, hexPort, found := strings.Cut(field, ":")
 	if !found {

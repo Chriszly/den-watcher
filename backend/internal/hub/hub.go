@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/history"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/history"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // savedSchema keeps the devices added on the page. Devices from HUB_DEVICES
@@ -218,7 +218,7 @@ func (h *Hub) Remotes() []*Remote {
 }
 
 // Add checks the device, asks it for its usage once to make sure a
-// usage-control answers at its address, keeps it in the database with its
+// den-watcher answers at its address, keeps it in the database with its
 // kind and starts collecting from it. An address of the hub itself is
 // refused (see addable and ownAddresses), and again whenever the hub
 // connects to the device. Problems with the device are InputErrors.
@@ -252,7 +252,7 @@ func (h *Hub) Add(ctx context.Context, name, address string, kind Kind) (Device,
 		if errors.Is(err, errOwnAddress) {
 			return Device{}, &InputError{Problem: ProblemAddressOwn, Message: "the address is the hub itself; give the device's address on the local network"}
 		}
-		// A usage-control that does not know the name it was asked by
+		// A den-watcher that does not know the name it was asked by
 		// answers 421, which tells no more than that something answers
 		// there. Otherwise only the log says why, so the answer does not
 		// tell which ports of the hub's network are open.
@@ -261,8 +261,8 @@ func (h *Hub) Add(ctx context.Context, name, address string, kind Kind) (Device,
 			slog.Info("could not add a device, as it does not answer to the name it was asked by", "name", device.Name, "address", device.Address, "error", err)
 			return Device{}, &InputError{Problem: ProblemHostUnknown, Message: "the device does not answer to the name in " + device.Address + "; give its IP address or its .local name, or add the name to ALLOWED_HOSTS on the device"}
 		}
-		slog.Info("could not add a device, as no usage-control answers at its address", "name", device.Name, "address", device.Address, "error", err)
-		return Device{}, &InputError{Problem: ProblemUnreachable, Message: "no usage-control answers at " + device.Address}
+		slog.Info("could not add a device, as no den-watcher answers at its address", "name", device.Name, "address", device.Address, "error", err)
+		return Device{}, &InputError{Problem: ProblemUnreachable, Message: "no den-watcher answers at " + device.Address}
 	}
 
 	h.mu.Lock()

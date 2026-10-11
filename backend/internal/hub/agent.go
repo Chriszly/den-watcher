@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/history"
-	"github.com/Chriszly/usage-control/backend/internal/lan"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/history"
+	"github.com/Chriszly/den-watcher/backend/internal/lan"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 const (
@@ -47,7 +47,7 @@ const PagePortHeader = "Usage-Control-Hub-Port"
 // ErrUnreachable is returned when a device has not answered recently.
 var ErrUnreachable = errors.New("the device has not answered recently")
 
-// Agent reads the usage of a device from the usage-control running on it.
+// Agent reads the usage of a device from the den-watcher running on it.
 // The recorder calls Collect regularly; the page is served the newest reading
 // from Latest, so the device is not asked once more for every open page.
 type Agent struct {
@@ -66,7 +66,7 @@ type Agent struct {
 	// often they gained one; see checkOwnGeneration and get. Set for a
 	// device added on the page.
 	ownGeneration func() uint64
-	// reader, when set, reads the usage in place of asking a usage-control,
+	// reader, when set, reads the usage in place of asking a den-watcher,
 	// for a router; see Device.Source.
 	reader Usage
 
@@ -108,7 +108,7 @@ func newAgent(address string, control func(network, address string, c syscall.Ra
 }
 
 // newReaderAgent returns an Agent that reads the usage with reader, for a
-// router, which runs no usage-control to ask.
+// router, which runs no den-watcher to ask.
 func newReaderAgent(reader Usage) *Agent {
 	return &Agent{reader: reader, maxEntries: history.DefaultMaxEntries}
 }

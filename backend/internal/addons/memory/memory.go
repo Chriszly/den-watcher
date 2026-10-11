@@ -1,5 +1,5 @@
 // Package memory reads details of the machine's memory beyond what
-// usage-control itself shows, for the memory add-on. On Linux it reads from
+// den-watcher itself shows, for the memory add-on. On Linux it reads from
 // /proc/meminfo how much is dirty, being written back, held by the kernel's
 // slab caches, shared, used for page tables and committed, and from
 // /proc/vmstat the page faults and the swapping per second. On Windows it
@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Chriszly/usage-control/backend/internal/addons"
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/addons"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // size is a value of /proc/meminfo shown in bytes.

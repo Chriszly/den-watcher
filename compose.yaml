@@ -1,4 +1,4 @@
-# Runs usage-control on a Linux machine, such as a Raspberry Pi:
+# Runs den-watcher on a Linux machine, such as a Raspberry Pi:
 #   cp .env.example .env   # optional, to change settings
 #   docker compose pull && docker compose up -d   # the published image
 #   docker compose up -d --build                  # or build it from this checkout
@@ -7,9 +7,9 @@
 # (the Cub edition); Grizzly is cub with others, such as COMPOSE_PROFILES=cub,power.
 # Then open http://<the machine's address>:9393 from the local network.
 services:
-  usage-control:
+  den-watcher:
     build: .
-    image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
+    image: ghcr.io/chriszly/den-watcher:${IMAGE_TAG:-latest}
     restart: unless-stopped
     # Published over IPv4 only. The program refuses requests from outside the
     # local network by the client's address, and Docker's proxy would hand
@@ -80,10 +80,10 @@ services:
   # and NVIDIA GPUs need vcgencmd and nvidia-smi, which only the Linux archive
   # reaches (see docs/setup.md).
   power:
-    image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
+    image: ghcr.io/chriszly/den-watcher:${IMAGE_TAG:-latest}
     profiles: [power]
     restart: unless-stopped
-    entrypoint: ["/usage-control-power"]
+    entrypoint: ["/den-watcher-power"]
     user: "0:0"
     environment:
       HOST_SYS: /host/sys
@@ -101,15 +101,15 @@ services:
   # The pressure add-on, started with COMPOSE_PROFILES=pressure: reads from
   # the host's /proc/pressure how much of the time tasks waited for the CPU,
   # memory and disks. Reading needs no privileges, so it runs as the image's
-  # user, like usage-control, without any capability and without network.
+  # user, like den-watcher, without any capability and without network.
   # All of /proc is mounted, not only /proc/pressure, which a kernel with PSI
   # switched off (as on Raspberry Pi OS) does not have: Docker could not
   # mount it, and the container would not start.
   pressure:
-    image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
+    image: ghcr.io/chriszly/den-watcher:${IMAGE_TAG:-latest}
     profiles: [pressure, cub]
     restart: unless-stopped
-    entrypoint: ["/usage-control-pressure"]
+    entrypoint: ["/den-watcher-pressure"]
     environment:
       HOST_PROC: /host/proc
       ADDONS_DIR: /addons
@@ -128,12 +128,12 @@ services:
   # established TCP connections and retransmissions from the host's /proc. The
   # network values come from /host/proc/1/net, the host's init's network, not
   # the container's. Every user may read those files, so it runs as the
-  # image's user, like usage-control, without any capability or network.
+  # image's user, like den-watcher, without any capability or network.
   kernel:
-    image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
+    image: ghcr.io/chriszly/den-watcher:${IMAGE_TAG:-latest}
     profiles: [kernel, cub]
     restart: unless-stopped
-    entrypoint: ["/usage-control-kernel"]
+    entrypoint: ["/den-watcher-kernel"]
     environment:
       HOST_PROC: /host/proc
       ADDONS_DIR: /addons
@@ -150,12 +150,12 @@ services:
   # The Wi-Fi add-on, started with COMPOSE_PROFILES=wifi: reads the link
   # quality and signal of each connected Wi-Fi interface from the host's
   # /proc/1/net/wireless, which anyone may read, so it runs as the image's
-  # user, like usage-control, without any capability and without network.
+  # user, like den-watcher, without any capability and without network.
   wifi:
-    image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
+    image: ghcr.io/chriszly/den-watcher:${IMAGE_TAG:-latest}
     profiles: [wifi, cub]
     restart: unless-stopped
-    entrypoint: ["/usage-control-wifi"]
+    entrypoint: ["/den-watcher-wifi"]
     environment:
       HOST_PROC: /host/proc
       ADDONS_DIR: /addons
@@ -179,10 +179,10 @@ services:
   # same user also connect or remove devices; the add-on only ever asks for
   # the list (GetManagedObjects).
   bluetooth:
-    image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
+    image: ghcr.io/chriszly/den-watcher:${IMAGE_TAG:-latest}
     profiles: [bluetooth]
     restart: unless-stopped
-    entrypoint: ["/usage-control-bluetooth"]
+    entrypoint: ["/den-watcher-bluetooth"]
     environment:
       HOST_SYS: /host/sys
       ADDONS_DIR: /addons
@@ -201,12 +201,12 @@ services:
   # The memory add-on, started with COMPOSE_PROFILES=memory: reads memory
   # details from the host's /proc, such as dirty and slab memory, page faults
   # and swapping per second. Reading needs no privilege, so it runs as the
-  # image's user, like usage-control, without any capability or network.
+  # image's user, like den-watcher, without any capability or network.
   memory:
-    image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
+    image: ghcr.io/chriszly/den-watcher:${IMAGE_TAG:-latest}
     profiles: [memory, cub]
     restart: unless-stopped
-    entrypoint: ["/usage-control-memory"]
+    entrypoint: ["/den-watcher-memory"]
     environment:
       HOST_PROC: /host/proc
       ADDONS_DIR: /addons
@@ -222,13 +222,13 @@ services:
 
   # The ports add-on, started with COMPOSE_PROFILES=ports: lists the TCP and
   # UDP ports the host listens on, from the host's /proc, which anyone may
-  # read, so it runs as the image's user, like usage-control, without any
+  # read, so it runs as the image's user, like den-watcher, without any
   # capability and without network.
   ports:
-    image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
+    image: ghcr.io/chriszly/den-watcher:${IMAGE_TAG:-latest}
     profiles: [ports]
     restart: unless-stopped
-    entrypoint: ["/usage-control-ports"]
+    entrypoint: ["/den-watcher-ports"]
     environment:
       HOST_PROC: /host/proc
       ADDONS_DIR: /addons
@@ -248,10 +248,10 @@ services:
   # as only root may read the containers' names in Docker's data folder, but
   # without any capability, without network and with both mounts read-only.
   containers:
-    image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
+    image: ghcr.io/chriszly/den-watcher:${IMAGE_TAG:-latest}
     profiles: [containers]
     restart: unless-stopped
-    entrypoint: ["/usage-control-containers"]
+    entrypoint: ["/den-watcher-containers"]
     user: "0:0"
     environment:
       HOST_SYS: /host/sys
@@ -279,12 +279,12 @@ services:
   # The processes add-on, started with COMPOSE_PROFILES=processes: lists the
   # processes using the most CPU and memory from the host's /proc. The files
   # it reads every user may read, so it runs as the image's user, like
-  # usage-control, without any capability or network.
+  # den-watcher, without any capability or network.
   processes:
-    image: ghcr.io/chriszly/usage-control:${IMAGE_TAG:-latest}
+    image: ghcr.io/chriszly/den-watcher:${IMAGE_TAG:-latest}
     profiles: [processes]
     restart: unless-stopped
-    entrypoint: ["/usage-control-processes"]
+    entrypoint: ["/den-watcher-processes"]
     environment:
       HOST_PROC: /host/proc
       ADDONS_DIR: /addons

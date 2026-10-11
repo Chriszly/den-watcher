@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // value is one kind of value of a disk, with what it is called.
@@ -58,7 +58,7 @@ var (
 	smartOffLabels   = map[string]string{"de": "SMART aus", "fr": "SMART désactivé", "es": "SMART desactivado"}
 )
 
-// defaultMaxEntries is how many values of a group usage-control keeps unless
+// defaultMaxEntries is how many values of a group den-watcher keeps unless
 // HISTORY_MAX_ENTRIES is set higher.
 const defaultMaxEntries = 64
 
@@ -72,7 +72,7 @@ var warnedTooMany atomic.Bool
 // has SMART switched off only that, in place of its check; and the numbers
 // the disks report, labelled the same way. Each value has its disk as its
 // section, so the page shows a disk's values under it. The checks are a group of their
-// own, so they are never among what usage-control leaves out of a group with
+// own, so they are never among what den-watcher leaves out of a group with
 // too many values: past defaultMaxEntries values, which about 21 SATA or 16
 // NVMe disks reach, it keeps those whose ids come first unless HISTORY_MAX_ENTRIES is
 // set higher, which is logged once. The values' group id is part of the name
@@ -145,7 +145,7 @@ func Extras(disks []Disk) []metrics.Extra {
 		}
 	}
 	if len(group.Items) > defaultMaxEntries && !warnedTooMany.Swap(true) {
-		slog.Warn("the disks report more values than usage-control keeps by default, so some of them are left out; set HISTORY_MAX_ENTRIES higher on this device and its hub to keep them",
+		slog.Warn("the disks report more values than den-watcher keeps by default, so some of them are left out; set HISTORY_MAX_ENTRIES higher on this device and its hub to keep them",
 			"values", len(group.Items), "kept", defaultMaxEntries)
 	}
 	var extras []metrics.Extra

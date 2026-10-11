@@ -59,7 +59,7 @@ func migrate(ctx context.Context, db *sql.DB, path string, migrations []string) 
 	}
 	latest := len(migrations)
 	if current > latest {
-		return fmt.Errorf("the database was written by a newer version of usage-control (database version %d, this version knows up to %d); "+
+		return fmt.Errorf("the database was written by a newer version of den-watcher (database version %d, this version knows up to %d); "+
 			"start the newer version again, or replace the file with the copy %s.backup that was made before it changed the database", current, latest, path)
 	}
 	if current == latest {

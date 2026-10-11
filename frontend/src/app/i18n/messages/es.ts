@@ -10,7 +10,7 @@ export const es: Messages = {
   'dashboard.unreachable':
     'No se puede conectar con el backend. Se muestran los últimos valores conocidos.',
   'dashboard.deviceUnreachable':
-    '{device} no ha respondido últimamente. ¿Está usage-control en marcha en él?',
+    '{device} no ha respondido últimamente. ¿Está Den-Watcher en marcha en él?',
   'dashboard.routerUnreachable':
     '{device} no ha respondido últimamente. ¿Está encendido y son correctos su dirección y su inicio de sesión?',
   'dashboard.deviceRefused':
@@ -115,7 +115,7 @@ export const es: Messages = {
   'devices.addOther': 'Añadir otros dispositivos',
   'devicesDialog.title': 'Dispositivos',
   'devicesDialog.intro':
-    'Este dispositivo puede mostrar el uso de otros dispositivos de la red local que ejecutan usage-control.',
+    'Este dispositivo puede mostrar el uso de otros dispositivos de la red local que ejecutan Den-Watcher.',
   'devicesDialog.remove': 'Quitar',
   'devicesDialog.fixed': 'Definido en .env',
   'devicesDialog.router': 'Router',
@@ -145,7 +145,7 @@ export const es: Messages = {
   'devices.problem.kind':
     'Elige si el dispositivo es un servidor o dispositivo IoT, o un PC o portátil.',
   'devices.problem.unreachable':
-    'Ningún usage-control responde en esta dirección. ¿Está en marcha y la dirección está en la red local?',
+    'Ningún Den-Watcher responde en esta dirección. ¿Está en marcha y la dirección está en la red local?',
   'devices.problem.hostUnknown':
     'El dispositivo no responde a este nombre. En Docker pasa también con el nombre de host del equipo a secas. Escribe su dirección IP o su nombre .local, por ejemplo raspberrypi.local:9393, o añade el nombre a ALLOWED_HOSTS en el dispositivo.',
   'devices.problem.fixed':
@@ -256,7 +256,7 @@ export const es: Messages = {
     'Si la Raspberry Pi recibió poca alimentación o se calentó demasiado y se ralentizó, ahora o desde que arrancó.',
   'dashboard.info.time': 'La hora del reloj del propio dispositivo, en su zona horaria.',
   'dashboard.info.uptime':
-    'Cuánto tiempo lleva funcionando el dispositivo desde su último arranque, y la versión de Usage Control que tiene.',
+    'Cuánto tiempo lleva funcionando el dispositivo desde su último arranque, y la versión de Den-Watcher que tiene.',
   'dashboard.info.availability':
     'Cuánto del tiempo desde que se añadió respondió el dispositivo; los periodos sin respuesta son caídas.',
   'dashboard.info.usage':

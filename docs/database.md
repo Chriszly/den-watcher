@@ -15,7 +15,7 @@ Every device with a website keeps its history in one SQLite file. A hub keeps th
 | Install | File |
 | --- | --- |
 | Docker | `/data/usage-control.db` in the container, on the `data` volume, so it survives updates and recreated containers |
-| Linux service | `/var/lib/usage-control/usage-control.db` |
+| Linux service | `/var/lib/den-watcher/usage-control.db` |
 | Windows | `C:\ProgramData\Usage Control\usage-control.db`; uninstalling keeps it, unless **Delete the history** is ticked on the installer's Remove page or `msiexec /x` gets `DELETE_HISTORY=1` |
 | From source | `usage-control.db` in the folder the program was started from |
 
@@ -88,7 +88,7 @@ Deleted rows leave free pages in the file, which SQLite reuses for new values; t
 
 ## Updates to the layout
 
-The file's layout version is kept in SQLite's `user_version`. When a new version of usage-control changes the layout:
+The file's layout version is kept in SQLite's `user_version`. When a new version of den-watcher changes the layout:
 
 1. It copies the file to `usage-control.db.backup` next to it, replacing an older copy.
 2. It updates the file in one transaction.
@@ -102,11 +102,11 @@ An older version refuses to start on a file a newer version has changed, instead
 
 ## Backups
 
-The file holds everything a device keeps: history, added devices, outages and the password hash. To back it up, copy it while usage-control is stopped, or use SQLite's `.backup` command while it runs. With Docker:
+The file holds everything a device keeps: history, added devices, outages and the password hash. To back it up, copy it while den-watcher is stopped, or use SQLite's `.backup` command while it runs. With Docker:
 
 ```bash
 docker compose stop
-docker run --rm -v usage-control_data:/data -v "$PWD":/backup alpine cp /data/usage-control.db /backup/
+docker run --rm -v den-watcher_data:/data -v "$PWD":/backup alpine cp /data/usage-control.db /backup/
 docker compose start
 ```
 
@@ -116,7 +116,7 @@ A copy of a hub's file carries the hub's id (`hub_id`). Restoring it on the same
 
 ```bash
 docker compose stop
-docker run --rm -v usage-control_data:/data alpine sh -c 'apk add -q sqlite && sqlite3 /data/usage-control.db "DELETE FROM hub_id"'
+docker run --rm -v den-watcher_data:/data alpine sh -c 'apk add -q sqlite && sqlite3 /data/usage-control.db "DELETE FROM hub_id"'
 docker compose start
 ```
 

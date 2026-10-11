@@ -1,0 +1,60 @@
+# The pressure add-on of den-watcher: reads from /proc/pressure how much of
+# the time tasks waited for the CPU, memory and disks, and writes it to
+# /run/den-watcher-addons, which den-watcher shows.
+# install.sh puts it in /etc/systemd/system when the add-on is picked.
+[Unit]
+Description=Den-Watcher pressure add-on: shows how often tasks wait for the CPU, memory or disks (Linux pressure stall information); runs as root without capabilities
+Documentation=https://github.com/Chriszly/den-watcher
+PartOf=den-watcher.service
+After=den-watcher.service
+
+[Service]
+ExecStart=/usr/local/bin/den-watcher-pressure
+Environment=ADDONS_DIR=/run/den-watcher-addons
+# The add-on folder den-watcher reads; others may read it, only root writes.
+RuntimeDirectory=den-watcher-addons
+RuntimeDirectoryMode=0755
+# Shared with the other add-ons, so it stays when one of them stops.
+RuntimeDirectoryPreserve=yes
+Restart=on-failure
+RestartSec=5
+
+# Reading /proc/pressure needs no privileges; it runs as root only to write
+# to the add-on folder the add-ons share, which root owns, and without any
+# capability. It writes nothing but its folder, needs no network and starts
+# no other program.
+User=root
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+# Only pseudo devices such as /dev/null: no disks, input or other hardware.
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+# Without capabilities the clock cannot be set anyway; this also blocks the
+# calls that set it, as in the other add-ons' units.
+SystemCallFilter=~@clock
+ProtectHostname=yes
+# No socket of any kind: as root it could otherwise connect to the Unix
+# sockets of services such as Docker or systemd and have them act for it.
+RestrictAddressFamilies=none
+# The call that opens a socket is denied as well, so this does not rest on
+# how systemd reads "none": before 249 (as on Raspberry Pi OS bullseye) it
+# warns that it does not know the word, though it still allows no family.
+SystemCallFilter=~socket
+# A denied call fails instead of ending the program.
+SystemCallErrorNumber=EPERM
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=den-watcher.service

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Chriszly/usage-control/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // testSuggester answers like a home network: the hub is 192.168.1.9 in a
@@ -52,7 +52,7 @@ func TestSuggest(t *testing.T) {
 		known     []Device
 		want      *Suggestion
 	}{
-		{"a usage-control that names itself", "192.168.1.20", "Christof's PC", nil, &Suggestion{"192.168.1.20:9393", "Christof's PC", KindServer}},
+		{"a den-watcher that names itself", "192.168.1.20", "Christof's PC", nil, &Suggestion{"192.168.1.20:9393", "Christof's PC", KindServer}},
 		{"named by the DNS", "192.168.1.20", "", nil, &Suggestion{"192.168.1.20:9393", "office-pc", KindServer}},
 		{"no name known", "192.168.1.30", "", nil, &Suggestion{"192.168.1.30:9393", "", KindServer}},
 		{"an IPv4-mapped address", "::ffff:192.168.1.30", "", nil, &Suggestion{"192.168.1.30:9393", "", KindServer}},

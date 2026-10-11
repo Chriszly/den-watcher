@@ -8,8 +8,7 @@ export const fr: Messages = {
   'connection.notLive':
     'Depuis {since}, rien sur cette page n’est en direct, car les valeurs de tous les appareils passent par {hub}. La page continue d’essayer et se met à jour dès que {hub} répond à nouveau.',
   'dashboard.unreachable': 'Le backend est injoignable. Affichage des dernières valeurs connues.',
-  'dashboard.deviceUnreachable':
-    '{device} n’a pas répondu récemment. usage-control y est-il lancé ?',
+  'dashboard.deviceUnreachable': '{device} n’a pas répondu récemment. Den-Watcher y est-il lancé ?',
   'dashboard.routerUnreachable':
     '{device} n’a pas répondu récemment. Est-il allumé, et son adresse et ses identifiants sont-ils corrects ?',
   'dashboard.deviceRefused':
@@ -114,7 +113,7 @@ export const fr: Messages = {
   'devices.addOther': 'Ajouter d’autres appareils',
   'devicesDialog.title': 'Appareils',
   'devicesDialog.intro':
-    'Cet appareil peut afficher l’utilisation d’autres appareils du réseau local sur lesquels usage-control est lancé.',
+    'Cet appareil peut afficher l’utilisation d’autres appareils du réseau local sur lesquels Den-Watcher est lancé.',
   'devicesDialog.remove': 'Retirer',
   'devicesDialog.fixed': 'Défini dans .env',
   'devicesDialog.router': 'Routeur',
@@ -144,7 +143,7 @@ export const fr: Messages = {
   'devices.problem.kind':
     'Indiquez si l’appareil est un serveur ou un objet connecté, ou un PC ou portable.',
   'devices.problem.unreachable':
-    'Aucun usage-control ne répond à cette adresse. Est-il lancé, et l’adresse est-elle sur le réseau local ?',
+    'Aucun Den-Watcher ne répond à cette adresse. Est-il lancé, et l’adresse est-elle sur le réseau local ?',
   'devices.problem.hostUnknown':
     'L’appareil ne répond pas à ce nom. Sous Docker, c’est aussi le cas du seul nom d’hôte de la machine. Écrivez son adresse IP ou son nom .local, par exemple raspberrypi.local:9393, ou ajoutez le nom à ALLOWED_HOSTS sur l’appareil.',
   'devices.problem.fixed':
@@ -255,7 +254,7 @@ export const fr: Messages = {
     "Si le Raspberry Pi a manqué d'alimentation ou a trop chauffé et s'est ralenti, maintenant ou depuis son démarrage.",
   'dashboard.info.time': "L'heure de l'horloge de l'appareil, dans son fuseau horaire.",
   'dashboard.info.uptime':
-    "Depuis combien de temps l'appareil fonctionne depuis son dernier démarrage, et la version d'Usage Control qu'il utilise.",
+    "Depuis combien de temps l'appareil fonctionne depuis son dernier démarrage, et la version de Den-Watcher qu'il utilise.",
   'dashboard.info.availability':
     "La part du temps depuis son ajout pendant laquelle l'appareil a répondu ; les périodes sans réponse sont des pannes.",
   'dashboard.info.usage':

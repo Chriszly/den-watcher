@@ -75,7 +75,10 @@
                     router-passwords.dpapi in its data folder at its next
                     start and deletes them from the registry. Routers it
                     already has a password for keep it without this, until
-                    uninstalling deletes the data folder
+                    uninstalling deletes them
+    DELETE_DATA     1 when uninstalling to also delete the history, that is
+                    the whole data folder (default: kept, so reinstalling
+                    keeps the history); the Remove page asks for it
     RETENTION_DAYS  with WEBSITE=1, days of history to keep (default 30)
     HISTORY_MAX_ENTRIES  with WEBSITE=1, how many disks, sensors, network cards
                     and GPUs each the history keeps per device (default 64)
@@ -240,21 +243,26 @@
     </InstallExecuteSequence>
 
     <!--
-      Uninstalling deletes the data folder with everything in it, once the
-      services are stopped: the history, the encrypted router passwords and
-      the add-on reports. An update also uninstalls the version before it
-      (UPGRADINGPRODUCTCODE), which keeps them, so an update keeps the
-      history, and an empty password in an update still keeps the one stored
+      Uninstalling deletes the encrypted router passwords and the add-on
+      reports from the data folder, once the services are stopped, and keeps
+      the history, unless DELETE_DATA=1 (the box on the Remove page, see
+      RemoveDataDlg), which deletes the whole folder. An update also
+      uninstalls the version before it (UPGRADINGPRODUCTCODE), which keeps
+      them all, so an empty password in an update still keeps the one stored
       for that name. The path is spelled out from CommonAppDataFolder rather
       than DATAFOLDER, which a command line could point elsewhere.
     -->
-    <SetProperty Id="DeleteDataFolder" Before="DeleteDataFolder" Sequence="execute"
+    <Property Id="DELETE_DATA" Secure="yes" />
+    <SetProperty Action="DeleteDataFiles" Id="DeleteData" Before="DeleteData" Sequence="execute"
+                 Value='"[System64Folder]cmd.exe" /d /c del /f /q "[CommonAppDataFolder]Usage Control\router-passwords.dpapi" "[CommonAppDataFolder]Usage Control\addons\*.json"'
+                 Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE AND DELETE_DATA &lt;&gt; "1"' />
+    <SetProperty Action="DeleteDataFolder" Id="DeleteData" Before="DeleteData" Sequence="execute"
                  Value='"[System64Folder]cmd.exe" /d /c rmdir /s /q "[CommonAppDataFolder]Usage Control"'
-                 Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE' />
-    <CustomAction Id="DeleteDataFolder" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixQuietExec"
+                 Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE AND DELETE_DATA = "1"' />
+    <CustomAction Id="DeleteData" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixQuietExec"
                   Execute="deferred" Impersonate="no" Return="ignore" />
     <InstallExecuteSequence>
-      <Custom Action="DeleteDataFolder" After="StopServices" Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE' />
+      <Custom Action="DeleteData" After="StopServices" Condition='REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE' />
     </InstallExecuteSequence>
 
     <!--
@@ -690,8 +698,9 @@
     <!--
       The database: the history with WEBSITE=1, otherwise the minutes kept for
       a hub that cannot reach this PC (BUFFER_HOURS). Only the service,
-      administrators and the system can read or change it. An update keeps
-      it; uninstalling deletes it with the folder (DeleteDataFolder).
+      administrators and the system can read or change it. Uninstalling keeps
+      it, so reinstalling keeps the history, unless DELETE_DATA=1 (see
+      DeleteData).
     -->
     <Component Id="DataFolder" Directory="DATAFOLDER" Guid="C3AF9720-FF5B-4D29-AA9B-A3FB303E3586">
       <CreateFolder>
@@ -840,6 +849,26 @@
       </Dialog>
 
       <!--
+        The Remove page, after Remove on the maintenance page of an installer
+        run again: its box sets DELETE_DATA. Windows' own Uninstall button in
+        Apps runs no page, so it keeps the history.
+      -->
+      <Dialog Id="RemoveDataDlg" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Keep the history?" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Text="Removing Usage Control deletes the router passwords either way." />
+        <Control Id="DeleteData" Type="CheckBox" X="20" Y="55" Width="330" Height="15" Property="DELETE_DATA" CheckBoxValue="1" Text="Also &amp;delete the history" />
+        <Control Id="DeleteDataText" Type="Text" X="38" Y="72" Width="310" Height="24" NoPrefix="yes" Text="Otherwise it stays in C:\ProgramData\Usage Control, and installing Usage Control again keeps it." />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)" />
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+
+      <!--
         After an install or update, Finish shows the tray icon when its box is
         ticked. A repair from the wizard closes the icon (see
         CloseApplication), and WiX's last page shows the box only for an
@@ -884,9 +913,12 @@
 
       <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
       <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
-      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="RemoveDataDlg" />
       <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
-      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Condition="Installed" />
+      <Publish Dialog="RemoveDataDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" />
+      <Publish Dialog="RemoveDataDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Condition='Installed AND WixUI_InstallMode &lt;&gt; "Remove"' />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="RemoveDataDlg" Condition='Installed AND WixUI_InstallMode = "Remove"' />
     </UI>
 
     <UIRef Id="WixUI_Common" />

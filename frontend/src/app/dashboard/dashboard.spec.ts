@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
 import { HubConnection } from '../connection/connection';
-import { DeviceService } from '../devices/devices';
+import { DeviceService, LOCAL_DEVICE } from '../devices/devices';
 import { I18n, LANGUAGE_STORAGE_KEY } from '../i18n/i18n';
 import { Snapshot } from '../metrics/metrics';
 import {
@@ -14,6 +14,7 @@ import {
   extraSections,
   hottestFirst,
 } from './dashboard';
+import { FOLDED_STORAGE_KEY } from './categories';
 import { FitLabels } from './fit-labels';
 
 const snapshot: Snapshot = {
@@ -256,7 +257,7 @@ describe('Dashboard', () => {
   function rows(title: string): string[] {
     const card = fixture.debugElement
       .queryAll(By.css('.card'))
-      .find((c) => shown(c.query(By.css('h2')).nativeElement).trim() === title)!;
+      .find((c) => shown(c.query(By.css('h3')).nativeElement).trim() === title)!;
     return card
       .queryAll(By.css('.sensor, .section'))
       .map((row) => (row.nativeElement as HTMLElement).textContent!.trim());
@@ -402,7 +403,7 @@ describe('Dashboard', () => {
     const tip = (title: string) =>
       fixture.debugElement
         .queryAll(By.css('.card'))
-        .find((c) => shown(c.query(By.css('h2')).nativeElement).trim() === title)!
+        .find((c) => shown(c.query(By.css('h3')).nativeElement).trim() === title)!
         .query(By.css('.tip'))?.nativeElement.textContent;
     expect(tip('CPU')).toContain('How busy the processor is');
     expect(tip('Temperature')).toContain('hottest first');
@@ -433,17 +434,86 @@ describe('Dashboard', () => {
     const named = fixture.debugElement
       .queryAll(By.css('.card'))
       .filter((card) => card.query(By.css('.label')));
-    expect(named.map((card) => shown(card.query(By.css('h2')).nativeElement).trim())).toEqual([
+    expect(named.map((card) => shown(card.query(By.css('h3')).nativeElement).trim())).toEqual([
+      'GPU',
+      'Pressure',
       'Disks',
       'Network',
-      'GPU',
       'Temperature',
       'Fans',
-      'Pressure',
     ]);
     for (const card of named) {
       expect(card.injector.get(FitLabels, null)).not.toBeNull();
     }
+  });
+
+  it('groups the cards by category, with an unknown extra under More', () => {
+    respond({
+      ...snapshot,
+      timeZone: { name: 'UTC', offsetSeconds: 0 },
+      extras: [
+        { id: 'containers-cpu', title: 'Containers: CPU', items: [] },
+        { id: 'inodes', title: 'Inodes', items: [] },
+        { id: 'weather', title: 'Weather', items: [] },
+      ],
+    });
+    const element = fixture.nativeElement as HTMLElement;
+    const categories = [...element.querySelectorAll('.category')].map((c) => [
+      c.querySelector('h2')!.textContent!.trim(),
+      [...c.querySelectorAll('.card h3')].map((h) => shown(h).trim()),
+    ]);
+    expect(categories).toEqual([
+      ['System', ['CPU', 'Memory']],
+      ['Storage', ['Disks', 'Inodes']],
+      ['Network', ['Network']],
+      ['Temperature and power', ['Temperature']],
+      ['Programs and containers', ['Containers: CPU']],
+      ['More', ['Weather']],
+      ['Time and uptime', ['Time', 'Uptime']],
+    ]);
+  });
+
+  it('folds a category to its title, with the sign of its alerts, and remembers it', () => {
+    TestBed.inject(DeviceService).devices.set([
+      {
+        ...LOCAL_DEVICE,
+        alerts: [
+          {
+            id: 1,
+            device: LOCAL_DEVICE.id,
+            deviceName: 'Pi',
+            kind: 'disk',
+            subject: '/',
+            level: 'alert',
+            value: 96,
+            started: '2026-10-02T16:00:00Z',
+          },
+        ],
+      },
+    ]);
+    respond(snapshot);
+    const element = fixture.nativeElement as HTMLElement;
+    const storage = () =>
+      [...element.querySelectorAll('.category')].find((c) =>
+        c.querySelector('h2')!.textContent!.trim().startsWith('Storage'),
+      )!;
+    const fold = () => storage().querySelector<HTMLButtonElement>('button.fold')!;
+    expect(fold().getAttribute('aria-expanded')).toBe('true');
+    expect(storage().querySelector('.card')).not.toBeNull();
+
+    fold().click();
+    fixture.detectChanges();
+    expect(fold().getAttribute('aria-expanded')).toBe('false');
+    expect(storage().querySelector('.card')).toBeNull();
+    expect(fold().querySelector('app-alert-icon')).not.toBeNull();
+    expect(fold().textContent).toContain('1 card');
+    expect(JSON.parse(localStorage.getItem(FOLDED_STORAGE_KEY)!)).toEqual(['storage']);
+
+    fold().click();
+    fixture.detectChanges();
+    expect(storage().querySelector('.card')).not.toBeNull();
+    expect(JSON.parse(localStorage.getItem(FOLDED_STORAGE_KEY)!)).toEqual([]);
+    localStorage.removeItem(FOLDED_STORAGE_KEY);
   });
 
   it('leaves out what the device does not report', () => {
@@ -570,7 +640,7 @@ describe('Dashboard', () => {
   it('leaves out the GPU card when there is no GPU, or the device runs an older version', () => {
     respond({ ...snapshot, gpus: [] });
     const titles = () =>
-      [...(fixture.nativeElement as HTMLElement).querySelectorAll('h2')].map((h) =>
+      [...(fixture.nativeElement as HTMLElement).querySelectorAll('h3')].map((h) =>
         shown(h).trim(),
       );
 
@@ -613,7 +683,7 @@ describe('Dashboard', () => {
 
     expect(text()).not.toContain('cannot be reached');
     expect(text()).toContain('12.5 %');
-    const cards = (fixture.nativeElement as HTMLElement).querySelector('.cards');
+    const cards = (fixture.nativeElement as HTMLElement).querySelector('.categories');
     expect(cards?.classList).toContain('stale');
 
     TestBed.inject(HubConnection).answered();
@@ -769,7 +839,7 @@ describe('Dashboard', () => {
     fixture.detectChanges();
 
     const titles = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.card h2'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.card h3'),
       (h) => shown(h).trim(),
     );
     expect(titles).toEqual(['Network', 'Availability']);
@@ -877,13 +947,13 @@ describe('Dashboard', () => {
 
     const card = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.card'),
-    ).find((c) => shown(c.querySelector('h2')!).trim() === 'Uptime');
+    ).find((c) => shown(c.querySelector('h3')!).trim() === 'Uptime');
     expect(card?.textContent).toContain('3 d 4 h');
     expect(card?.querySelector('.availability')?.textContent).toContain('Availability');
     expect(card?.querySelector('.availability')?.textContent).toContain('99 %');
     expect(card?.textContent).toContain('1 outage, the last on');
     const titles = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.card h2'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.card h3'),
       (h) => shown(h).trim(),
     );
     expect(titles).not.toContain('Availability');

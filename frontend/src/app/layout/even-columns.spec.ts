@@ -36,6 +36,12 @@ describe('evenColumns', () => {
     expect(columns(9, 200)).toBe(1);
     expect(columns(0, 1000)).toBe(1);
   });
+
+  it('keeps the width of a full row for cards that fit in one, when asked', () => {
+    expect(evenColumns(2, 1000, 224, 16, true)).toBe(4);
+    expect(evenColumns(4, 1000, 224, 16, true)).toBe(4);
+    expect(evenColumns(5, 1000, 224, 16, true)).toBe(3); // still 3 + 2 once they wrap
+  });
 });
 
 describe('minCardWidth', () => {

@@ -283,6 +283,15 @@ export const en = {
   'alerts.since': 'since {since}',
   'alerts.fromTo': '{from} to {to}',
   'alerts.onCard': 'Needs attention',
+  'categories.system': 'System',
+  'categories.storage': 'Storage',
+  'categories.network': 'Network',
+  'categories.temperature': 'Temperature and power',
+  'categories.programs': 'Programs and containers',
+  'categories.other': 'More',
+  'categories.device': 'Time and uptime',
+  'categories.cards.one': '{count} card',
+  'categories.cards.other': '{count} cards',
 } as const;
 
 /** The key of one text on the website. */

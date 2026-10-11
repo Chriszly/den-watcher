@@ -179,7 +179,6 @@ export const es: Messages = {
   'passwordDialog.confirmRemove': 'Quitar',
   'passwordDialog.kind': '¿Cambiar {device} a {kind}?',
   'passwordDialog.confirmKind': 'Cambiar',
-  'history.title': 'Historial',
   'history.unit': 'Unidad del periodo mostrado',
   'history.range': 'Periodo mostrado',
   'history.unreachableStale':

@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { DeviceService } from '../devices/devices';
 import { History } from '../metrics/metrics';
-import { HistoryStore } from './history-store';
+import { HistoryStore, refreshIntervalMs } from './history-store';
 
 const HISTORY: History = {
   from: 0,
@@ -69,5 +69,16 @@ describe('HistoryStore', () => {
     expect(request.request.params.get('device')).toBe('nas');
 
     watching.unsubscribe();
+  });
+});
+
+describe('refreshIntervalMs', () => {
+  it('refreshes short ranges every 5 seconds, a day every minute and longer ranges every 5 minutes', () => {
+    expect(refreshIntervalMs(60)).toBe(5_000);
+    expect(refreshIntervalMs(30 * 60)).toBe(5_000);
+    expect(refreshIntervalMs(60 * 60)).toBe(60_000);
+    expect(refreshIntervalMs(86400)).toBe(60_000);
+    expect(refreshIntervalMs(7 * 86400)).toBe(300_000);
+    expect(refreshIntervalMs(30 * 86400)).toBe(300_000);
   });
 });

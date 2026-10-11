@@ -522,6 +522,10 @@ func TestExtrasLabelsEachValueWithItsDisk(t *testing.T) {
 	if hours := items[2]; hours.Label != "Disk 1: Power-on hours" {
 		t.Errorf("label = %q, want the disk without a model", hours.Label)
 	}
+	if checks[0].Section != "Samsung SSD 980 (nvme0)" || items[0].Section != "Samsung SSD 980 (nvme0)" ||
+		checks[1].Section != "Disk 1" || items[2].Section != "Disk 1" {
+		t.Errorf("sections = %q %q %q %q, want each value's disk", checks[0].Section, items[0].Section, checks[1].Section, items[2].Section)
+	}
 	if clean := metrics.CleanExtras(got, 64); !reflect.DeepEqual(clean, got) {
 		t.Errorf("CleanExtras() changed the extras: %+v", clean)
 	}

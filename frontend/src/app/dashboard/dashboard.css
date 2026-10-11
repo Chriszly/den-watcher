@@ -83,6 +83,17 @@ progress {
   font-size: calc(var(--label-scale, 1) * var(--mat-sys-label-large-size));
 }
 
+/* A section of an extra, such as a disk, above its values, which follow without its name. */
+.section.label {
+  margin: 0.25rem 0 0;
+  font: var(--mat-sys-label-large);
+  font-size: calc(var(--label-scale, 1) * var(--mat-sys-label-large-size));
+}
+
+.sensor + .section {
+  margin-top: 0.75rem;
+}
+
 /* Each interface: its name on one line, then its two speeds on one line below it. */
 .interface {
   display: grid;

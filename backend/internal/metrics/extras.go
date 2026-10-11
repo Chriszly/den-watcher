@@ -32,7 +32,11 @@ type ExtraItem struct {
 	// languages by language code.
 	Label  string            `json:"label"`
 	Labels map[string]string `json:"labels,omitempty"`
-	Unit   Unit              `json:"unit"`
+	// Section names what the value belongs to, such as a disk, when a group
+	// holds the values of several things. The page shows the values of one
+	// section under it, each label without the section and ": " before it.
+	Section string `json:"section,omitempty"`
+	Unit    Unit   `json:"unit"`
 	// Value is set for every unit but UnitText, which sets Text instead, and
 	// Texts the same text in other languages by language code.
 	Value *float64          `json:"value,omitempty"`
@@ -127,6 +131,7 @@ func cleanItems(items []ExtraItem, maxEntries int) []ExtraItem {
 			continue
 		}
 		item.Label = cut(item.Label)
+		item.Section = cut(item.Section)
 		item.Labels = cleanTranslations(item.Labels)
 		if !knownUnits[item.Unit] {
 			item.Unit = UnitNumber

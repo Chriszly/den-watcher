@@ -240,6 +240,114 @@ describe('Dashboard', () => {
     localStorage.removeItem(LANGUAGE_STORAGE_KEY);
   });
 
+  function rows(title: string): string[] {
+    const card = fixture.debugElement
+      .queryAll(By.css('.card'))
+      .find((c) => c.query(By.css('h2')).nativeElement.textContent.trim() === title)!;
+    return card
+      .queryAll(By.css('.sensor, .section'))
+      .map((row) => (row.nativeElement as HTMLElement).textContent!.trim());
+  }
+
+  it('shows the temperatures and the power hottest and largest first', () => {
+    respond({
+      ...snapshot,
+      temperatures: [
+        { sensor: 'nvme', celsius: 38 },
+        { sensor: 'cpu', celsius: 61.5 },
+        { sensor: 'gpu', celsius: 52 },
+      ],
+      extras: [
+        {
+          id: 'power',
+          title: 'Power',
+          items: [
+            { id: 'dram', label: 'Memory', unit: 'watts', value: 2.1 },
+            { id: 'package-0', label: 'CPU package', unit: 'watts', value: 24.5 },
+            { id: 'gpu', label: 'GPU', unit: 'watts', value: 9 },
+          ],
+        },
+      ],
+    });
+
+    expect(rows('Temperature')).toEqual(['cpu61.5 °C', 'gpu52 °C', 'nvme38 °C']);
+    expect(rows('Power')).toEqual(['CPU package24.5 W', 'GPU9 W', 'Memory2.1 W']);
+  });
+
+  it('shows the values of each section under it, without the section in their labels', () => {
+    respond({
+      ...snapshot,
+      extras: [
+        {
+          id: 'smart',
+          title: 'Disk health',
+          titles: { de: 'Laufwerkszustand' },
+          items: [
+            {
+              id: 'a-temperature',
+              label: 'WDC (sda): Temperature',
+              labels: { de: 'WDC (sda): Temperatur' },
+              section: 'WDC (sda)',
+              unit: 'celsius',
+              value: 35,
+            },
+            {
+              id: 'b-temperature',
+              label: 'Disk 1: Temperature',
+              section: 'Disk 1',
+              unit: 'celsius',
+              value: 40,
+            },
+            {
+              id: 'a-used',
+              label: 'WDC (sda): Wear',
+              section: 'WDC (sda)',
+              unit: 'percent',
+              value: 3,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(rows('Disk health')).toEqual([
+      'WDC (sda)',
+      'Temperature35 °C',
+      'Wear3 %',
+      'Disk 1',
+      'Temperature40 °C',
+    ]);
+
+    TestBed.inject(I18n).use('de');
+    fixture.detectChanges();
+    expect(rows('Laufwerkszustand').slice(0, 2)).toEqual(['WDC (sda)', 'Temperatur35 °C']);
+    localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+  });
+
+  it('fits text values like the names, so long addresses shrink with them', () => {
+    respond({
+      ...snapshot,
+      extras: [
+        {
+          id: 'ports',
+          title: 'Listening ports',
+          items: [
+            { id: 'count', label: 'Listening ports', unit: 'number', value: 1 },
+            { id: 'tcp-22', label: 'TCP 22', unit: 'text', text: '0.0.0.0, ::' },
+          ],
+        },
+      ],
+    });
+
+    const values = fixture.debugElement
+      .queryAll(By.css('.sensor > :last-child'))
+      .map((v) => v.nativeElement as HTMLElement);
+    const port = values.find((v) => v.textContent === '0.0.0.0, ::')!;
+    expect(port.classList).toContain('label');
+    expect(port.title).toBe('0.0.0.0, ::');
+    expect(values.find((v) => v.textContent === '1')!.classList).not.toContain('label');
+  });
+
   it('fits the names on every card that has names, not only the temperatures', () => {
     respond({
       ...snapshot,

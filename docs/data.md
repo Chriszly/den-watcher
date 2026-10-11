@@ -97,7 +97,7 @@ Each extra is a group shown as one card:
 | --- | --- |
 | `id` | the group's name, such as `pressure`: lowercase letters, digits, `-` and `_`, up to 40 characters |
 | `title`, `titles` | the card's title in English, and in other languages by language code (`de`, `fr`, `es`, `en-US`) |
-| `items` | the values: `id` (as above), `label` and `labels` (like `title` and `titles`), `unit`, then `value`, or `text` for the unit `text` with `texts` for its translations (like `titles`), and `history: true` to keep its history |
+| `items` | the values: `id` (as above), `label` and `labels` (like `title` and `titles`), `unit`, then `value`, or `text` for the unit `text` with `texts` for its translations (like `titles`), `history: true` to keep its history, and `section` when the group holds the values of several things, such as disks: the page shows the values of one section under it, each label without the section and `: ` before it |
 
 Units: `percent`, `celsius`, `bytes`, `bytesPerSecond`, `watts`, `milliseconds`, `perSecond`, `number` and `text`. A unit the hub does not know is shown as a plain number.
 
@@ -113,7 +113,7 @@ Example:
 }]
 ```
 
-Before showing or storing another device's extras, the hub keeps at most `HISTORY_MAX_ENTRIES` groups and as many values per group (where there are more, the ones with `history: true` first, by `id`, then the others in the order the device lists them, such as the busiest processes first; all shown in the order the device lists them), cuts titles, labels and texts to 80 characters, and leaves out groups and values with an invalid or repeated `id` and values without a value. The page draws one chart per group and unit of the values with `history: true`.
+Before showing or storing another device's extras, the hub keeps at most `HISTORY_MAX_ENTRIES` groups and as many values per group (where there are more, the ones with `history: true` first, by `id`, then the others in the order the device lists them, such as the busiest processes first; all shown in the order the device lists them), cuts titles, labels, sections and texts to 80 characters, and leaves out groups and values with an invalid or repeated `id` and values without a value. The page draws one chart per group and unit of the values with `history: true`.
 
 ## What is kept in the history
 

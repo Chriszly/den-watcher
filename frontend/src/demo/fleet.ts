@@ -811,9 +811,10 @@ function smartReadAt(t: number): number {
   return Math.floor(t / 1800) * 1800;
 }
 
-/** Puts the disk before a label and each of its translations, as the smart add-on does. */
+/** Puts the disk before a label and each of its translations, and makes it the section, as the smart add-on does. */
 function diskLabels(disk: string, label: string, labels: Record<string, string>) {
   return {
+    section: disk,
     label: `${disk}: ${label}`,
     labels: Object.fromEntries(Object.entries(labels).map(([code, l]) => [code, `${disk}: ${l}`])),
   };

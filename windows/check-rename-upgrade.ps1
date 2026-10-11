@@ -20,7 +20,13 @@ $OldMsi = (Resolve-Path $OldMsi).Path
 $Msi = (Resolve-Path $Msi).Path
 
 function Invoke-Installer([string] $Arguments) {
-    $process = Start-Process msiexec.exe -ArgumentList "$Arguments /qn /l*v msiexec.log" -Wait -PassThru
+    $process = Start-Process msiexec.exe -ArgumentList "$Arguments /qn /l*v msiexec.log" -PassThru
+    # An installer waiting on a dialog no one answers would never end.
+    if (-not $process.WaitForExit(300000)) {
+        $process.Kill($true)
+        Get-Content msiexec.log -Tail 80
+        throw "msiexec $Arguments did not end within 5 minutes, as if waiting on a dialog"
+    }
     if ($process.ExitCode -ne 0) {
         Get-Content msiexec.log -Tail 80
         throw "msiexec $Arguments failed with exit code $($process.ExitCode)"

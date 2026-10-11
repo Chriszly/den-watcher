@@ -40,7 +40,13 @@ $NewerMsi = (Resolve-Path $NewerMsi).Path
 # Runs the installer silently, or with the user interface Ui, such as /qr,
 # the reduced one, which runs the wizard's actions without its pages.
 function Invoke-Installer([string] $Arguments, [string] $Ui = '/qn') {
-    $process = Start-Process msiexec.exe -ArgumentList "$Arguments $Ui /l*v msiexec.log" -Wait -PassThru
+    $process = Start-Process msiexec.exe -ArgumentList "$Arguments $Ui /l*v msiexec.log" -PassThru
+    # An installer waiting on a dialog no one answers would never end.
+    if (-not $process.WaitForExit(300000)) {
+        $process.Kill($true)
+        Get-Content msiexec.log -Tail 80
+        throw "msiexec $Arguments $Ui did not end within 5 minutes, as if waiting on a dialog"
+    }
     if ($process.ExitCode -ne 0) {
         Get-Content msiexec.log -Tail 80
         throw "msiexec $Arguments failed with exit code $($process.ExitCode)"

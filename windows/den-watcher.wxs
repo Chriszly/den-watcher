@@ -344,6 +344,14 @@
     <UIRef Id="SetupWizard" />
     <!-- No "Change" in Apps and Features: a newer installer, or a repair with WEBSITE, changes the mode. -->
     <Property Id="ARPNOMODIFY" Value="1" />
+    <!--
+      Without the Restart Manager the installer only asks about programs with
+      a window that hold its files. The add-ons the service runs have none,
+      and stopping the service ends them before any file is changed, but the
+      Restart Manager would count them as programs to close and, with a user
+      interface, stop the install on a dialog asking about them.
+    -->
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="Den-Watcher" />

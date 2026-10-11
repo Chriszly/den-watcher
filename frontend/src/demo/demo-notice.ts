@@ -20,7 +20,7 @@ const ENGLISH: NoticeText = {
   release: 'Version {version}',
   main: 'Development version from main {commit}',
   toMain: 'See the development version',
-  toRelease: 'See the latest release',
+  toRelease: 'See the current release',
 };
 
 /** The version the notice names and, for a published demo, the link to the other one. */
@@ -39,7 +39,7 @@ const TEXT: Record<LanguageCode, NoticeText> = {
     release: 'Version {version}',
     main: 'Entwicklungsstand von main {commit}',
     toMain: 'Entwicklungsstand ansehen',
-    toRelease: 'Neueste Version ansehen',
+    toRelease: 'Aktuelle Version ansehen',
   },
   fr: {
     notice: 'Ceci est une démo avec des valeurs inventées d’appareils d’exemple.',
@@ -47,7 +47,7 @@ const TEXT: Record<LanguageCode, NoticeText> = {
     release: 'Version {version}',
     main: 'Version de développement de main {commit}',
     toMain: 'Voir la version de développement',
-    toRelease: 'Voir la dernière version',
+    toRelease: 'Voir la version actuelle',
   },
   es: {
     notice: 'Esto es una demo con valores inventados de dispositivos de ejemplo.',
@@ -55,7 +55,7 @@ const TEXT: Record<LanguageCode, NoticeText> = {
     release: 'Versión {version}',
     main: 'Versión en desarrollo de main {commit}',
     toMain: 'Ver la versión en desarrollo',
-    toRelease: 'Ver la última versión',
+    toRelease: 'Ver la versión actual',
   },
 };
 

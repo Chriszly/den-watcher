@@ -26,7 +26,7 @@ describe('DemoNotice', () => {
     expect(notice.textContent).toContain('Development version from main a690bc7');
     const link = notice.querySelector('a');
     expect(link?.getAttribute('href')).toBe('../');
-    expect(link?.textContent?.trim()).toBe('See the latest release');
+    expect(link?.textContent?.trim()).toBe('See the current release');
   });
 
   it('has no link to another demo when it is neither published one, such as a local build', () => {

@@ -59,9 +59,7 @@ func Main(name, service string, newRead func() Read) {
 	winservice.LogWarnings(service)
 	ranAsService, err := winservice.Run(service, serve, nil)
 	if !ranAsService && err == nil {
-		// Only outside the service manager: Go turns a user logging off
-		// Windows into SIGTERM, which would stop the service for good.
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		ctx, stop := signal.NotifyContext(context.Background(), stopSignals()...)
 		err = serve(ctx)
 		stop()
 	}
@@ -72,6 +70,18 @@ func Main(name, service string, newRead func() Read) {
 		}
 		os.Exit(1)
 	}
+}
+
+// stopSignals are the signals an add-on outside the service manager stops on.
+// Go turns a user logging off Windows into SIGTERM, which would stop a
+// service for good, so a child of the den-watcher service, which has no
+// console either and is started with EventLogVariable set, ignores it and
+// stops when den-watcher ends it.
+func stopSignals() []os.Signal {
+	if os.Getenv(winservice.EventLogVariable) == "1" {
+		return []os.Signal{os.Interrupt}
+	}
+	return []os.Signal{os.Interrupt, syscall.SIGTERM}
 }
 
 // Serve writes what read returns to the add-on folder until ctx is done, then

@@ -16,10 +16,19 @@ export interface Layout {
   pinned: string[];
   /** The values of the details made into cards of their own, by the card's id. */
   made: string[];
+  /** The cards set wider than one card, by id, in cards: 2 or 4. */
+  widths: Record<string, number>;
 }
 
 /** The layout of a page that has not been arranged. */
-export const EMPTY_LAYOUT: Layout = { folded: [], order: [], hidden: [], pinned: [], made: [] };
+export const EMPTY_LAYOUT: Layout = {
+  folded: [],
+  order: [],
+  hidden: [],
+  pinned: [],
+  made: [],
+  widths: {},
+};
 
 /** The layout as the host answered it, with an empty list for each list it does not have. */
 function fromHost(answer: Partial<Layout> | null): Layout {
@@ -31,7 +40,15 @@ function fromHost(answer: Partial<Layout> | null): Layout {
     hidden: list(answer?.hidden),
     pinned: list(answer?.pinned),
     made: list(answer?.made),
+    widths: widths(answer?.widths),
   };
+}
+
+/** The widths as the host answered them, without any that are not 2 or 4 cards. */
+function widths(value: unknown): Record<string, number> {
+  return value && typeof value === 'object'
+    ? Object.fromEntries(Object.entries(value).filter(([, width]) => width === 2 || width === 4))
+    : {};
 }
 
 type Change = (layout: Layout) => Layout;

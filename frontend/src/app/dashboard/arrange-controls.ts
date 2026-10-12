@@ -2,16 +2,19 @@ import { CdkDragHandle } from '@angular/cdk/drag-drop';
 import { Component, inject, input, output } from '@angular/core';
 
 import { I18n } from '../i18n/i18n';
+import { CardSlot } from './card-slot';
+import { WidthIcon } from './width-icon';
 
 /**
  * The controls to move, pin and hide a card while the page is arranged, in a row above the card:
- * a handle to drag it, arrows to move it by one place for the keyboard and touch, a button
- * to pin it above the categories and one to hide it, or to put a value made into a card back in the
- * details. The card's slot is the cdkDrag the handle drags.
+ * a handle to drag it, arrows to move it by one place for the keyboard and touch, a button to
+ * make a card with charts wider for every browser, one to pin it above the categories and one to
+ * hide it, or to put a value made into a card back in the details. The card's slot is the cdkDrag
+ * the handle drags.
  */
 @Component({
   selector: 'app-arrange-controls',
-  imports: [CdkDragHandle],
+  imports: [CdkDragHandle, WidthIcon],
   template: `
     <button
       type="button"
@@ -49,6 +52,19 @@ import { I18n } from '../i18n/i18n';
     >
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
     </button>
+    @if (slot && (charts() || slot.width() > 1) && slot.widens()) {
+      @let label = i18n.t(slot.next() > 1 ? 'arrange.wider' : 'arrange.narrower', { card: card() });
+      <button
+        type="button"
+        class="width"
+        [attr.aria-pressed]="slot.shown() > 1"
+        (click)="slot.step()"
+        [attr.aria-label]="label"
+        [title]="label"
+      >
+        <app-width-icon [narrower]="slot.next() === 1" />
+      </button>
+    }
     <button
       type="button"
       class="pin"
@@ -94,6 +110,10 @@ export class ArrangeControls {
   /** Asks to pin the card, or to unpin it when it is pinned. */
   readonly pin = output();
   readonly hide = output();
+  /** Whether the card has charts, which a wider card shows larger; a wider card without them can be narrowed. */
+  readonly charts = input(false);
 
   protected readonly i18n = inject(I18n);
+  /** The card's place in its grid, whose width the width button steps and keeps on the host. */
+  protected readonly slot = inject(CardSlot, { optional: true });
 }

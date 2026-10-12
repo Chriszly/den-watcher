@@ -52,6 +52,14 @@ svg {
   }
 }
 
+.width {
+  --width-icon: 1.25rem;
+}
+
+.width[aria-pressed='true'] {
+  color: var(--mat-sys-primary);
+}
+
 .pin[aria-pressed='true'] {
   color: var(--mat-sys-primary);
 

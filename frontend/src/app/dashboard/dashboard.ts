@@ -43,6 +43,7 @@ import { ArrangeBar } from './arrange-bar';
 import { ArrangeControls } from './arrange-controls';
 import { Arrangement } from './arrangement';
 import { CardInfo } from './card-info';
+import { CardSlot } from './card-slot';
 import {
   CATEGORIES,
   Category,
@@ -197,6 +198,7 @@ type Problem = 'backend' | 'device';
     ArrangeControls,
     BytesPipe,
     CardInfo,
+    CardSlot,
     CdkDrag,
     CdkDropList,
     CardCharts,
@@ -465,6 +467,12 @@ export class Dashboard {
         );
       });
     }
+  }
+
+  /** Whether a card draws charts, which a wider card shows larger. */
+  protected hasCharts(card: Card): boolean {
+    const charts = card.kind === 'value' ? this.valueCharts() : this.cardCharts();
+    return (charts.get(card.id)?.length ?? 0) > 0;
   }
 
   /** Pins a card above the categories, or unpins it; the focus stays on the button in its new place. */

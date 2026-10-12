@@ -1,18 +1,20 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 
+import { CardSlot } from '../dashboard/card-slot';
+import { WidthIcon } from '../dashboard/width-icon';
 import { I18n } from '../i18n/i18n';
 import { HistoryStore } from './history-store';
 import { Chart } from './history';
 import { LineChart } from './line-chart';
 
 /**
- * The charts of one dashboard card, over the range picked at the top of the page, small at the
- * bottom of the card. A button in the card's corner widens the card over its row, with taller
- * charts, and narrows it again.
+ * The charts of one dashboard card, over the range picked at the top of the page, at the bottom of
+ * the card, taller as the card is wider. Outside the arrange mode, a button in the card's corner
+ * steps the card to 2 and 4 cards wide, as far as they fit, and back, until the page loads again.
  */
 @Component({
   selector: 'app-card-charts',
-  imports: [LineChart],
+  imports: [LineChart, WidthIcon],
   template: `
     @if (store.history(); as h) {
       @for (chart of charts(); track $index) {
@@ -31,30 +33,33 @@ import { LineChart } from './line-chart';
           />
         </div>
       }
-      @if (charts().length > 0) {
-        <button
-          type="button"
-          class="widen"
-          [attr.aria-pressed]="wide()"
-          [title]="i18n.t('history.bigger')"
-          (click)="wide.update((wide) => !wide)"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5" />
-          </svg>
-          <span class="visually-hidden">{{ i18n.t('history.bigger') }}</span>
-        </button>
+      @if (slot; as slot) {
+        @if (charts().length > 0 && slot.widens() && !slot.arranging()) {
+          @let label = i18n.t(slot.next() > 1 ? 'history.wider' : 'history.narrower');
+          <button
+            type="button"
+            class="widen"
+            [attr.aria-pressed]="slot.shown() > 1"
+            [title]="label"
+            (click)="slot.step()"
+          >
+            <app-width-icon [narrower]="slot.next() === 1" />
+            <span class="visually-hidden">{{ label }}</span>
+          </button>
+        }
       }
     }
   `,
   styleUrl: './card-charts.css',
-  host: { '[class.wide]': 'wide()' },
+  host: { '[attr.data-width]': 'width()' },
 })
 export class CardCharts {
   readonly charts = input.required<Chart[]>();
 
   protected readonly store = inject(HistoryStore);
   protected readonly i18n = inject(I18n);
-  /** Whether the card is widened over its row, with taller charts. */
-  protected readonly wide = signal(false);
+  /** The card's place in its grid, which sets how wide it is; none outside a grid of cards. */
+  protected readonly slot = inject(CardSlot, { optional: true });
+  /** How many cards wide the card shows, which sets how tall its charts are. */
+  protected readonly width = computed(() => this.slot?.shown() ?? 1);
 }

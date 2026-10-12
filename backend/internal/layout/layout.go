@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"unicode"
 	"unicode/utf8"
 )
@@ -37,6 +39,8 @@ type Layout struct {
 	// Made are the values of the details made into cards of their own, by
 	// the card's id, such as "value:kernel/forks".
 	Made []string `json:"made"`
+	// Widths are the cards set wider than one card, by id, in cards: 2 or 4.
+	Widths map[string]int `json:"widths"`
 }
 
 // list is one list of a layout, with its name in JSON.
@@ -79,7 +83,7 @@ func (s *Store) Read(ctx context.Context) (Layout, error) {
 	var stored string
 	err := s.db.QueryRowContext(ctx, `SELECT layout FROM page_layout WHERE id = 1`).Scan(&stored)
 	if errors.Is(err, sql.ErrNoRows) {
-		return Layout{Folded: []string{}, Order: []string{}, Hidden: []string{}, Pinned: []string{}, Made: []string{}}, nil
+		return Layout{Folded: []string{}, Order: []string{}, Hidden: []string{}, Pinned: []string{}, Made: []string{}, Widths: map[string]int{}}, nil
 	}
 	if err != nil {
 		return Layout{}, err
@@ -94,6 +98,9 @@ func (s *Store) Read(ctx context.Context) (Layout, error) {
 			*list.entries = []string{}
 		}
 	}
+	if layout.Widths == nil {
+		layout.Widths = map[string]int{}
+	}
 	return layout, nil
 }
 
@@ -104,6 +111,9 @@ func (s *Store) Write(ctx context.Context, layout Layout) error {
 		if err := check(list.name, *list.entries); err != nil {
 			return err
 		}
+	}
+	if err := checkWidths(layout.Widths); err != nil {
+		return err
 	}
 	stored, err := json.Marshal(layout)
 	if err != nil {
@@ -130,6 +140,21 @@ func check(field string, names []string) error {
 			return &InputError{fmt.Sprintf("%s names %q twice", field, name)}
 		}
 		seen[name] = true
+	}
+	return nil
+}
+
+// checkWidths checks the widths of the layout: named like the entries of a
+// list, each 2 or 4 cards.
+func checkWidths(widths map[string]int) error {
+	cards := slices.Sorted(maps.Keys(widths))
+	if err := check("widths", cards); err != nil {
+		return err
+	}
+	for _, card := range cards {
+		if width := widths[card]; width != 2 && width != 4 {
+			return &InputError{fmt.Sprintf("widths gives %q %d cards, but a card is 2 or 4 cards wide", card, width)}
+		}
 	}
 	return nil
 }

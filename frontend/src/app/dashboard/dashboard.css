@@ -245,11 +245,6 @@ h3 > app-alert-icon {
   }
 }
 
-/* Widened by the button in its corner, a card takes its whole row. */
-.cards > .slot:has(> .card > app-card-charts.wide) {
-  grid-column: 1 / -1;
-}
-
 /* Each card sits in a slot of the grid, which the arrange mode moves; the card fills it, so the
    cards of a row are as tall as each other. */
 .slot {

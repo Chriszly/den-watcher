@@ -111,6 +111,18 @@ describe('EvenColumns', () => {
     expect(element.style.getPropertyValue('--columns')).toBe('4');
   });
 
+  it('gives a grid with a wider card as many columns as cards fit side by side', async () => {
+    const { fixture, element } = await grid();
+    (element.children[0] as HTMLElement).dataset['width'] = '2';
+    await new Promise((resolve) => setTimeout(resolve)); // the MutationObserver reports later
+    expect(element.style.getPropertyValue('--columns')).toBe('4');
+    const columns = fixture.debugElement.children[0].injector.get(EvenColumns);
+    expect([columns.fit(), columns.columns()]).toEqual([4, 4]);
+    (element.children[0] as HTMLElement).dataset['width'] = '1';
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(element.style.getPropertyValue('--columns')).toBe('3'); // 3 + 2 again
+  });
+
   it('counts again when the grid gets a new width', async () => {
     const { element } = await grid();
     FakeResizeObserver.last?.resize(2000);

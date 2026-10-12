@@ -32,7 +32,7 @@ func TestALayoutIsEmptyUntilOneIsStored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Read() error = %v", err)
 	}
-	if want := (Layout{Folded: []string{}, Order: []string{}, Hidden: []string{}, Pinned: []string{}, Made: []string{}}); !reflect.DeepEqual(got, want) {
+	if want := (Layout{Folded: []string{}, Order: []string{}, Hidden: []string{}, Pinned: []string{}, Made: []string{}, Widths: map[string]int{}}); !reflect.DeepEqual(got, want) {
 		t.Errorf("Read() = %#v, want %#v", got, want)
 	}
 }
@@ -47,7 +47,7 @@ func TestALayoutStoredBeforeAListWasAddedHasItEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Read() error = %v", err)
 	}
-	if want := (Layout{Folded: []string{"storage"}, Order: []string{}, Hidden: []string{}, Pinned: []string{}, Made: []string{}}); !reflect.DeepEqual(got, want) {
+	if want := (Layout{Folded: []string{"storage"}, Order: []string{}, Hidden: []string{}, Pinned: []string{}, Made: []string{}, Widths: map[string]int{}}); !reflect.DeepEqual(got, want) {
 		t.Errorf("Read() = %#v, want %#v", got, want)
 	}
 }
@@ -55,7 +55,7 @@ func TestALayoutStoredBeforeAListWasAddedHasItEmpty(t *testing.T) {
 func TestTheLastWrittenLayoutIsKept(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
-	want := Layout{Folded: []string{"network", "system"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}, Pinned: []string{"temperatures"}, Made: []string{"value:kernel/forks"}}
+	want := Layout{Folded: []string{"network", "system"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}, Pinned: []string{"temperatures"}, Made: []string{"value:kernel/forks"}, Widths: map[string]int{"cpu": 2, "network": 4}}
 	for _, layout := range []Layout{{Folded: []string{"storage"}, Order: []string{}, Hidden: []string{}}, want} {
 		if err := s.Write(ctx, layout); err != nil {
 			t.Fatalf("Write(%v) error = %v", layout, err)
@@ -97,10 +97,37 @@ func TestRefusesALayoutThatIsNotValid(t *testing.T) {
 					t.Fatalf("Write() error = %v, want an *InputError about %s", err, field)
 				}
 				got, err := s.Read(context.Background())
-				if err != nil || len(got.Folded)+len(got.Order)+len(got.Hidden)+len(got.Pinned)+len(got.Made) != 0 {
+				if err != nil || len(got.Folded)+len(got.Order)+len(got.Hidden)+len(got.Pinned)+len(got.Made)+len(got.Widths) != 0 {
 					t.Errorf("Read() = %v, %v; want the refused layout not stored", got, err)
 				}
 			})
 		}
+	}
+}
+
+func TestRefusesWidthsThatAreNotValid(t *testing.T) {
+	tooMany := make(map[string]int, MaxEntries+1)
+	for i := range MaxEntries + 1 {
+		tooMany[strconv.Itoa(i)] = 2
+	}
+	for name, widths := range map[string]map[string]int{
+		"empty name": {"": 2},
+		"long name":  {strings.Repeat("a", MaxNameBytes+1): 2},
+		"control":    {"c\npu": 2},
+		"too many":   tooMany,
+		"one card":   {"cpu": 1},
+		"three":      {"cpu": 3},
+		"none":       {"cpu": 0},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := openTestStore(t)
+			var input *InputError
+			if err := s.Write(context.Background(), Layout{Widths: widths}); !errors.As(err, &input) || !strings.HasPrefix(input.Message, "widths") && !strings.Contains(input.Message, " widths ") {
+				t.Fatalf("Write() error = %v, want an *InputError about widths", err)
+			}
+			if got, err := s.Read(context.Background()); err != nil || len(got.Widths) != 0 {
+				t.Errorf("Read() = %v, %v; want the refused layout not stored", got, err)
+			}
+		})
 	}
 }

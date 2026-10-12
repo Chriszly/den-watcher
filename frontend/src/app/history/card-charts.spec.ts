@@ -70,19 +70,9 @@ describe('CardCharts', () => {
     expect(element.querySelectorAll('h4')[1].textContent!.trim()).toBe('Retransmissions');
   });
 
-  it('widens the card and narrows it again', () => {
+  it('has no width button outside a grid of cards', () => {
     const element = show([DISKS]);
-    const button = element.querySelector<HTMLButtonElement>('button.widen')!;
-    expect(button.getAttribute('aria-pressed')).toBe('false');
-
-    button.click();
-    fixture.detectChanges();
-    expect(element.classList).toContain('wide');
-    expect(button.getAttribute('aria-pressed')).toBe('true');
-
-    button.click();
-    fixture.detectChanges();
-    expect(element.classList).not.toContain('wide');
+    expect(element.querySelector('button.widen')).toBeNull();
   });
 
   it('shows nothing, not even the button, without charts', () => {

@@ -15,7 +15,6 @@ import {
   extraSections,
   hottestFirst,
 } from './dashboard';
-import { FOLDED_STORAGE_KEY } from './categories';
 import { FitLabels } from './fit-labels';
 
 const snapshot: Snapshot = {
@@ -61,6 +60,8 @@ describe('Dashboard', () => {
   afterEach(() => {
     // The range picker, the glance row and the charts read the history, which their own tests cover.
     http.match((r) => r.url === '/api/history');
+    // The folded categories are kept on the host, which the categories' own tests cover.
+    http.match((r) => r.url === '/api/layout');
     http.verify();
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -77,6 +78,16 @@ describe('Dashboard', () => {
       request.flush('down', { status: 502, statusText: 'Bad Gateway' });
     }
     fixture.detectChanges();
+  }
+
+  /** The layouts the page sent to the host since the last call, each answered. */
+  function layoutWrites(): unknown[] {
+    return http
+      .match((r) => r.method === 'PUT' && r.url === '/api/layout')
+      .map((w) => {
+        w.flush(null, { status: 204, statusText: 'No Content' });
+        return w.request.body;
+      });
   }
 
   /** The text of an element as the page shows it, without the texts behind the (i) of the cards. */
@@ -503,8 +514,6 @@ describe('Dashboard', () => {
     system.querySelector<HTMLButtonElement>('button.fold')!.click();
     fixture.detectChanges();
     expect(system.querySelector('button.fold')!.textContent).toContain('2 cards · 2 values');
-    system.querySelector<HTMLButtonElement>('button.fold')!.click();
-    localStorage.removeItem(FOLDED_STORAGE_KEY);
   });
 
   it('groups the cards by category, with an unknown extra under More', () => {
@@ -552,6 +561,7 @@ describe('Dashboard', () => {
       },
     ]);
     respond(snapshot);
+    http.expectOne('/api/layout').flush({ folded: [] });
     const element = fixture.nativeElement as HTMLElement;
     const storage = () =>
       [...element.querySelectorAll('.category')].find((c) =>
@@ -567,13 +577,12 @@ describe('Dashboard', () => {
     expect(storage().querySelector('.card')).toBeNull();
     expect(fold().querySelector('app-alert-icon')).not.toBeNull();
     expect(fold().textContent).toContain('1 card');
-    expect(JSON.parse(localStorage.getItem(FOLDED_STORAGE_KEY)!)).toEqual(['storage']);
+    expect(layoutWrites()).toEqual([{ folded: ['storage'] }]);
 
     fold().click();
     fixture.detectChanges();
     expect(storage().querySelector('.card')).not.toBeNull();
-    expect(JSON.parse(localStorage.getItem(FOLDED_STORAGE_KEY)!)).toEqual([]);
-    localStorage.removeItem(FOLDED_STORAGE_KEY);
+    expect(layoutWrites()).toEqual([{ folded: [] }]);
   });
 
   it('draws each chart in its card, folded with its category', () => {
@@ -607,8 +616,6 @@ describe('Dashboard', () => {
     expect(storage().querySelector('app-line-chart')).toBeNull();
     expect(storage().querySelector('button.fold')!.textContent).toContain('1 card');
     expect(storage().querySelector('button.fold')!.textContent).not.toContain('chart');
-    storage().querySelector<HTMLButtonElement>('button.fold')!.click();
-    localStorage.removeItem(FOLDED_STORAGE_KEY);
   });
 
   it('shows the charts up to the last reading of a device that has not answered', () => {

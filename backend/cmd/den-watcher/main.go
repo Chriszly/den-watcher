@@ -72,6 +72,7 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/alerts"
 	"github.com/Chriszly/den-watcher/backend/internal/history"
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
+	"github.com/Chriszly/den-watcher/backend/internal/layout"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 	"github.com/Chriszly/den-watcher/backend/internal/password"
 	"github.com/Chriszly/den-watcher/backend/internal/reach"
@@ -305,6 +306,11 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		return server.Site{}, nil, err
 	}
 
+	pageLayout, err := layout.Open(ctx, store.DB())
+	if err != nil {
+		return server.Site{}, nil, err
+	}
+
 	recent := &history.Recent{}
 	recorder := &history.Recorder{Store: store, Recent: recent, Collector: sampler.Reusing(reuseFor), Device: history.LocalDevice, MaxEntries: historyEntries}
 	pruner := &history.Pruner{Store: store, Retention: retention}
@@ -333,6 +339,7 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		AllowedHosts: listSetting("ALLOWED_HOSTS"),
 		Minutes:      history.Reader{Store: store, Recent: recent, Device: history.LocalDevice},
 		Alerts:       watcher,
+		Layout:       pageLayout,
 	}
 	if checker := update.NewChecker(version.Version); checker != nil && checkUpdates {
 		site.Update = checker.Status

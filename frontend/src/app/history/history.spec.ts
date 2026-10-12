@@ -15,7 +15,8 @@ describe('chartsOf', () => {
       (key, params) => translate('en-GB', key, params),
     );
 
-    expect(charts.map((c) => c.title)).toEqual(['CPU and memory', 'Network', 'Disks']);
+    expect(charts.map((c) => c.title)).toEqual(['CPU', 'Network', 'Disks']);
+    expect(charts.map((c) => c.card)).toEqual(['cpu', 'network', 'disks']);
     expect(charts[1].lines[0].points).toEqual([{ time: 0, value: 150 }]);
     expect(charts[2].lines[0].label).toBe('/');
     expect(charts.map((c) => c.category)).toEqual(['system', 'network', 'storage']);
@@ -33,7 +34,7 @@ describe('chartsOf for a router', () => {
 
     expect(chartsOf(series, t, true).map((c) => c.title)).toEqual(['Network']);
     // A device at 0 % is still charted.
-    expect(chartsOf(series, t).map((c) => c.title)).toEqual(['CPU and memory', 'Network']);
+    expect(chartsOf(series, t).map((c) => c.title)).toEqual(['CPU', 'Memory', 'Network']);
     // A router read with a login tells them.
     series[0].points = [{ time: 0, value: 12 }];
     expect(chartsOf(series, t, true)[0].lines[0]).toEqual({
@@ -77,10 +78,10 @@ describe('chartsOf for a router', () => {
 });
 
 describe('chartsOf with swap and disk activity', () => {
-  it('adds swap to the CPU and memory chart and charts disk speeds', () => {
+  it('adds swap to the memory chart and charts disk speeds in the disks card', () => {
     const charts = chartsOf(
       [
-        { metric: 'cpu', points: [{ time: 0, value: 10 }] },
+        { metric: 'memory', points: [{ time: 0, value: 40 }] },
         { metric: 'disk.read:/', points: [{ time: 0, value: 2048 }] },
         { metric: 'disk.write:/', points: [{ time: 0, value: 512 }] },
         { metric: 'swap', points: [{ time: 0, value: 5 }] },
@@ -88,17 +89,19 @@ describe('chartsOf with swap and disk activity', () => {
       (key, params) => translate('en-GB', key, params),
     );
 
-    expect(charts.map((c) => c.title)).toEqual(['CPU and memory', 'Disk activity']);
-    expect(charts[0].lines.map((l) => l.label)).toEqual(['CPU', 'Memory', 'Swap']);
+    expect(charts.map((c) => c.title)).toEqual(['Memory', 'Disk activity']);
+    expect(charts[0].lines.map((l) => l.label)).toEqual(['Memory', 'Swap']);
+    expect(charts[1].card).toBe('disks');
     expect(charts[1].unit).toBe('bytesPerSecond');
     expect(charts[1].lines.map((l) => l.label)).toEqual(['/ read', '/ written']);
   });
 
   it('has no swap line for a machine without swap space', () => {
-    const charts = chartsOf([{ metric: 'cpu', points: [{ time: 0, value: 10 }] }], (key, params) =>
-      translate('en-GB', key, params),
+    const charts = chartsOf(
+      [{ metric: 'memory', points: [{ time: 0, value: 40 }] }],
+      (key, params) => translate('en-GB', key, params),
     );
-    expect(charts[0].lines.map((l) => l.label)).toEqual(['CPU', 'Memory']);
+    expect(charts[0].lines.map((l) => l.label)).toEqual(['Memory']);
   });
 });
 
@@ -111,7 +114,7 @@ describe('chartsOf with a battery', () => {
       ],
       (key, params) => translate('en-GB', key, params),
     );
-    expect(charts.map((c) => c.title)).toEqual(['CPU and memory', 'Battery']);
+    expect(charts.map((c) => c.title)).toEqual(['CPU', 'Battery']);
     expect(charts[1].lines[0].label).toBe('Charge');
   });
 });
@@ -127,7 +130,7 @@ describe('chartsOf with GPUs', () => {
       (key, params) => translate('en-GB', key, params),
     );
 
-    expect(charts.map((c) => c.title)).toEqual(['CPU and memory', 'GPU']);
+    expect(charts.map((c) => c.title)).toEqual(['CPU', 'GPU']);
     expect(charts[1].lines.map((l) => l.label)).toEqual(['AMD GPU', 'AMD GPU memory']);
   });
 });
@@ -165,6 +168,7 @@ describe('extraChartsOf', () => {
       {
         title: 'Druck',
         category: 'system',
+        card: 'extra:pressure',
         unit: 'percent',
         max: 100,
         lines: [
@@ -175,6 +179,8 @@ describe('extraChartsOf', () => {
       {
         title: 'Pressure · Stalls',
         category: 'system',
+        card: 'extra:pressure',
+        part: 'Stalls',
         unit: 'perSecond',
         max: undefined,
         lines: [{ label: 'Stalls', points }],

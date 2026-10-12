@@ -4,17 +4,23 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { History } from '../metrics/metrics';
 import { CategoryCharts } from './category-charts';
+import { Chart } from './history';
 
 const HISTORY: History = {
   from: 0,
   to: 1800,
   stepSeconds: 5,
   retentionDays: 30,
-  series: [
-    { metric: 'cpu', points: [{ time: 0, value: 12.5 }] },
-    { metric: 'disk:/', points: [{ time: 0, value: 30 }] },
-    { metric: 'disk.read:/', points: [{ time: 0, value: 1024 }] },
-  ],
+  series: [],
+};
+
+const DISKS: Chart = {
+  title: 'Disks',
+  category: 'storage',
+  card: 'disks',
+  unit: 'percent',
+  max: 100,
+  lines: [{ label: '/', points: [{ time: 0, value: 30 }] }],
 };
 
 describe('CategoryCharts', () => {
@@ -50,8 +56,8 @@ describe('CategoryCharts', () => {
     vi.unstubAllGlobals();
   });
 
-  function show(category: string): string[] {
-    fixture.componentRef.setInput('category', category);
+  function show(charts: Chart[]): string[] {
+    fixture.componentRef.setInput('charts', charts);
     fixture.detectChanges();
     vi.advanceTimersByTime(0);
     http.expectOne((r) => r.url === '/api/history').flush(HISTORY);
@@ -61,17 +67,17 @@ describe('CategoryCharts', () => {
     );
   }
 
-  it('shows the charts of its category only', () => {
-    expect(show('storage')).toEqual(['Disks', 'Disk activity']);
+  it('shows the charts it is given', () => {
+    expect(show([DISKS, { ...DISKS, title: 'Disk activity' }])).toEqual(['Disks', 'Disk activity']);
   });
 
-  it('shows nothing for a category without charts', () => {
-    expect(show('programs')).toEqual([]);
+  it('shows nothing without charts', () => {
+    expect(show([])).toEqual([]);
     expect((fixture.nativeElement as HTMLElement).querySelector('.charts')).toBeNull();
   });
 
   it('keeps a lone chart at the width it has in a full row', () => {
-    show('system');
+    show([DISKS]);
     reportWidth(1000);
     const charts = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.charts');
     expect(charts?.style.getPropertyValue('--columns')).toBe('2');

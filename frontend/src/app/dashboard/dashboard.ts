@@ -8,6 +8,7 @@ import { Alert, AlertKind, AlertLevel } from '../alerts/alert';
 import { AlertIcon } from '../alerts/alert-icon';
 import { alertText, worstLevel } from '../alerts/alerts';
 import { HubConnection } from '../connection/connection';
+import { CardCharts } from '../history/card-charts';
 import { CategoryCharts } from '../history/category-charts';
 import { DeviceCharts } from '../history/history';
 import { RangePicker } from '../history/range-picker';
@@ -137,6 +138,7 @@ type Problem = 'backend' | 'device';
     AlertIcon,
     BytesPipe,
     CardInfo,
+    CardCharts,
     CategoryCharts,
     CategoryFold,
     DecimalPipe,
@@ -183,23 +185,30 @@ export class Dashboard {
   protected readonly shownAvailability = computed(() =>
     this.refused() ? null : this.availability(),
   );
-  private readonly charts = inject(DeviceCharts).byCategory;
+  private readonly deviceCharts = inject(DeviceCharts);
+  /** The charts drawn in each card, by the card's id. */
+  protected readonly cardCharts = this.deviceCharts.byCard;
   /** Whether every value shows on one timeline instead of in the categories; the mascot switches it. */
   protected readonly timeline = inject(TimelineMode);
   /**
-   * The categories of the page, each with its cards and then its charts, in the order the page
-   * shows them. A device that has not answered since the page opened has no cards, but it can
-   * have charts up to its last reading.
+   * The categories of the page, each with its cards, in the order the page shows them. Each chart
+   * is drawn in its card; the charts of cards the page does not show come after the cards, as a
+   * device that has not answered since the page opened has no cards, but it can have charts up to
+   * its last reading.
    */
   protected readonly sections = computed(() => {
     const s = this.snapshot();
     const cards = s ? this.cards(s) : [];
-    const charts = this.charts();
-    return CATEGORIES.map((category) => ({
-      category,
-      cards: cards.filter((card) => card.category === category),
-      charts: charts.get(category)?.length ?? 0,
-    })).filter((section) => section.cards.length > 0 || section.charts > 0);
+    const charts = this.deviceCharts.byCategory();
+    return CATEGORIES.map((category) => {
+      const shown = cards.filter((card) => card.category === category);
+      const ids = new Set(shown.map((card) => card.id));
+      return {
+        category,
+        cards: shown,
+        charts: (charts.get(category) ?? []).filter((chart) => !ids.has(chart.card)),
+      };
+    }).filter((section) => section.cards.length > 0 || section.charts.length > 0);
   });
   protected readonly foldedCategories = inject(FoldedCategories);
   protected readonly coreColumns = coreColumns;

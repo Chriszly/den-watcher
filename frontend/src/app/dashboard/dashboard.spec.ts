@@ -519,7 +519,7 @@ describe('Dashboard', () => {
     localStorage.removeItem(FOLDED_STORAGE_KEY);
   });
 
-  it("puts each category's charts under its cards, folded with them", () => {
+  it('draws each chart in its card, folded with its category', () => {
     respond(snapshot);
     http
       .expectOne((r) => r.url === '/api/history')
@@ -541,14 +541,15 @@ describe('Dashboard', () => {
       )!;
     expect([...storage().querySelectorAll('.card h3')].map((h) => shown(h).trim())).toEqual([
       'Disks',
-      'Disks',
     ]);
-    expect(storage().querySelector('app-category-charts app-line-chart')).not.toBeNull();
+    expect(storage().querySelector('.card app-card-charts app-line-chart')).not.toBeNull();
+    expect(storage().querySelector('app-category-charts .card')).toBeNull();
 
     storage().querySelector<HTMLButtonElement>('button.fold')!.click();
     fixture.detectChanges();
     expect(storage().querySelector('app-line-chart')).toBeNull();
-    expect(storage().querySelector('button.fold')!.textContent).toContain('1 card · 1 chart');
+    expect(storage().querySelector('button.fold')!.textContent).toContain('1 card');
+    expect(storage().querySelector('button.fold')!.textContent).not.toContain('chart');
     storage().querySelector<HTMLButtonElement>('button.fold')!.click();
     localStorage.removeItem(FOLDED_STORAGE_KEY);
   });

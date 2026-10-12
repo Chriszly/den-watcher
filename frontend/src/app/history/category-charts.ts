@@ -1,13 +1,15 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { Category } from '../dashboard/categories';
 import { EvenColumns } from '../layout/even-columns';
 import { HistoryStore } from './history-store';
-import { DeviceCharts } from './history';
+import { Chart } from './history';
 import { LineChart } from './line-chart';
 
-/** The charts of one category of the dashboard, over the range picked at the top of the page. */
+/**
+ * Charts of one category of the dashboard that have no card to be drawn in, over the range picked
+ * at the top of the page, such as the charts of a device that has not answered yet.
+ */
 @Component({
   selector: 'app-category-charts',
   imports: [EvenColumns, LineChart],
@@ -36,13 +38,9 @@ import { LineChart } from './line-chart';
   styleUrl: './category-charts.css',
 })
 export class CategoryCharts {
-  readonly category = input.required<Category>();
+  readonly charts = input.required<Chart[]>();
 
   protected readonly store = inject(HistoryStore);
-  private readonly deviceCharts = inject(DeviceCharts);
-  protected readonly charts = computed(
-    () => this.deviceCharts.byCategory().get(this.category()) ?? [],
-  );
 
   constructor() {
     this.store.watch.pipe(takeUntilDestroyed()).subscribe();

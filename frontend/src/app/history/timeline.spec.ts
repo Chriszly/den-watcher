@@ -69,21 +69,13 @@ describe('Timeline', () => {
 
   it('shows every value as a row with its latest value, in the order of the categories', () => {
     show();
-    expect(rows()).toEqual([
-      'CPU and memory · CPU: 20 %',
-      'CPU and memory · Memory: 40 %',
-      'Disks: 30 %',
-    ]);
+    expect(rows()).toEqual(['CPU: 20 %', 'Memory: 40 %', 'Disks: 30 %']);
   });
 
   it('shows every value at the time under the pointer, with a line across all rows', () => {
     show();
     point(2, 0.5);
-    expect(rows()).toEqual([
-      'CPU and memory · CPU: 50 %',
-      'CPU and memory · Memory: –',
-      'Disks: –',
-    ]);
+    expect(rows()).toEqual(['CPU: 50 %', 'Memory: –', 'Disks: –']);
     const host = fixture.nativeElement as HTMLElement;
     expect(host.style.getPropertyValue('--cursor')).toBe('50%');
     expect(host.style.getPropertyValue('--cursor-display')).toBe('block');
@@ -92,7 +84,7 @@ describe('Timeline', () => {
       new PointerEvent('pointerleave'),
     );
     fixture.detectChanges();
-    expect(rows()[0]).toBe('CPU and memory · CPU: 20 %');
+    expect(rows()[0]).toBe('CPU: 20 %');
     expect(host.style.getPropertyValue('--cursor-display')).toBe('none');
   });
 
@@ -102,7 +94,7 @@ describe('Timeline', () => {
     vi.advanceTimersByTime(5_000);
     http.expectOne((r) => r.url === '/api/history').flush({ ...HISTORY, from: 1000, to: 1300 });
     fixture.detectChanges();
-    expect(rows()[0]).toBe('CPU and memory · CPU: 20 %');
+    expect(rows()[0]).toBe('CPU: 20 %');
     expect((fixture.nativeElement as HTMLElement).style.getPropertyValue('--cursor-display')).toBe(
       'none',
     );

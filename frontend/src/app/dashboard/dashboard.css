@@ -232,3 +232,20 @@ h3 > app-alert-icon {
   margin: 0 0 0.5rem;
   font: var(--mat-sys-title-medium);
 }
+
+/* A card with charts lays out its content in a column, so the charts sit at its bottom and line up
+   with the charts of the cards beside it. Its rows' margins add up in a column instead of
+   overlapping, so they are halved. */
+.cards > .card:has(> app-card-charts:not(:empty)) {
+  display: flex;
+  flex-direction: column;
+
+  > .sensor:not(.swap) {
+    margin-block: 0.125rem;
+  }
+}
+
+/* Widened by the button in its corner, a card takes its whole row. */
+.cards > .card:has(> app-card-charts.wide) {
+  grid-column: 1 / -1;
+}

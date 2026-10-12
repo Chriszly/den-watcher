@@ -1,4 +1,13 @@
-import { Component, DestroyRef, Injector, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterRenderEffect,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -62,9 +71,15 @@ export class DevicesDialog {
   private readonly devices = inject(DeviceService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /** Every device but the one the website runs on. */
   protected readonly others = computed(() => this.devices.devices().slice(1));
+
+  /** Whether the list of devices is shown; folded when it would make the dialog scroll. */
+  protected readonly listOpen = signal(true);
+  /** Set once the list was folded or unfolded by hand, which then stays as it was set. */
+  private readonly listToggled = signal(false);
 
   protected readonly name = signal('');
   protected readonly address = signal('');
@@ -82,6 +97,20 @@ export class DevicesDialog {
   );
 
   constructor() {
+    // Until it is folded by hand, the list folds away as soon as the dialog would scroll with it,
+    // such as when the suggestion fills in a line more. It does not unfold again by itself.
+    afterRenderEffect(() => {
+      this.others();
+      this.suggested();
+      if (this.listToggled() || !this.listOpen()) {
+        return;
+      }
+      const content = this.host.nativeElement.querySelector('mat-dialog-content');
+      if (content && content.scrollHeight > content.clientHeight) {
+        this.listOpen.set(false);
+      }
+    });
+
     // Filled in only when nothing has been typed yet; a suggestion that
     // cannot be read leaves the form empty, as before.
     this.devices
@@ -99,6 +128,11 @@ export class DevicesDialog {
         this.address.set(suggestion.address);
         this.kind.set(suggestion.kind);
       });
+  }
+
+  protected toggleList(): void {
+    this.listToggled.set(true);
+    this.listOpen.update((open) => !open);
   }
 
   protected add(): void {

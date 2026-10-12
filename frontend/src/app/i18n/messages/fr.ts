@@ -121,6 +121,7 @@ export const fr: Messages = {
   'devicesDialog.title': 'Appareils',
   'devicesDialog.intro':
     'Cet appareil peut afficher l’utilisation d’autres appareils du réseau local sur lesquels Den-Watcher est lancé.',
+  'devicesDialog.listTitle': 'Appareils ajoutés',
   'devicesDialog.remove': 'Retirer',
   'devicesDialog.fixed': 'Défini dans .env',
   'devicesDialog.router': 'Routeur',

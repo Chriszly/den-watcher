@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { History } from '../metrics/metrics';
+import { HistoryStore } from './history-store';
 import { TIMELINE_STORAGE_KEY, Timeline, TimelineMode } from './timeline';
 
 const HISTORY: History = {
@@ -108,8 +109,113 @@ describe('Timeline', () => {
         points: [{ time: 0, value: 40 }],
       })),
     });
-    const strips = (fixture.nativeElement as HTMLElement).querySelectorAll('app-sparkline');
+    const strips = (fixture.nativeElement as HTMLElement).querySelectorAll(
+      'app-timeline-row app-sparkline',
+    );
     expect(strips[8].classList).toContain('series-0');
+  });
+
+  const ZOOMED: History = {
+    ...HISTORY,
+    from: 60,
+    to: 180,
+    stepSeconds: 20,
+    series: [
+      { metric: 'cpu', points: [{ time: 160, value: 90 }] },
+      { metric: 'memory', points: [{ time: 160, value: 45 }] },
+    ],
+  };
+
+  function host(): HTMLElement {
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  /** Drags across the rows from one fraction of the time axis to another. */
+  function brush(from: number, to: number): void {
+    const rows = host().querySelector<HTMLElement>('.rows')!;
+    for (const strip of Array.from(rows.querySelectorAll<HTMLElement>('.strip'))) {
+      strip.getBoundingClientRect = () => ({ left: 0, width: 300 }) as DOMRect;
+    }
+    const strip = rows.querySelector('.strip')!;
+    strip.dispatchEvent(new PointerEvent('pointerdown', { clientX: from * 300, bubbles: true }));
+    rows.dispatchEvent(new PointerEvent('pointermove', { clientX: to * 300 }));
+    fixture.detectChanges();
+    rows.dispatchEvent(new PointerEvent('pointerup', { clientX: to * 300 }));
+    fixture.detectChanges();
+  }
+
+  function trail(): string[] {
+    return Array.from(host().querySelectorAll('.trail button'), (b) => b.textContent!.trim());
+  }
+
+  function zoomedRequest(): Record<string, string | null> {
+    const request = http.expectOne((r) => r.url === '/api/history');
+    const params = request.request.params;
+    request.flush(ZOOMED);
+    fixture.detectChanges();
+    return { from: params.get('from'), to: params.get('to') };
+  }
+
+  it('opens on the whole range, with the window over the whole strip', () => {
+    show();
+    const window = host().querySelector<HTMLElement>('app-timeline-overview .window')!;
+    expect(window.style.left).toBe('0%');
+    expect(window.style.width).toBe('100%');
+    expect(trail()).toEqual(['Whole range']);
+    expect(host().querySelector('.trail .hint')!.textContent).toContain('Drag across a row');
+  });
+
+  it('zooms every row into the stretch dragged across, and goes back', () => {
+    show();
+    brush(0.2, 0.6);
+    expect(zoomedRequest()).toEqual({ from: '60', to: '180' });
+    expect(rows()).toEqual(['CPU: 90 %', 'Memory: 45 %']);
+    expect(trail().length).toBe(3);
+    expect(trail().at(-1)).toContain('Back');
+    const window = host().querySelector<HTMLElement>('app-timeline-overview .window')!;
+    expect(window.style.left).toBe('20%');
+    expect(window.style.width).toBe('40%');
+
+    host().querySelector<HTMLButtonElement>('.trail .back')!.click();
+    fixture.detectChanges();
+    expect(rows()).toEqual(['CPU: 20 %', 'Memory: 40 %', 'Disks: 30 %']);
+    expect(trail()).toEqual(['Whole range']);
+  });
+
+  it('takes a short drag across the rows for a click', () => {
+    show();
+    brush(0.5, 0.502);
+    expect(trail()).toEqual(['Whole range']);
+  });
+
+  it('shows the whole range again when another range is picked', () => {
+    show();
+    brush(0.2, 0.6);
+    zoomedRequest();
+    TestBed.inject(HistoryStore).span.set(3600);
+    fixture.detectChanges();
+    vi.advanceTimersByTime(0);
+    http.expectOne((r) => r.url === '/api/history').flush(HISTORY);
+    fixture.detectChanges();
+    expect(trail()).toEqual(['Whole range']);
+  });
+
+  it('zooms into a stretch drawn on the strip, and moves it with the arrow keys', () => {
+    show();
+    const overview = host().querySelector<HTMLElement>('app-timeline-overview')!;
+    overview.getBoundingClientRect = () => ({ left: 0, width: 300 }) as DOMRect;
+    overview.dispatchEvent(new PointerEvent('pointerdown', { clientX: 60 }));
+    overview.dispatchEvent(new PointerEvent('pointermove', { clientX: 180 }));
+    overview.dispatchEvent(new PointerEvent('pointerup', { clientX: 180 }));
+    fixture.detectChanges();
+    expect(zoomedRequest()).toEqual({ from: '60', to: '180' });
+
+    overview
+      .querySelector('.window')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    fixture.detectChanges();
+    expect(zoomedRequest()).toEqual({ from: '72', to: '192' });
+    expect(trail().length).toBe(3);
   });
 
   it('shows nothing while the history holds no values', () => {

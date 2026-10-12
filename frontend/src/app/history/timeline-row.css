@@ -30,8 +30,19 @@
   height: 2.25rem;
   padding: 0.25rem 0;
   cursor: crosshair;
-  /* A sideways drag moves the crosshair instead of scrolling the page. */
+  /* A sideways drag zooms in instead of scrolling the page. */
   touch-action: pan-y;
+}
+
+/* The stretch a drag across the rows marks, which every row shows. */
+.strip::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 var(--band-left);
+  display: var(--band-display, none);
+  width: var(--band-width);
+  background: color-mix(in srgb, var(--mat-sys-primary) 18%, transparent);
+  pointer-events: none;
 }
 
 .strip::after {

@@ -21,6 +21,59 @@
   grid-template-columns: subgrid;
 }
 
+/* The strip over the whole range, above the rows' strips and as wide. */
+app-timeline-overview {
+  grid-column: 3;
+  margin: 0.5rem 0;
+}
+
+/* The stretches zoomed into, each a button that goes back to it, beside the strip. */
+.trail {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / 3;
+  gap: 0.25rem;
+  align-items: center;
+  align-self: center;
+  /* It wraps within the label and value columns instead of widening them. */
+  contain: inline-size;
+  min-height: 2rem;
+  padding-right: 0.75rem;
+  font: var(--mat-sys-body-medium);
+}
+
+.trail button {
+  padding: 0.125rem 0.375rem;
+  border: 0;
+  border-radius: var(--mat-sys-corner-small);
+  background: none;
+  color: var(--mat-sys-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.trail button:hover {
+  background: var(--mat-sys-surface-container-highest);
+}
+
+.trail button[aria-current] {
+  color: var(--mat-sys-on-surface);
+  font-weight: 500;
+}
+
+.trail .back {
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.75rem;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: var(--mat-sys-corner-full);
+}
+
+.next,
+.hint {
+  color: var(--mat-sys-on-surface-variant);
+}
+
 /* The start, the time under the pointer and the end of the range, over the strips. */
 .axis {
   position: relative;
@@ -49,5 +102,10 @@
 
   .axis {
     grid-column: 2;
+  }
+
+  .trail,
+  app-timeline-overview {
+    grid-column: 1 / -1;
   }
 }

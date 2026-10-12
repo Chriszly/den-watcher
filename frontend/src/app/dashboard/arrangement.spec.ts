@@ -79,6 +79,15 @@ describe('Arrangement', () => {
     expect(order.slice(-2)).toEqual(['memory', 'cpu']);
   });
 
+  it('keeps no more hidden cards than the host does, dropping the ones hidden longest ago', () => {
+    answer({ hidden: Array.from({ length: MAX_LAYOUT_ENTRIES }, (_, i) => `gone-${i}`) });
+    arrangement.hide('cpu');
+    const [hidden] = sent().map((l) => l.hidden);
+    expect(hidden.length).toBe(MAX_LAYOUT_ENTRIES);
+    expect(hidden.slice(0, 1)).toEqual(['gone-1']);
+    expect(hidden.at(-1)).toBe('cpu');
+  });
+
   it('moves no card past the ends of its category', () => {
     answer({});
     arrangement.move(['cpu', 'memory'], 0, -1);

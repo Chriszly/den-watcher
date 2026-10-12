@@ -49,10 +49,14 @@ var (
 func conditions(ctx context.Context, target Target, now time.Time, levels map[string]Level) ([]Alert, bool) {
 	base := Alert{Device: target.ID, DeviceName: target.Name}
 	if target.Unreachable {
-		// While the device does not answer, its last values are not looked
+		// A PC that is off is not in use, so nothing of it needs attention.
+		if target.PC {
+			return nil, true
+		}
+		// While a server does not answer, its last values are not looked
 		// at, so its alerts last on, an offline one from before a restart
 		// too. Only an outage that lasts is an alert of its own.
-		if target.PC || target.UnreachableSince.IsZero() || now.Sub(target.UnreachableSince) < offlineAfter {
+		if target.UnreachableSince.IsZero() || now.Sub(target.UnreachableSince) < offlineAfter {
 			return nil, false
 		}
 		a := base

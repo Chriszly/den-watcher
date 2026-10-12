@@ -671,7 +671,7 @@
                       }
                       @case ('extra') {
                         @let group = card.group;
-                        @let groupAlert = group.id === 'smart-checks' ? alertOn('smart') : null;
+                        @let groupAlert = card.id === smartCard ? alertOn('smart') : null;
                         <div
                           class="card"
                           [class.alerting]="groupAlert"

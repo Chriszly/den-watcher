@@ -218,6 +218,35 @@ func TestMetricsOfEveryDeviceThatAnswers(t *testing.T) {
 	}
 }
 
+// stuckCollector answers only once the request is given up, as a disk that
+// does not answer.
+type stuckCollector struct{}
+
+func (stuckCollector) Collect(ctx context.Context) (metrics.Snapshot, error) {
+	<-ctx.Done()
+	return metrics.Snapshot{}, ctx.Err()
+}
+
+func TestMetricsOfEveryDeviceDoNotWaitForOneThatHangs(t *testing.T) {
+	defer func(timeout time.Duration) { fleetTimeout = timeout }(fleetTimeout)
+	fleetTimeout = 50 * time.Millisecond
+	handler := newHandler([]Device{
+		{ID: "local", Metrics: stuckCollector{}},
+		{ID: "pi", Metrics: fakeCollector{snapshot: metrics.Snapshot{UptimeSeconds: 2}}},
+	}, 0, site)
+
+	start := time.Now()
+	rec := get(handler, "/api/devices/metrics", "192.168.1.20:5000")
+
+	var got map[string]metrics.Snapshot
+	if err := json.NewDecoder(rec.Body).Decode(&got); rec.Code != http.StatusOK || err != nil {
+		t.Fatalf("GET /api/devices/metrics = %d, %v", rec.Code, err)
+	}
+	if len(got) != 1 || got["pi"].UptimeSeconds != 2 || time.Since(start) > 2*fleetTimeout {
+		t.Errorf("got %+v after %v, want only pi", got, time.Since(start))
+	}
+}
+
 func TestMetricsOfTheRequestedDevice(t *testing.T) {
 	handler := newHandler([]Device{
 		{ID: "local", Metrics: fakeCollector{snapshot: metrics.Snapshot{CPU: metrics.CPU{Cores: 4}}}},

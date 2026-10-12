@@ -119,7 +119,7 @@ Example:
 }]
 ```
 
-Before showing or storing another device's extras, the hub keeps at most `HISTORY_MAX_ENTRIES` groups and as many values per group (where there are more, the ones with `history: true` first, by `id`, then the others in the order the device lists them, such as the busiest processes first; all shown in the order the device lists them), cuts titles, labels, sections and texts to 80 characters, and leaves out groups and values with an invalid or repeated `id` and values without a value. The page draws one chart per group and unit of the values with `history: true`, each in a card of its own: a group whose values with `history: true` have several units shows as one card per unit, the first with the values without a chart.
+Before showing or storing another device's extras, the hub keeps at most `HISTORY_MAX_ENTRIES` groups and as many values per group (where there are more, the ones with `history: true` first, by `id`, then the others in the order the device lists them, such as the busiest processes first; all shown in the order the device lists them), cuts titles, labels, sections and texts to 80 characters, and leaves out groups and values with an invalid or repeated `id` and values without a value. The page draws one chart per group and unit of the values with `history: true`, each in a card of its own: a group whose values with `history: true` have several units shows as one card per unit, and the values without a chart in a card of the group's own.
 
 ### What den-watcher itself uses
 

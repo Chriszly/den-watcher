@@ -275,3 +275,44 @@ func TestAnOfflineAlertEndsWhenTheDeviceBecomesAPC(t *testing.T) {
 		t.Fatalf("as a PC: %+v", got)
 	}
 }
+
+func TestAPCThatIsOffHasNoAlertsAndStartsAHoldAgain(t *testing.T) {
+	ctx := context.Background()
+	u := &usage{snapshot: metrics.Snapshot{CPU: metrics.CPU{Cores: 4, UsagePercent: 99}}}
+	targets := []Target{{ID: "pc", Name: "PC", PC: true, Usage: u}}
+	w, _ := openTest(t, &targets)
+	start := time.Unix(1_800_000_000, 0)
+	for at := start; !at.After(start.Add(5 * time.Minute)); at = at.Add(Interval) {
+		w.Check(ctx, at)
+	}
+	if got := w.Active("pc"); len(got) != 1 {
+		t.Fatalf("before it is off: %+v", got)
+	}
+	targets[0] = Target{ID: "pc", Name: "PC", PC: true, Unreachable: true, UnreachableSince: start.Add(6 * time.Minute)}
+	w.Check(ctx, start.Add(7*time.Minute))
+	if got := w.Active("pc"); len(got) != 0 {
+		t.Fatalf("while it is off: %+v", got)
+	}
+	// Back the next morning, one high reading is no alert yet.
+	targets[0] = Target{ID: "pc", Name: "PC", PC: true, Usage: u}
+	w.Check(ctx, start.Add(10*time.Hour))
+	if got := w.Active("pc"); len(got) != 0 {
+		t.Fatalf("once it is back: %+v", got)
+	}
+}
+
+func TestAServerThatDoesNotAnswerDropsItsHolds(t *testing.T) {
+	ctx := context.Background()
+	u := &usage{snapshot: metrics.Snapshot{CPU: metrics.CPU{Cores: 4, UsagePercent: 99}}}
+	targets := []Target{{ID: "nas", Name: "NAS", Usage: u}}
+	w, _ := openTest(t, &targets)
+	start := time.Unix(1_800_000_000, 0)
+	w.Check(ctx, start)
+	targets[0] = Target{ID: "nas", Name: "NAS", Unreachable: true, UnreachableSince: start.Add(time.Minute)}
+	w.Check(ctx, start.Add(2*time.Minute))
+	targets[0] = Target{ID: "nas", Name: "NAS", Usage: u}
+	w.Check(ctx, start.Add(6*time.Minute))
+	if got := w.Active("nas"); len(got) != 0 {
+		t.Fatalf("after one reading back: %+v", got)
+	}
+}

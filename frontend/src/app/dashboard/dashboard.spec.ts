@@ -903,7 +903,9 @@ describe('Dashboard', () => {
         .querySelectorAll('app-line-chart').length;
     expect(charts('Disks')).toBe(1);
     expect(charts('Disk activity')).toBe(1);
-    expect(charts('Den-Watcher')).toBe(1);
+    // The values without a chart keep the group's card; each unit charted has one of its own.
+    expect(charts('Den-Watcher')).toBe(0);
+    expect(charts('Den-Watcher · CPU')).toBe(1);
     expect(charts('Den-Watcher · Memory')).toBe(1);
     expect(cards.every((card) => card.querySelectorAll('app-line-chart').length <= 1)).toBe(true);
     expect(element.querySelector('app-category-charts .card')).toBeNull();
@@ -1401,7 +1403,7 @@ describe('extraCards', () => {
     ]);
   });
 
-  it('splits a group into a card for each unit it charts, the first one keeping the rest', () => {
+  it('splits a group into a card for each unit it charts, and one with the rest', () => {
     const group = {
       id: 'smart',
       title: 'Disk health',
@@ -1413,11 +1415,43 @@ describe('extraCards', () => {
       ],
     };
     const cards = extraCards(group);
-    expect(cards.map((c) => c.id)).toEqual(['extra:smart', 'extra:smart@bytes']);
+    expect(cards.map((c) => c.id)).toEqual([
+      'extra:smart',
+      'extra:smart@percent',
+      'extra:smart@bytes',
+    ]);
     expect(cards.map((c) => (c.kind === 'extra' ? c.group.items.map((i) => i.id) : []))).toEqual([
-      ['wear', 'model', 'size'],
+      ['model', 'size'],
+      ['wear'],
       ['written'],
     ]);
+  });
+
+  it("keeps the group's card under its id whichever units the device tells of", () => {
+    // den-watcher reads its own CPU only from its second reading on.
+    const first = {
+      id: 'den-watcher',
+      title: 'Den-Watcher itself',
+      items: [item('memory', 'bytes'), item('programs', 'percent', false)],
+    };
+    const later = { ...first, items: [item('cpu', 'percent'), ...first.items] };
+    expect(extraCards(first).map((c) => c.id)).toEqual(['extra:den-watcher']);
+    expect(extraCards(later).map((c) => c.id)).toEqual([
+      'extra:den-watcher',
+      'extra:den-watcher@percent',
+      'extra:den-watcher@bytes',
+    ]);
+  });
+
+  it('gives a split group without other values its title on the first card', () => {
+    const group = {
+      id: 'gpu',
+      title: 'GPU',
+      items: [item('load', 'percent'), item('memory', 'bytes')],
+    };
+    const cards = extraCards(group);
+    expect(cards.map((c) => c.id)).toEqual(['extra:gpu@percent', 'extra:gpu@bytes']);
+    expect(cards.map((c) => (c.kind === 'extra' ? !!c.split : null))).toEqual([false, true]);
   });
 
   it('keeps a group for experts in one card, as it shows in the details', () => {

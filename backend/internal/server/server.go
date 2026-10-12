@@ -199,12 +199,18 @@ func devicesHandler(site Site) http.HandlerFunc {
 	}
 }
 
+// fleetTimeout is how long GET /api/devices/metrics waits for one device; a
+// variable for the tests.
+var fleetTimeout = 3 * time.Second
+
 // fleetMetricsHandler serves GET /api/devices/metrics: the usage of every
 // device that answers, by its id, read side by side, for the list of devices
-// and the comparison in one request. A device whose usage cannot be read is
-// left out.
+// and the comparison in one request. A device whose usage cannot be read
+// within fleetTimeout is left out, so it holds back none of the others.
 func fleetMetricsHandler(devices Devices) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), fleetTimeout)
+		defer cancel()
 		var (
 			mu    sync.Mutex
 			wait  sync.WaitGroup
@@ -215,7 +221,7 @@ func fleetMetricsHandler(devices Devices) http.HandlerFunc {
 				continue
 			}
 			wait.Go(func() {
-				snapshot, err := d.Metrics.Collect(r.Context())
+				snapshot, err := d.Metrics.Collect(ctx)
 				if err != nil {
 					return
 				}

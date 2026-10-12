@@ -58,6 +58,23 @@ function widths(value: unknown): Record<string, number> {
     : {};
 }
 
+/**
+ * The layout within what the host keeps: of a list longer than that, the entries added longest ago,
+ * which may be of cards that are gone, make room for the newest.
+ */
+export function withinLimits(layout: Layout): Layout {
+  const newest = <T>(list: T[]) => list.slice(-MAX_LAYOUT_ENTRIES);
+  return {
+    ...layout,
+    folded: newest(layout.folded),
+    order: newest(layout.order),
+    hidden: newest(layout.hidden),
+    pinned: newest(layout.pinned),
+    made: newest(layout.made),
+    widths: Object.fromEntries(newest(Object.entries(layout.widths))),
+  };
+}
+
 type Change = (layout: Layout) => Layout;
 
 /**
@@ -88,7 +105,7 @@ export class PageLayout {
 
   /** Changes the layout and keeps it on the host. */
   change(change: Change): void {
-    this.current.update(change);
+    this.current.update((layout) => withinLimits(change(layout)));
     if (!this.read || this.reading) {
       this.pending.push(change);
     } else {
@@ -110,7 +127,9 @@ export class PageLayout {
           this.read = true;
           const changes = this.pending;
           this.pending = [];
-          this.current.set(changes.reduce((l, change) => change(l), fromHost(layout)));
+          this.current.set(
+            withinLimits(changes.reduce((l, change) => change(l), fromHost(layout))),
+          );
           if (changes.length > 0) {
             this.send();
           }

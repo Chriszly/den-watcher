@@ -109,6 +109,16 @@ describe('Arrangement', () => {
     });
   });
 
+  it('groups the cards by category unless the host says otherwise, and keeps it through Reset', () => {
+    answer({ ungrouped: 'yes' } as unknown as Partial<Layout>);
+    expect(arrangement.grouped()).toBe(true);
+    arrangement.group(false);
+    expect(arrangement.grouped()).toBe(false);
+    expect(arrangement.arranged()).toBe(false);
+    arrangement.reset();
+    expect(sent().at(-1)).toEqual({ ...EMPTY_LAYOUT, ungrouped: true });
+  });
+
   it('takes only the widths of 2 and 4 cards from the host', () => {
     answer({ widths: { cpu: 2, memory: 3, fans: 4, disks: '2' } as unknown as Layout['widths'] });
     expect(TestBed.inject(PageLayout).layout().widths).toEqual({ cpu: 2, fans: 4 });

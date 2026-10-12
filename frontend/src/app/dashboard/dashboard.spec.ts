@@ -607,6 +607,58 @@ describe('Dashboard', () => {
     ]);
   });
 
+  it('shows the cards in one section when they are not grouped by category, and keeps it', () => {
+    respond(snapshot);
+    http.expectOne('/api/layout').flush({ ...EMPTY_LAYOUT, pinned: ['network'] });
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const sections = () =>
+      [...element.querySelectorAll('.category')].map((c) => [
+        c.querySelector('h2')!.textContent!.trim(),
+        [...c.querySelectorAll('.slot > .card > h3')].map((h) => shown(h).trim()),
+      ]);
+    const group = () => element.querySelector<HTMLButtonElement>('app-arrange-bar .group')!;
+    expect(group().getAttribute('aria-checked')).toBe('true');
+
+    group().click();
+    fixture.detectChanges();
+    expect(group().getAttribute('aria-checked')).toBe('false');
+    // The pinned cards stay above the others, which follow in the order of their categories.
+    expect(sections()).toEqual([
+      ['Pinned', ['Network']],
+      ['All cards', ['CPU', 'Memory', 'Disks', 'Temperature', 'Uptime']],
+    ]);
+    expect(layoutWrites()).toEqual([{ ...EMPTY_LAYOUT, pinned: ['network'], ungrouped: true }]);
+
+    // Not grouped, a card moves past the cards of other categories.
+    TestBed.inject(Arrangement).arranging.set(true);
+    fixture.detectChanges();
+    const uptime = [...element.querySelectorAll('app-arrange-controls')].find(
+      (c) => c.getAttribute('aria-label') === 'Uptime',
+    )!;
+    for (let i = 0; i < 3; i++) {
+      uptime.querySelector<HTMLButtonElement>('.earlier')!.click();
+      fixture.detectChanges();
+    }
+    expect(sections()[1][1]).toEqual(['CPU', 'Uptime', 'Memory', 'Disks', 'Temperature']);
+
+    // Grouped again, it keeps its place among the cards of its own category.
+    group().click();
+    fixture.detectChanges();
+    expect(sections().map(([title]) => title)).toEqual([
+      'Pinned',
+      'System',
+      'Storage',
+      'Temperature and power',
+      'Time and uptime',
+    ]);
+    expect(layoutWrites().at(-1)).toEqual({
+      ...EMPTY_LAYOUT,
+      pinned: ['network'],
+      order: ['cpu', 'uptime', 'memory', 'disks', 'temperatures'],
+    });
+  });
+
   it('arranges the cards: moves and hides them, and keeps it on the host', () => {
     respond(snapshot);
     http.expectOne('/api/layout').flush(EMPTY_LAYOUT);

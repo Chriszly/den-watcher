@@ -15,6 +15,7 @@ export const CATEGORY_TITLES = {
   programs: 'categories.programs',
   other: 'categories.other',
   device: 'categories.device',
+  all: 'categories.all',
 } as const satisfies Record<Section, string>;
 
 /**

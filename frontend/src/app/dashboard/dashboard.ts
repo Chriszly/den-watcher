@@ -45,6 +45,7 @@ import { Arrangement } from './arrangement';
 import { CardInfo } from './card-info';
 import { CardSlot } from './card-slot';
 import {
+  ALL,
   CATEGORIES,
   Category,
   FoldedCategories,
@@ -267,8 +268,9 @@ export class Dashboard {
   /** Whether every value shows on one timeline instead of in the categories; the mascot switches it. */
   protected readonly timeline = inject(TimelineMode);
   /**
-   * The sections of the page: the pinned cards, then the categories, each with its cards and then
-   * the details for experts, in the order the page shows them. Each chart is drawn in its card; the
+   * The sections of the page: the pinned cards, then the categories, or one section of every other
+   * card when the cards are not grouped by category, each with its cards and then the details for
+   * experts, in the order the page shows them. Each chart is drawn in its card; the
    * charts of cards the page does not show come after the cards, as a device that has not answered
    * since the page opened has no cards, but it can have charts up to its last reading.
    */
@@ -292,8 +294,23 @@ export class Dashboard {
       values: 0,
       charts: [],
     };
-    const categories = CATEGORIES.map((category): DashboardSection => {
-      const all = cards.filter((card) => card.category === category);
+    // Not grouped, every card that is not pinned shows in one section, in the order of the
+    // categories until it is moved.
+    const groups: { section: Section; cards: Card[]; charts: Chart[] }[] =
+      this.arrangement.grouped()
+        ? CATEGORIES.map((category) => ({
+            section: category,
+            cards: cards.filter((card) => card.category === category),
+            charts: charts.get(category) ?? [],
+          }))
+        : [
+            {
+              section: ALL,
+              cards: CATEGORIES.flatMap((c) => cards.filter((card) => card.category === c)),
+              charts: CATEGORIES.flatMap((c) => charts.get(c) ?? []),
+            },
+          ];
+    const categories = groups.map(({ section, cards: all, charts: drawn }): DashboardSection => {
       // The values made into cards leave the details.
       const details = all.flatMap((card) => {
         if (card.kind !== 'extra' || !isDetailGroup(card.group.id)) {
@@ -307,14 +324,14 @@ export class Dashboard {
       // The details draw their values' history in their rows, and hidden cards draw none.
       const ids = new Set(all.map((card) => card.id));
       return {
-        category,
+        category: section,
         cards: arranged.filter((card) => !hidden.has(card.id) && !pinnedIds.has(card.id)),
         hidden: arranged
           .filter((card) => hidden.has(card.id))
           .map((card): HiddenCard => ({ id: card.id, title: this.cardTitle(card) })),
         details,
         values: details.reduce((sum, group) => sum + group.items.length, 0),
-        charts: (charts.get(category) ?? []).filter((chart) => !ids.has(chart.card)),
+        charts: drawn.filter((chart) => !ids.has(chart.card)),
       };
     });
     return [pinnedSection, ...categories].filter(

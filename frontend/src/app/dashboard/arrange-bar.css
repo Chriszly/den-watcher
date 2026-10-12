@@ -1,6 +1,9 @@
 :host {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem 1rem;
   margin-top: 1rem;
 }
 
@@ -70,4 +73,55 @@ svg {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.group {
+  border-color: transparent;
+  padding-inline: 0.5rem 1rem;
+}
+
+/* The track of the switch, with its thumb at the end that tells whether it is on. */
+.track {
+  position: relative;
+  width: 2.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--mat-sys-outline);
+  border-radius: var(--mat-sys-corner-full);
+  box-sizing: border-box;
+  transition: background-color 150ms;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0.125rem;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: var(--mat-sys-outline);
+    transform: translateY(-50%);
+    transition:
+      left 150ms,
+      width 150ms,
+      height 150ms;
+  }
+
+  [aria-checked='true'] > & {
+    border-color: var(--mat-sys-primary);
+    background: var(--mat-sys-primary);
+
+    &::after {
+      left: calc(100% - 0.125rem - 0.875rem);
+      width: 0.875rem;
+      height: 0.875rem;
+      background: var(--mat-sys-on-primary);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .track::after {
+    transition: none;
+  }
 }

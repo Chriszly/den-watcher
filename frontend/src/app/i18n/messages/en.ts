@@ -300,6 +300,9 @@ export const en = {
   'categories.cards.other': '{count} cards',
   'categories.charts.one': '{count} chart',
   'categories.charts.other': '{count} charts',
+  'details.title': 'Details',
+  'details.values.one': '{count} value',
+  'details.values.other': '{count} values',
   'compare.title': 'Compare devices',
   'compare.intro':
     'The main values of every device side by side. Sort by a column to see which device is the busiest, fullest or hottest, or pick a name to see the device on its own.',

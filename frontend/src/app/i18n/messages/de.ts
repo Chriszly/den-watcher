@@ -302,6 +302,9 @@ export const de: Messages = {
   'categories.cards.other': '{count} Karten',
   'categories.charts.one': '{count} Diagramm',
   'categories.charts.other': '{count} Diagramme',
+  'details.title': 'Details',
+  'details.values.one': '{count} Wert',
+  'details.values.other': '{count} Werte',
   'compare.title': 'Geräte vergleichen',
   'compare.intro':
     'Die wichtigsten Werte aller Geräte nebeneinander. Nach einer Spalte sortiert sieht man, welches Gerät am stärksten ausgelastet, am vollsten oder am heißesten ist; ein Klick auf den Namen zeigt das Gerät allein.',

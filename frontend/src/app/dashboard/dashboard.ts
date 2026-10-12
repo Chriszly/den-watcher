@@ -30,8 +30,9 @@ import {
 } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
 import { CardInfo } from './card-info';
-import { CATEGORIES, Category, FoldedCategories, extraCategory } from './categories';
+import { CATEGORIES, Category, FoldedCategories, extraCategory, isDetailGroup } from './categories';
 import { CategoryFold } from './category-fold';
+import { Details } from './details';
 import { FitLabels } from './fit-labels';
 import { Glance } from './glance';
 
@@ -141,6 +142,7 @@ type Problem = 'backend' | 'device';
     CardCharts,
     CategoryCharts,
     CategoryFold,
+    Details,
     DecimalPipe,
     EvenColumns,
     FitLabels,
@@ -191,24 +193,34 @@ export class Dashboard {
   /** Whether every value shows on one timeline instead of in the categories; the mascot switches it. */
   protected readonly timeline = inject(TimelineMode);
   /**
-   * The categories of the page, each with its cards, in the order the page shows them. Each chart
-   * is drawn in its card; the charts of cards the page does not show come after the cards, as a
-   * device that has not answered since the page opened has no cards, but it can have charts up to
-   * its last reading.
+   * The categories of the page, each with its cards and then the details for experts, in the order
+   * the page shows them. Each chart is drawn in its card; the charts of cards the page does not show
+   * come after the cards, as a device that has not answered since the page opened has no cards, but
+   * it can have charts up to its last reading.
    */
   protected readonly sections = computed(() => {
     const s = this.snapshot();
     const cards = s ? this.cards(s) : [];
     const charts = this.deviceCharts.byCategory();
     return CATEGORIES.map((category) => {
-      const shown = cards.filter((card) => card.category === category);
-      const ids = new Set(shown.map((card) => card.id));
+      const all = cards.filter((card) => card.category === category);
+      const details = all.flatMap((card) =>
+        card.kind === 'extra' && isDetailGroup(card.group.id) ? [card.group] : [],
+      );
+      const shown = all.filter((card) => card.kind !== 'extra' || !isDetailGroup(card.group.id));
+      // The details draw their values' history in their rows.
+      const ids = new Set(all.map((card) => card.id));
       return {
         category,
         cards: shown,
+        details,
+        values: details.reduce((sum, group) => sum + group.items.length, 0),
         charts: (charts.get(category) ?? []).filter((chart) => !ids.has(chart.card)),
       };
-    }).filter((section) => section.cards.length > 0 || section.charts.length > 0);
+    }).filter(
+      (section) =>
+        section.cards.length > 0 || section.details.length > 0 || section.charts.length > 0,
+    );
   });
   protected readonly foldedCategories = inject(FoldedCategories);
   protected readonly coreColumns = coreColumns;
@@ -290,13 +302,14 @@ export class Dashboard {
     ];
   }
 
-  /** How many cards and charts a folded category holds, for its title. */
-  protected sectionCount(cards: number, charts: number): string {
+  /** How many cards, charts and detail values a folded category holds, for its title. */
+  protected sectionCount(cards: number, charts: number, values: number): string {
     return [
       cards > 0 ? this.i18n.plural(cards, 'categories.cards.one', 'categories.cards.other') : '',
       charts > 0
         ? this.i18n.plural(charts, 'categories.charts.one', 'categories.charts.other')
         : '',
+      values > 0 ? this.i18n.plural(values, 'details.values.one', 'details.values.other') : '',
     ]
       .filter(Boolean)
       .join(' · ');

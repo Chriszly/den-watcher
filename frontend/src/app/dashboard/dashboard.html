@@ -132,7 +132,7 @@
         <h2 class="category-title" [id]="'category-' + section.category">
           <app-category-fold
             [category]="section.category"
-            [count]="sectionCount(section.cards.length, section.charts.length)"
+            [count]="sectionCount(section.cards.length, section.charts.length, section.values)"
             [alert]="categoryAlert(section.cards)"
           />
         </h2>
@@ -688,6 +688,9 @@
                   }
                 }
               </div>
+            }
+            @if (section.details.length > 0) {
+              <app-details [groups]="section.details" />
             }
           }
           <app-category-charts [charts]="section.charts" />

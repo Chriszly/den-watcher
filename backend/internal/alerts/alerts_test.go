@@ -212,3 +212,50 @@ func TestOldAlertsArePruned(t *testing.T) {
 		t.Errorf("got %+v", log)
 	}
 }
+
+func TestAlertsLastWhileADeviceDoesNotAnswer(t *testing.T) {
+	ctx := context.Background()
+	targets := []Target{{ID: "nas", Name: "NAS", Usage: &usage{snapshot: disk(96)}}}
+	w, _ := openTest(t, &targets)
+	now := time.Unix(1_800_000_000, 0)
+	w.Check(ctx, now)
+
+	// A short blip is no outage, and the disk alert lasts through it.
+	targets[0] = Target{ID: "nas", Name: "NAS", Unreachable: true, UnreachableSince: now}
+	w.Check(ctx, now.Add(Interval))
+	if got := w.Active("nas"); len(got) != 1 || got[0].Kind != KindDisk {
+		t.Fatalf("during a blip: %+v", got)
+	}
+	// An outage that lasts adds the offline alert.
+	w.Check(ctx, now.Add(3*time.Minute))
+	if got := w.Active("nas"); len(got) != 2 {
+		t.Fatalf("during an outage: %+v", got)
+	}
+	targets[0] = Target{ID: "nas", Name: "NAS", Usage: &usage{snapshot: disk(96)}}
+	w.Check(ctx, now.Add(4*time.Minute))
+	got := w.Active("nas")
+	if len(got) != 1 || got[0].Kind != KindDisk || !got[0].Started.Equal(now) {
+		t.Fatalf("once it answers: %+v", got)
+	}
+}
+
+func TestTheLogKeepsAnAlertThatLasts(t *testing.T) {
+	ctx := context.Background()
+	disks := &usage{snapshot: disk(99)}
+	flaps := &usage{snapshot: disk(99)}
+	targets := []Target{{ID: "nas", Name: "NAS", Usage: disks}, {ID: "pi", Name: "Pi", Usage: flaps}}
+	w, _ := openTest(t, &targets)
+	now := time.Unix(1_800_000_000, 0)
+	// The Pi starts and ends more alerts than the log holds, all newer than the NAS's.
+	for i := range 2*LogLimit + 2 {
+		flaps.snapshot = disk(float64(99 - 89*(i%2)))
+		w.Check(ctx, now.Add(time.Duration(i)*Interval))
+	}
+	log, err := w.Log(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(log) != LogLimit || log[0].Device != "nas" || log[0].Ended != nil {
+		t.Fatalf("got %d, first %+v", len(log), log[0])
+	}
+}

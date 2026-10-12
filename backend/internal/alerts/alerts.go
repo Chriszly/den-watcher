@@ -323,10 +323,10 @@ func sortAlerts(list []Alert) {
 	})
 }
 
-// Log returns the newest alerts of every device, the ones that last and the
-// ones that ended, newest first.
+// Log returns the alerts of every device that last, then the newest that
+// ended, each newest first, so one that lasts long is never left out.
 func (w *Watcher) Log(ctx context.Context) ([]Alert, error) {
-	return w.query(ctx, selectAlerts+` ORDER BY started DESC, id DESC LIMIT ?`, LogLimit)
+	return w.query(ctx, selectAlerts+` ORDER BY ended IS NOT NULL, started DESC, id DESC LIMIT ?`, LogLimit)
 }
 
 // selectAlerts starts every query that query reads.

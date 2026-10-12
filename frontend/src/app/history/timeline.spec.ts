@@ -182,6 +182,18 @@ describe('Timeline', () => {
     expect(trail()).toEqual(['Whole range']);
   });
 
+  it('shows no stretch it could not read with the values of the one before', () => {
+    show();
+    brush(0.2, 0.6);
+    zoomedRequest();
+    brush(0.2, 0.6);
+    http
+      .expectOne((r) => r.url === '/api/history')
+      .flush(null, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+    expect(rows()).toEqual(['CPU: 20 %', 'Memory: 40 %', 'Disks: 30 %']);
+  });
+
   it('takes a short drag across the rows for a click', () => {
     show();
     brush(0.5, 0.502);

@@ -150,9 +150,7 @@
                 cdkDropList
                 cdkDropListOrientation="mixed"
                 [cdkDropListDisabled]="!arranging"
-                (cdkDropListDropped)="
-                  moveCard(section.cards, $event.previousIndex, $event.currentIndex)
-                "
+                (cdkDropListDropped)="moveCard(section, $event.previousIndex, $event.currentIndex)"
               >
                 @for (card of section.cards; track card.id; let i = $index, last = $last) {
                   <div
@@ -166,8 +164,10 @@
                         [card]="cardTitle(card)"
                         [first]="i === 0"
                         [last]="last"
-                        (earlier)="moveCard(section.cards, i, i - 1, 'earlier')"
-                        (later)="moveCard(section.cards, i, i + 1, 'later')"
+                        (earlier)="moveCard(section, i, i - 1, 'earlier')"
+                        (later)="moveCard(section, i, i + 1, 'later')"
+                        [pinned]="section.category === 'pinned'"
+                        (pin)="pinCard(card.id)"
                         (hide)="hideCard(card.id)"
                       />
                     }

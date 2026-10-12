@@ -39,7 +39,7 @@ Every device with a website keeps its history in one SQLite file. A hub keeps th
 | `hub_device_kinds` | per other device that is a PC or laptop: `device`, `kind` (`pc`); a device without a row is a server or IoT device | as long as the device is collected from, or kept with its history |
 | `alerts` | every [alert](data.md#alerts): `device`, `device_name`, `kind`, `subject`, `level` and `value` (the highest reached), `started`, `ended` (Unix milliseconds, empty while it lasts) | while it lasts, then for the retention |
 | `password` | the salt and PBKDF2-SHA256 hash of the password for changing devices, one row at most | until `RESET_PASSWORD=true` |
-| `page_layout` | how the page is arranged: the folded categories, the order of the cards and the hidden ones, as JSON in `layout`, one row at most; see `PUT /api/layout` in [the HTTP API](architecture.md#http-api) | until the page changes it |
+| `page_layout` | how the page is arranged: the folded categories, the order of the cards, the hidden ones and the pinned ones, as JSON in `layout`, one row at most; see `PUT /api/layout` in [the HTTP API](architecture.md#http-api) | until the page changes it |
 
 `samples` and `samples_hourly` use `(device, time, metric)` as the key, stored without a separate row id, plus an index by time for deleting old rows. The metric names are listed in [What is kept in the history](data.md#what-is-kept-in-the-history). A new metric or a new device needs no change to the tables. Devices from `HUB_DEVICES` are not stored; they are read from the setting at every start. Their kind is stored, though, which is why it is a table of its own rather than a column of `hub_devices`; it also needs no migration, since a database without the table holds servers only.
 

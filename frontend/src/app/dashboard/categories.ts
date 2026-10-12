@@ -15,6 +15,15 @@ export const CATEGORIES = [
 
 export type Category = (typeof CATEGORIES)[number];
 
+/** The section of the pinned cards, above the categories. */
+export const PINNED = 'pinned';
+
+/** A section of the page: the pinned cards, or a category. */
+export type Section = typeof PINNED | Category;
+
+/** The sections of the page, in the order it shows them. */
+export const SECTIONS: readonly Section[] = [PINNED, ...CATEGORIES];
+
 /** Where the cards of the extras the page knows go; the others go to `other`. */
 const EXTRA_CATEGORIES: Record<string, Category> = {
   gpu: 'system',
@@ -84,21 +93,19 @@ export function byCategory<T>(
   })).filter((group) => group.items.length > 0);
 }
 
-/** Which categories of cards are folded, so only their title shows; kept on the host. */
+/** Which sections of cards are folded, so only their title shows; kept on the host. */
 @Injectable({ providedIn: 'root' })
 export class FoldedCategories {
   private readonly layout = inject(PageLayout);
-  readonly folded = computed<ReadonlySet<Category>>(
+  readonly folded = computed<ReadonlySet<Section>>(
     () =>
       new Set(
-        this.layout
-          .layout()
-          .folded.filter((c): c is Category => CATEGORIES.includes(c as Category)),
+        this.layout.layout().folded.filter((c): c is Section => SECTIONS.includes(c as Section)),
       ),
   );
 
-  /** Folds the category, or unfolds it when it is folded. */
-  toggle(category: Category): void {
+  /** Folds the section, or unfolds it when it is folded. */
+  toggle(category: Section): void {
     // The change works on the layout it is given, which is the host's newer one when it answers
     // after the click.
     this.layout.change((layout) => ({

@@ -611,6 +611,60 @@ describe('Dashboard', () => {
     expect(layoutWrites().at(-1)).toEqual(EMPTY_LAYOUT);
   });
 
+  it('pins cards above the categories, in their own order', () => {
+    respond(snapshot);
+    http.expectOne('/api/layout').flush({ ...EMPTY_LAYOUT, pinned: ['network', 'gone'] });
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const sections = () =>
+      [...element.querySelectorAll('.category')].map((c) => [
+        c.querySelector('h2')!.textContent!.trim(),
+        [...c.querySelectorAll('.slot > .card > h3')].map((h) => shown(h).trim()),
+      ]);
+    // A pinned card the device does not have, such as another device's, is left out.
+    expect(sections().slice(0, 3)).toEqual([
+      ['Pinned', ['Network']],
+      ['System', ['CPU', 'Memory']],
+      ['Storage', ['Disks']],
+    ]);
+
+    const click = (target: Element | null) => {
+      (target as HTMLElement).click();
+      fixture.detectChanges();
+    };
+    click(element.querySelector('app-arrange-bar .start'));
+    const memory = () =>
+      [...element.querySelectorAll('app-arrange-controls')].find(
+        (c) => c.getAttribute('aria-label') === 'Memory',
+      )!;
+    click(memory().querySelector('.pin'));
+    expect(sections().slice(0, 2)).toEqual([
+      ['Pinned', ['Network', 'Memory']],
+      ['System', ['CPU']],
+    ]);
+    expect(memory().querySelector('.pin')!.getAttribute('aria-pressed')).toBe('true');
+    expect(document.activeElement).toBe(memory().querySelector('.pin'));
+
+    click(memory().querySelector('.earlier'));
+    expect(sections()[0]).toEqual(['Pinned', ['Memory', 'Network']]);
+    expect(layoutWrites().at(-1)).toEqual({
+      ...EMPTY_LAYOUT,
+      pinned: ['memory', 'network', 'gone'],
+    });
+
+    click(memory().querySelector('.pin'));
+    expect(sections().slice(0, 2)).toEqual([
+      ['Pinned', ['Network']],
+      ['System', ['CPU', 'Memory']],
+    ]);
+
+    // A hidden pinned card leaves the pinned cards and waits as a chip in its own category.
+    TestBed.inject(Arrangement).hide('network');
+    fixture.detectChanges();
+    expect(sections()[0][0]).toBe('System');
+    expect(element.querySelector('app-hidden-cards [data-card="network"]')).not.toBeNull();
+  });
+
   it('folds a category to its title, with the sign of its alerts, and remembers it', () => {
     TestBed.inject(DeviceService).devices.set([
       {

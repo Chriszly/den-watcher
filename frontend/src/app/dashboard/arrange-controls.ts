@@ -4,9 +4,9 @@ import { Component, inject, input, output } from '@angular/core';
 import { I18n } from '../i18n/i18n';
 
 /**
- * The controls to move and hide a card while the page is arranged, in the card's top border at the
- * right: a handle to drag it, arrows to move it by one place for the keyboard and touch, and a
- * button to hide it. The card's slot is the cdkDrag the handle drags.
+ * The controls to move, pin and hide a card while the page is arranged, in a row above the card:
+ * a handle to drag it, arrows to move it by one place for the keyboard and touch, a button
+ * to pin it above the categories and one to hide it. The card's slot is the cdkDrag the handle drags.
  */
 @Component({
   selector: 'app-arrange-controls',
@@ -50,6 +50,18 @@ import { I18n } from '../i18n/i18n';
     </button>
     <button
       type="button"
+      class="pin"
+      [attr.aria-pressed]="pinned()"
+      (click)="pin.emit()"
+      [attr.aria-label]="i18n.t('arrange.pin', { card: card() })"
+      [title]="i18n.t('arrange.pin', { card: card() })"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9 3h6l-1 6 4 4H6l4-4-1-6zM12 13v8" />
+      </svg>
+    </button>
+    <button
+      type="button"
       class="hide"
       (click)="hide.emit()"
       [attr.aria-label]="i18n.t('arrange.hide', { card: card() })"
@@ -72,8 +84,12 @@ export class ArrangeControls {
   readonly first = input(false);
   /** Whether the card is the last of its category, which cannot move later. */
   readonly last = input(false);
+  /** Whether the card is pinned above the categories. */
+  readonly pinned = input(false);
   readonly earlier = output();
   readonly later = output();
+  /** Asks to pin the card, or to unpin it when it is pinned. */
+  readonly pin = output();
   readonly hide = output();
 
   protected readonly i18n = inject(I18n);

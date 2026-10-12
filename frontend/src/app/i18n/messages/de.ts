@@ -311,7 +311,7 @@ export const de: Messages = {
   'arrange.start': 'Anordnen',
   'arrange.group': 'Nach Art gruppieren',
   'arrange.notice':
-    'Seite anordnen: Karten ziehen oder mit den Pfeilen innerhalb ihrer Kategorie verschieben, oben anheften oder ausblenden. Ein Wert der Details wird mit seinem +-Knopf zur Karte. Eine hier breiter gemachte Karte bleibt in jedem Browser breit.',
+    'Seite anordnen: Karten ziehen oder mit den Pfeilen innerhalb ihres Abschnitts verschieben, oben anheften oder ausblenden. Ein Wert der Details wird mit seinem +-Knopf zur Karte. Eine hier breiter gemachte Karte bleibt in jedem Browser breit.',
   'arrange.reset': 'Zurücksetzen',
   'arrange.done': 'Fertig',
   'arrange.drag': '{card} ziehen',

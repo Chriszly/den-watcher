@@ -47,7 +47,27 @@ export class Arrangement {
   }
 
   /**
-   * Moves the card at `from` among the shown cards of a category, by id in their order, to `to`.
+   * The cards of several categories as one list, as they show when the cards are not grouped: each
+   * category sorted on its own, in turn, then every arranged card in its order across them, each
+   * card never moved right after the card it came after in its category.
+   */
+  sortAcross<T extends { id: string }>(categories: readonly (readonly T[])[]): T[] {
+    const position = this.position();
+    const listed = categories.flatMap((cards) => this.sort(cards));
+    let before = -1;
+    const at = new Map(
+      listed.map((card) => {
+        before = position.get(card.id) ?? before;
+        return [card, position.has(card.id) ? before : before + 0.5];
+      }),
+    );
+    // The sort is stable, so the cards never moved after the same card keep their order.
+    return listed.sort((a, b) => at.get(a)! - at.get(b)!);
+  }
+
+  /**
+   * Moves the card at `from` among the shown cards of a category, or of every category when the
+   * cards are not grouped, by id in their order, to `to`.
    * The whole category's order is kept, so it stays as it is shown when other cards come or go.
    */
   move(ids: readonly string[], from: number, to: number): void {

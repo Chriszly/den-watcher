@@ -294,46 +294,52 @@ export class Dashboard {
       values: 0,
       charts: [],
     };
+    const inCategory = (category: Category) => cards.filter((card) => card.category === category);
     // Not grouped, every card that is not pinned shows in one section, in the order of the
     // categories until it is moved.
-    const groups: { section: Section; cards: Card[]; charts: Chart[] }[] =
+    const groups: { section: Section; cards: Card[]; arranged: Card[]; charts: Chart[] }[] =
       this.arrangement.grouped()
         ? CATEGORIES.map((category) => ({
             section: category,
-            cards: cards.filter((card) => card.category === category),
+            cards: inCategory(category),
+            arranged: this.arrangement.sort(inCategory(category).filter(isCard)),
             charts: charts.get(category) ?? [],
           }))
         : [
             {
               section: ALL,
-              cards: CATEGORIES.flatMap((c) => cards.filter((card) => card.category === c)),
-              charts: CATEGORIES.flatMap((c) => charts.get(c) ?? []),
+              cards: CATEGORIES.flatMap(inCategory),
+              arranged: this.arrangement.sortAcross(
+                CATEGORIES.map((category) => inCategory(category).filter(isCard)),
+              ),
+              charts: CATEGORIES.flatMap((category) => charts.get(category) ?? []),
             },
           ];
-    const categories = groups.map(({ section, cards: all, charts: drawn }): DashboardSection => {
-      // The values made into cards leave the details.
-      const details = all.flatMap((card) => {
-        if (card.kind !== 'extra' || !isDetailGroup(card.group.id)) {
-          return [];
-        }
-        const group = card.group;
-        const items = group.items.filter((item) => !made.has(valueCard(group.id, item.id)));
-        return items.length > 0 ? [{ ...group, items }] : [];
-      });
-      const arranged = this.arrangement.sort(all.filter(isCard));
-      // The details draw their values' history in their rows, and hidden cards draw none.
-      const ids = new Set(all.map((card) => card.id));
-      return {
-        category: section,
-        cards: arranged.filter((card) => !hidden.has(card.id) && !pinnedIds.has(card.id)),
-        hidden: arranged
-          .filter((card) => hidden.has(card.id))
-          .map((card): HiddenCard => ({ id: card.id, title: this.cardTitle(card) })),
-        details,
-        values: details.reduce((sum, group) => sum + group.items.length, 0),
-        charts: drawn.filter((chart) => !ids.has(chart.card)),
-      };
-    });
+    const categories = groups.map(
+      ({ section, cards: all, arranged, charts: drawn }): DashboardSection => {
+        // The values made into cards leave the details.
+        const details = all.flatMap((card) => {
+          if (card.kind !== 'extra' || !isDetailGroup(card.group.id)) {
+            return [];
+          }
+          const group = card.group;
+          const items = group.items.filter((item) => !made.has(valueCard(group.id, item.id)));
+          return items.length > 0 ? [{ ...group, items }] : [];
+        });
+        // The details draw their values' history in their rows, and hidden cards draw none.
+        const ids = new Set(all.map((card) => card.id));
+        return {
+          category: section,
+          cards: arranged.filter((card) => !hidden.has(card.id) && !pinnedIds.has(card.id)),
+          hidden: arranged
+            .filter((card) => hidden.has(card.id))
+            .map((card): HiddenCard => ({ id: card.id, title: this.cardTitle(card) })),
+          details,
+          values: details.reduce((sum, group) => sum + group.items.length, 0),
+          charts: drawn.filter((chart) => !ids.has(chart.card)),
+        };
+      },
+    );
     return [pinnedSection, ...categories].filter(
       (section) =>
         section.cards.length > 0 ||

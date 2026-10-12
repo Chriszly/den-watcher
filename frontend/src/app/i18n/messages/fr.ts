@@ -309,7 +309,7 @@ export const fr: Messages = {
   'arrange.start': 'Organiser',
   'arrange.group': 'Grouper par type',
   'arrange.notice':
-    'Organisation de la page : faites glisser les cartes ou utilisez les flèches pour les déplacer dans leur catégorie, épinglez-les en haut ou masquez-les. Une valeur des détails devient une carte avec son bouton +. Une carte élargie ici reste large dans tous les navigateurs.',
+    'Organisation de la page : faites glisser les cartes ou utilisez les flèches pour les déplacer dans leur section, épinglez-les en haut ou masquez-les. Une valeur des détails devient une carte avec son bouton +. Une carte élargie ici reste large dans tous les navigateurs.',
   'arrange.reset': 'Réinitialiser',
   'arrange.done': 'Terminé',
   'arrange.drag': 'Faire glisser {card}',

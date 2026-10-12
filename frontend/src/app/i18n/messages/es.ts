@@ -311,7 +311,7 @@ export const es: Messages = {
   'arrange.start': 'Organizar',
   'arrange.group': 'Agrupar por tipo',
   'arrange.notice':
-    'Organizando la página: arrastra las tarjetas o usa las flechas para moverlas dentro de su categoría, fíjalas arriba u ocúltalas. Un valor de los detalles se convierte en tarjeta con su botón +. Una tarjeta ensanchada aquí sigue ancha en todos los navegadores.',
+    'Organizando la página: arrastra las tarjetas o usa las flechas para moverlas dentro de su sección, fíjalas arriba u ocúltalas. Un valor de los detalles se convierte en tarjeta con su botón +. Una tarjeta ensanchada aquí sigue ancha en todos los navegadores.',
   'arrange.reset': 'Restablecer',
   'arrange.done': 'Hecho',
   'arrange.drag': 'Arrastrar {card}',

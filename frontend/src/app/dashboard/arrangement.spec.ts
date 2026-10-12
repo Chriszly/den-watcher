@@ -49,6 +49,20 @@ describe('Arrangement', () => {
     ]);
   });
 
+  it('sorts several categories as one, keeping each card never moved after the card before it', () => {
+    // Arranged while grouped, only the later category has an order.
+    answer({ order: ['uptime', 'time'] });
+    const across = () =>
+      ids(
+        arrangement.sortAcross([cards('cpu', 'memory'), cards('disks'), cards('time', 'uptime')]),
+      );
+    expect(across()).toEqual(['cpu', 'memory', 'disks', 'uptime', 'time']);
+    // Arranged while not grouped, every card has its place across the categories.
+    arrangement.move(['cpu', 'memory', 'disks', 'uptime', 'time'], 4, 0);
+    sent();
+    expect(across()).toEqual(['time', 'cpu', 'memory', 'disks', 'uptime']);
+  });
+
   it("keeps a moved category's whole order, after the other categories' cards", () => {
     answer({ order: ['disks', 'memory'] });
     arrangement.move(['cpu', 'memory', 'gpus'], 2, 0);

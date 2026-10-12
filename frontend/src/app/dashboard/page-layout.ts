@@ -14,10 +14,12 @@ export interface Layout {
   hidden: string[];
   /** The cards shown above the categories, by id, in their order there. */
   pinned: string[];
+  /** The values of the details made into cards of their own, by the card's id. */
+  made: string[];
 }
 
 /** The layout of a page that has not been arranged. */
-export const EMPTY_LAYOUT: Layout = { folded: [], order: [], hidden: [], pinned: [] };
+export const EMPTY_LAYOUT: Layout = { folded: [], order: [], hidden: [], pinned: [], made: [] };
 
 /** The layout as the host answered it, with an empty list for each list it does not have. */
 function fromHost(answer: Partial<Layout> | null): Layout {
@@ -28,6 +30,7 @@ function fromHost(answer: Partial<Layout> | null): Layout {
     order: list(answer?.order),
     hidden: list(answer?.hidden),
     pinned: list(answer?.pinned),
+    made: list(answer?.made),
   };
 }
 

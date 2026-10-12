@@ -32,7 +32,7 @@ func TestALayoutIsEmptyUntilOneIsStored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Read() error = %v", err)
 	}
-	if want := (Layout{Folded: []string{}, Order: []string{}, Hidden: []string{}, Pinned: []string{}}); !reflect.DeepEqual(got, want) {
+	if want := (Layout{Folded: []string{}, Order: []string{}, Hidden: []string{}, Pinned: []string{}, Made: []string{}}); !reflect.DeepEqual(got, want) {
 		t.Errorf("Read() = %#v, want %#v", got, want)
 	}
 }
@@ -47,7 +47,7 @@ func TestALayoutStoredBeforeAListWasAddedHasItEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Read() error = %v", err)
 	}
-	if want := (Layout{Folded: []string{"storage"}, Order: []string{}, Hidden: []string{}, Pinned: []string{}}); !reflect.DeepEqual(got, want) {
+	if want := (Layout{Folded: []string{"storage"}, Order: []string{}, Hidden: []string{}, Pinned: []string{}, Made: []string{}}); !reflect.DeepEqual(got, want) {
 		t.Errorf("Read() = %#v, want %#v", got, want)
 	}
 }
@@ -55,7 +55,7 @@ func TestALayoutStoredBeforeAListWasAddedHasItEmpty(t *testing.T) {
 func TestTheLastWrittenLayoutIsKept(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
-	want := Layout{Folded: []string{"network", "system"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}, Pinned: []string{"temperatures"}}
+	want := Layout{Folded: []string{"network", "system"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}, Pinned: []string{"temperatures"}, Made: []string{"value:kernel/forks"}}
 	for _, layout := range []Layout{{Folded: []string{"storage"}, Order: []string{}, Hidden: []string{}}, want} {
 		if err := s.Write(ctx, layout); err != nil {
 			t.Fatalf("Write(%v) error = %v", layout, err)
@@ -88,6 +88,7 @@ func TestRefusesALayoutThatIsNotValid(t *testing.T) {
 			"order":  {Order: list},
 			"hidden": {Hidden: list},
 			"pinned": {Pinned: list},
+			"made":   {Made: list},
 		} {
 			t.Run(name+" in "+field, func(t *testing.T) {
 				s := openTestStore(t)
@@ -96,7 +97,7 @@ func TestRefusesALayoutThatIsNotValid(t *testing.T) {
 					t.Fatalf("Write() error = %v, want an *InputError about %s", err, field)
 				}
 				got, err := s.Read(context.Background())
-				if err != nil || len(got.Folded)+len(got.Order)+len(got.Hidden)+len(got.Pinned) != 0 {
+				if err != nil || len(got.Folded)+len(got.Order)+len(got.Hidden)+len(got.Pinned)+len(got.Made) != 0 {
 					t.Errorf("Read() = %v, %v; want the refused layout not stored", got, err)
 				}
 			})

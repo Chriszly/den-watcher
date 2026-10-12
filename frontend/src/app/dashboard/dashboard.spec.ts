@@ -521,6 +521,66 @@ describe('Dashboard', () => {
     expect(system.querySelector('button.fold')!.textContent).toContain('2 cards · 2 values');
   });
 
+  it('makes a value of the details a card of its own, and puts it back', () => {
+    respond({
+      ...snapshot,
+      extras: [
+        {
+          id: 'kernel',
+          title: 'Kernel',
+          items: [
+            { id: 'interrupts', label: 'Interrupts', unit: 'perSecond', value: 912.4 },
+            { id: 'forks', label: 'Forks', unit: 'perSecond', value: 3 },
+          ],
+        },
+      ],
+    });
+    http
+      .expectOne((r) => r.url === '/api/history')
+      .flush({
+        from: 0,
+        to: 1800,
+        stepSeconds: 5,
+        retentionDays: 30,
+        series: [{ metric: 'extra:kernel/interrupts', points: [{ time: 0, value: 900 }] }],
+        extras: {
+          'extra:kernel/interrupts': { title: 'Kernel', label: 'Interrupts', unit: 'perSecond' },
+        },
+      });
+    http.expectOne('/api/layout').flush(EMPTY_LAYOUT);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const system = element.querySelector('.category')!;
+    const titles = () => [...system.querySelectorAll('.card > h3')].map((h) => shown(h).trim());
+    const rows = () => [...system.querySelectorAll('app-details th')].map((th) => th.textContent);
+    const click = (target: Element | null | undefined) => {
+      (target as HTMLElement).click();
+      fixture.detectChanges();
+    };
+    // The values can be made cards only while arranging.
+    expect(system.querySelector('app-details .make')).toBeNull();
+
+    click(element.querySelector('app-arrange-bar .start'));
+    click(system.querySelectorAll('app-details .make')[0]);
+    expect(titles()).toEqual(['CPU', 'Memory', 'Kernel · Interrupts']);
+    expect(rows()).toEqual(['Forks']);
+    expect(system.querySelector('app-details summary')!.textContent).toContain('1 value');
+    const made = system.querySelector('.slot[data-card="value:kernel/interrupts"]')!;
+    expect(made.querySelector('.value')!.textContent!.trim()).toBe('912.4/s');
+    expect(made.querySelector('app-card-charts app-line-chart')).not.toBeNull();
+    expect(layoutWrites().at(-1)).toEqual({ ...EMPTY_LAYOUT, made: ['value:kernel/interrupts'] });
+    const back = made.querySelector('app-arrange-controls .hide')!;
+    expect(back.getAttribute('aria-label')).toBe('Put Kernel · Interrupts back in the details');
+    expect(document.activeElement).toBe(back);
+
+    click(back);
+    expect(titles()).toEqual(['CPU', 'Memory']);
+    expect(rows()).toEqual(['Interrupts', 'Forks']);
+    expect(system.querySelector('app-details details')!.hasAttribute('open')).toBe(true);
+    expect(document.activeElement).toBe(system.querySelector('app-details .make'));
+    expect(layoutWrites().at(-1)).toEqual(EMPTY_LAYOUT);
+  });
+
   it('groups the cards by category, with an unknown extra under More', () => {
     respond({
       ...snapshot,

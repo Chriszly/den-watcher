@@ -33,14 +33,14 @@ func TestKeepsTheLayoutForEveryBrowser(t *testing.T) {
 	store := &fakeLayout{stored: layout.Layout{Folded: []string{}}}
 	handler := newLayoutHandler(store)
 
-	if rec := send(handler, http.MethodPut, "/api/layout", `{"folded":["storage"],"order":["memory","cpu"],"hidden":["extra:wifi"],"pinned":["fans"]}`); rec.Code != http.StatusNoContent {
+	if rec := send(handler, http.MethodPut, "/api/layout", `{"folded":["storage"],"order":["memory","cpu"],"hidden":["extra:wifi"],"pinned":["fans"],"made":["value:kernel/forks"]}`); rec.Code != http.StatusNoContent {
 		t.Fatalf("PUT status = %d, want %d: %s", rec.Code, http.StatusNoContent, rec.Body)
 	}
-	if want := (layout.Layout{Folded: []string{"storage"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}, Pinned: []string{"fans"}}); !reflect.DeepEqual(store.stored, want) {
+	if want := (layout.Layout{Folded: []string{"storage"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}, Pinned: []string{"fans"}, Made: []string{"value:kernel/forks"}}); !reflect.DeepEqual(store.stored, want) {
 		t.Errorf("stored = %#v, want %#v", store.stored, want)
 	}
 	rec := send(handler, http.MethodGet, "/api/layout", "")
-	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"folded":["storage"],"order":["memory","cpu"],"hidden":["extra:wifi"],"pinned":["fans"]}` {
+	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"folded":["storage"],"order":["memory","cpu"],"hidden":["extra:wifi"],"pinned":["fans"],"made":["value:kernel/forks"]}` {
 		t.Errorf("GET = %d %s, want 200 with the stored layout", rec.Code, rec.Body)
 	}
 }
@@ -69,7 +69,7 @@ func TestTakesTheLongestValidLayout(t *testing.T) {
 	for i := range names {
 		names[i] = fmt.Sprintf("%0*d", layout.MaxNameBytes, i)
 	}
-	l := layout.Layout{Folded: names, Order: names, Hidden: names, Pinned: names}
+	l := layout.Layout{Folded: names, Order: names, Hidden: names, Pinned: names, Made: names}
 	body, err := json.Marshal(l)
 	if err != nil {
 		t.Fatal(err)

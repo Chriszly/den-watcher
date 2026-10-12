@@ -77,6 +77,11 @@ export function isDetailGroup(id: string): boolean {
   return DETAIL_GROUPS.has(id);
 }
 
+/** The id of the card a value of the details is made into, such as "value:kernel/forks". */
+export function valueCard(group: string, item: string): string {
+  return `value:${group}/${item}`;
+}
+
 /** The category of the card of the extras group `id`. */
 export function extraCategory(id: string): Category {
   return Object.hasOwn(EXTRA_CATEGORIES, id) ? EXTRA_CATEGORIES[id] : 'other';

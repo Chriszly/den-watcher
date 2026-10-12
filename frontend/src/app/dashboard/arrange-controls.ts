@@ -6,7 +6,8 @@ import { I18n } from '../i18n/i18n';
 /**
  * The controls to move, pin and hide a card while the page is arranged, in a row above the card:
  * a handle to drag it, arrows to move it by one place for the keyboard and touch, a button
- * to pin it above the categories and one to hide it. The card's slot is the cdkDrag the handle drags.
+ * to pin it above the categories and one to hide it, or to put a value made into a card back in the
+ * details. The card's slot is the cdkDrag the handle drags.
  */
 @Component({
   selector: 'app-arrange-controls',
@@ -64,8 +65,8 @@ import { I18n } from '../i18n/i18n';
       type="button"
       class="hide"
       (click)="hide.emit()"
-      [attr.aria-label]="i18n.t('arrange.hide', { card: card() })"
-      [title]="i18n.t('arrange.hide', { card: card() })"
+      [attr.aria-label]="i18n.t(made() ? 'arrange.unmake' : 'arrange.hide', { card: card() })"
+      [title]="i18n.t(made() ? 'arrange.unmake' : 'arrange.hide', { card: card() })"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path
@@ -86,6 +87,8 @@ export class ArrangeControls {
   readonly last = input(false);
   /** Whether the card is pinned above the categories. */
   readonly pinned = input(false);
+  /** Whether the card is a value of the details made into a card, which hiding puts back there. */
+  readonly made = input(false);
   readonly earlier = output();
   readonly later = output();
   /** Asks to pin the card, or to unpin it when it is pinned. */

@@ -5,7 +5,7 @@ import { I18n, LanguageCode, TextParams } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
 import { ExtraInfo, localized } from '../metrics/extras';
 import { Point, Series } from '../metrics/metrics';
-import { Category, byCategory, extraCategory } from '../dashboard/categories';
+import { Category, byCategory, extraCategory, valueCard } from '../dashboard/categories';
 import { HistoryStore } from './history-store';
 import { ChartLine, ChartUnit } from './line-chart';
 
@@ -253,6 +253,38 @@ export function extraChartsOf(
         }
       : chart,
   );
+}
+
+/**
+ * One chart for each value of the extras made into a card, by the cards' ids, titled by its group
+ * and its label. Series without a description are left out.
+ */
+export function valueChartsOf(
+  series: Series[],
+  extras: Record<string, ExtraInfo>,
+  made: ReadonlySet<string>,
+  language: LanguageCode,
+): Chart[] {
+  return series.flatMap((s): Chart[] => {
+    const info = extras[s.metric];
+    const name = s.metric.slice('extra:'.length);
+    const group = name.slice(0, name.indexOf('/'));
+    const card = valueCard(group, name.slice(group.length + 1));
+    if (!info || info.unit === 'text' || s.points.length === 0 || !made.has(card)) {
+      return [];
+    }
+    const label = localized(info.label, info.labels, language);
+    return [
+      {
+        title: `${localized(info.title, info.titles, language)} · ${label}`,
+        category: extraCategory(group),
+        card,
+        unit: info.unit,
+        max: info.unit === 'percent' ? 100 : undefined,
+        lines: [{ label, points: s.points }],
+      },
+    ];
+  });
 }
 
 /** Whether a router's interface is its internet connection: "WAN", or "WAN 2" for a second one. */

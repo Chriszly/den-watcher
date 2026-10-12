@@ -1,15 +1,18 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 
 import { HistoryStore } from '../history/history-store';
 import { Sparkline } from '../history/sparkline';
 import { I18n } from '../i18n/i18n';
 import { Extra, ExtraItem, formatExtra, localized } from '../metrics/extras';
 import { Point } from '../metrics/metrics';
+import { Arrangement } from './arrangement';
+import { valueCard } from './categories';
 
 /**
  * The extras groups for experts of one category, such as the kernel's counters, folded into one
  * table: a small table per group, each value a row with its name, the value now and, where the hub
- * keeps its history, a small chart of it over the range picked at the top of the page.
+ * keeps its history, a small chart of it over the range picked at the top of the page. While the
+ * page is arranged, each row has a button to make the value a card of its own.
  */
 @Component({
   selector: 'app-details',
@@ -22,6 +25,7 @@ import { Point } from '../metrics/metrics';
       </summary>
       <div class="groups">
         @let h = store.history();
+        @let arranging = arrangement.arranging();
         @for (group of groups(); track group.id) {
           <table>
             <caption>
@@ -46,6 +50,25 @@ import { Point } from '../metrics/metrics';
                     />
                   }
                 </td>
+                @if (arranging) {
+                  @let card = valueCard(group.id, item.id);
+                  <td class="arrange">
+                    <button
+                      type="button"
+                      class="make"
+                      [attr.data-card]="card"
+                      [attr.aria-label]="
+                        i18n.t('arrange.make', { value: text(item.label, item.labels) })
+                      "
+                      [title]="i18n.t('arrange.make', { value: text(item.label, item.labels) })"
+                      (click)="make.emit(card)"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                    </button>
+                  </td>
+                }
               </tr>
             }
           </table>
@@ -57,9 +80,13 @@ import { Point } from '../metrics/metrics';
 })
 export class Details {
   readonly groups = input.required<Extra[]>();
+  /** Asks to make a value a card of its own, by the card's id. */
+  readonly make = output<string>();
 
   protected readonly store = inject(HistoryStore);
   protected readonly i18n = inject(I18n);
+  protected readonly arrangement = inject(Arrangement);
+  protected readonly valueCard = valueCard;
   /** The stored history of each metric, looked up once per reading rather than once per row. */
   protected readonly pointsByMetric = computed(
     () =>

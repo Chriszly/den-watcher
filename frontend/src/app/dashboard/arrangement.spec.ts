@@ -87,11 +87,37 @@ describe('Arrangement', () => {
     expect(sent().at(-1)!.pinned).toEqual(['fans', 'cpu', 'extra:wifi']);
   });
 
-  it('resets the order, the hidden and the pinned cards, keeping the folded categories', () => {
-    answer({ folded: ['storage'], order: ['memory'], hidden: ['cpu'], pinned: ['fans'] });
+  it('makes a value of the details a card once and puts it back', () => {
+    answer({
+      made: ['value:kernel/forks'],
+      pinned: ['value:kernel/forks', 'cpu'],
+      order: ['value:kernel/forks', 'memory'],
+    });
+    arrangement.make('value:pressure/cpu');
+    arrangement.make('value:pressure/cpu');
+    expect([...arrangement.made()]).toEqual(['value:kernel/forks', 'value:pressure/cpu']);
+    // A value put back loses its pin and its place, so made again it comes after the other cards.
+    arrangement.unmake('value:kernel/forks');
+    expect([...arrangement.made()]).toEqual(['value:pressure/cpu']);
+    expect(sent().at(-1)).toEqual({
+      ...EMPTY_LAYOUT,
+      made: ['value:pressure/cpu'],
+      pinned: ['cpu'],
+      order: ['memory'],
+    });
+  });
+
+  it('resets the order, the hidden, the pinned and the made cards, keeping the folded categories', () => {
+    answer({
+      folded: ['storage'],
+      order: ['memory'],
+      hidden: ['cpu'],
+      pinned: ['fans'],
+      made: ['value:kernel/forks'],
+    });
     expect(arrangement.arranged()).toBe(true);
     arrangement.reset();
     expect(arrangement.arranged()).toBe(false);
-    expect(sent()).toEqual([{ folded: ['storage'], order: [], hidden: [], pinned: [] }]);
+    expect(sent()).toEqual([{ ...EMPTY_LAYOUT, folded: ['storage'] }]);
   });
 });

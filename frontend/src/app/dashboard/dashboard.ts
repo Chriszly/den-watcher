@@ -19,7 +19,8 @@ import { alertText, worstLevel } from '../alerts/alerts';
 import { HubConnection } from '../connection/connection';
 import { CardCharts } from '../history/card-charts';
 import { CategoryCharts } from '../history/category-charts';
-import { Chart, DeviceCharts } from '../history/history';
+import { Chart, DeviceCharts, valueChartsOf } from '../history/history';
+import { HistoryStore } from '../history/history-store';
 import { RangePicker } from '../history/range-picker';
 import { Timeline, TimelineMode } from '../history/timeline';
 import { Availability, DeviceService, LOCAL_DEVICE, deviceName } from '../devices/devices';
@@ -50,6 +51,7 @@ import {
   Section,
   extraCategory,
   isDetailGroup,
+  valueCard,
 } from './categories';
 import { CATEGORY_TITLES, CategoryFold } from './category-fold';
 import { Details } from './details';
@@ -120,7 +122,10 @@ export function extraSections(group: Extra): ExtraSection[] {
   return [...sections].map(([section, items]) => ({ section, items }));
 }
 
-/** A card of the dashboard: one of the fixed ones, or the card of a group of extras. */
+/**
+ * A card of the dashboard: one of the fixed ones, the card of a group of extras, or a value of the
+ * details made into a card of its own.
+ */
 export type Card =
   | {
       id: string;
@@ -138,7 +143,8 @@ export type Card =
         | 'uptime';
       category: Category;
     }
-  | { id: string; kind: 'extra'; category: Category; group: Extra };
+  | { id: string; kind: 'extra'; category: Category; group: Extra }
+  | { id: string; kind: 'value'; category: Category; group: Extra; item: ExtraItem };
 
 /** A section of the dashboard as the page draws it: the pinned cards, or a category. */
 interface DashboardSection {
@@ -167,7 +173,7 @@ const CARD_TITLES = {
   throttling: 'dashboard.power',
   time: 'dashboard.time',
   uptime: 'dashboard.uptime',
-} as const satisfies Record<Exclude<Card['kind'], 'extra'>, string>;
+} as const satisfies Record<Exclude<Card['kind'], 'extra' | 'value'>, string>;
 
 /** What the alerts of each kind are shown on, besides the strip above the cards. */
 const ALERT_CARDS: Partial<Record<AlertKind, string>> = {
@@ -245,6 +251,17 @@ export class Dashboard {
   private readonly deviceCharts = inject(DeviceCharts);
   /** The charts drawn in each card, by the card's id. */
   protected readonly cardCharts = this.deviceCharts.byCard;
+  private readonly history = inject(HistoryStore);
+  /** The chart of each value of the details made into a card, by the card's id. */
+  protected readonly valueCharts = computed(() => {
+    const history = this.history.history();
+    const made = this.arrangement.made();
+    const charts =
+      history && made.size > 0
+        ? valueChartsOf(history.series, history.extras ?? {}, made, this.i18n.language())
+        : [];
+    return new Map(charts.map((chart) => [chart.card, [chart]]));
+  });
   /** Whether every value shows on one timeline instead of in the categories; the mascot switches it. */
   protected readonly timeline = inject(TimelineMode);
   /**
@@ -260,6 +277,7 @@ export class Dashboard {
     const hidden = this.arrangement.hidden();
     const arranging = this.arrangement.arranging();
     const isCard = (card: Card) => card.kind !== 'extra' || !isDetailGroup(card.group.id);
+    const made = this.arrangement.made();
     const pinned = this.arrangement
       .pinned()
       .flatMap((id) => cards.filter((card) => card.id === id && isCard(card) && !hidden.has(id)));
@@ -274,9 +292,15 @@ export class Dashboard {
     };
     const categories = CATEGORIES.map((category): DashboardSection => {
       const all = cards.filter((card) => card.category === category);
-      const details = all.flatMap((card) =>
-        card.kind === 'extra' && isDetailGroup(card.group.id) ? [card.group] : [],
-      );
+      // The values made into cards leave the details.
+      const details = all.flatMap((card) => {
+        if (card.kind !== 'extra' || !isDetailGroup(card.group.id)) {
+          return [];
+        }
+        const group = card.group;
+        const items = group.items.filter((item) => !made.has(valueCard(group.id, item.id)));
+        return items.length > 0 ? [{ ...group, items }] : [];
+      });
       const arranged = this.arrangement.sort(all.filter(isCard));
       // The details draw their values' history in their rows, and hidden cards draw none.
       const ids = new Set(all.map((card) => card.id));
@@ -361,7 +385,7 @@ export class Dashboard {
   /** The cards the device's values fill, in the order the page shows them within a category. */
   private cards(s: Snapshot): Card[] {
     const readsLess = this.readsLess();
-    const fixed = (kind: Exclude<Card['kind'], 'extra'>, category: Category, shows: unknown) =>
+    const fixed = (kind: keyof typeof CARD_TITLES, category: Category, shows: unknown) =>
       shows ? [{ id: kind, kind, category }] : [];
     return [
       ...fixed('cpu', 'system', !readsLess || s.cpu.cores > 0),
@@ -379,16 +403,37 @@ export class Dashboard {
         category: extraCategory(group.id),
         group,
       })),
+      ...this.madeCards(s.extras ?? []),
       ...fixed('time', 'device', s.timeZone),
       ...fixed('uptime', 'device', this.showsUptime(s) || this.shownAvailability()),
     ];
   }
 
+  /** The cards of the values of the details made into cards, after the cards of the extras. */
+  private madeCards(extras: readonly Extra[]): Card[] {
+    const made = this.arrangement.made();
+    return extras
+      .filter((group) => isDetailGroup(group.id))
+      .flatMap((group) =>
+        group.items.flatMap((item): Card[] => {
+          const id = valueCard(group.id, item.id);
+          return made.has(id)
+            ? [{ id, kind: 'value', category: extraCategory(group.id), group, item }]
+            : [];
+        }),
+      );
+  }
+
   /** The title of a card, as its heading shows it. */
   protected cardTitle(card: Card): string {
-    return card.kind === 'extra'
-      ? this.extraText(card.group.title, card.group.titles)
-      : this.i18n.t(CARD_TITLES[card.kind]);
+    switch (card.kind) {
+      case 'extra':
+        return this.extraText(card.group.title, card.group.titles);
+      case 'value':
+        return `${this.extraText(card.group.title, card.group.titles)} · ${this.extraText(card.item.label, card.item.labels)}`;
+      default:
+        return this.i18n.t(CARD_TITLES[card.kind]);
+    }
   }
 
   /**
@@ -430,8 +475,37 @@ export class Dashboard {
     );
   }
 
-  /** Hides a card; the focus goes to the chip that shows it again. */
-  protected hideCard(id: string): void {
+  /**
+   * Makes a value of the details a card of its own; the focus goes to the card's button that puts
+   * it back.
+   */
+  protected makeCard(id: string): void {
+    this.arrangement.make(id);
+    this.focusAfterRender(() =>
+      this.slot(id)?.querySelector<HTMLButtonElement>('app-arrange-controls .hide'),
+    );
+  }
+
+  /**
+   * Hides a card; the focus goes to the chip that shows it again. A value made into a card goes
+   * back in its details instead, opened at its row.
+   */
+  protected hideCard(card: Card): void {
+    const id = card.id;
+    if (card.kind === 'value') {
+      this.arrangement.unmake(id);
+      this.focusAfterRender(() => {
+        const make = [
+          ...this.host.querySelectorAll<HTMLButtonElement>('app-details button.make'),
+        ].find((button) => button.dataset['card'] === id);
+        const details = make?.closest('details');
+        if (details) {
+          details.open = true;
+        }
+        return make;
+      });
+      return;
+    }
     this.arrangement.hide(id);
     this.focusAfterRender(() =>
       [...this.host.querySelectorAll<HTMLButtonElement>('app-hidden-cards button')].find(

@@ -3,9 +3,10 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { PageLayout } from './page-layout';
 
 /**
- * How the cards are arranged: their order within each category, which are hidden and which are
- * pinned above the categories, kept on the host with the rest of the page's layout. While arranging,
- * the page shows how to move, pin and hide cards; otherwise it only shows them as arranged.
+ * How the cards are arranged: their order within each category, which are hidden, which are pinned
+ * above the categories and which values of the details are made into cards of their own, kept on
+ * the host with the rest of the page's layout. While arranging, the page shows how to move, pin,
+ * hide and make cards; otherwise it only shows them as arranged.
  */
 @Injectable({ providedIn: 'root' })
 export class Arrangement {
@@ -15,10 +16,12 @@ export class Arrangement {
   readonly hidden = computed(() => new Set(this.layout.layout().hidden));
   /** The pinned cards by id, in their order above the categories. */
   readonly pinned = computed(() => this.layout.layout().pinned);
+  /** The values of the details made into cards, by the card's id. */
+  readonly made = computed(() => new Set(this.layout.layout().made));
   /** Whether the page has been arranged at all, so Reset has something to undo. */
   readonly arranged = computed(() => {
-    const { order, hidden, pinned } = this.layout.layout();
-    return order.length > 0 || hidden.length > 0 || pinned.length > 0;
+    const { order, hidden, pinned, made } = this.layout.layout();
+    return order.length > 0 || hidden.length > 0 || pinned.length > 0 || made.length > 0;
   });
   private readonly position = computed(
     () => new Map(this.layout.layout().order.map((id, index) => [id, index])),
@@ -72,6 +75,27 @@ export class Arrangement {
     }));
   }
 
+  /** Makes a value of the details a card of its own, after the other cards of its category. */
+  make(id: string): void {
+    this.layout.change((layout) =>
+      layout.made.includes(id) ? layout : { ...layout, made: [...layout.made, id] },
+    );
+  }
+
+  /**
+   * Puts a value made into a card back in the details. Its pin and its place go too, so made again
+   * it comes after the other cards of its category.
+   */
+  unmake(id: string): void {
+    const drop = (ids: string[]) => ids.filter((other) => other !== id);
+    this.layout.change((layout) => ({
+      ...layout,
+      made: drop(layout.made),
+      pinned: drop(layout.pinned),
+      order: drop(layout.order),
+    }));
+  }
+
   hide(id: string): void {
     this.layout.change((layout) =>
       layout.hidden.includes(id) ? layout : { ...layout, hidden: [...layout.hidden, id] },
@@ -83,11 +107,11 @@ export class Arrangement {
   }
 
   /**
-   * Shows every card again in its category, in the order the page puts them in; folded categories
-   * stay folded.
+   * Shows every card again in its category, in the order the page puts them in, and every value in
+   * the details; folded categories stay folded.
    */
   reset(): void {
-    this.layout.change((layout) => ({ ...layout, order: [], hidden: [], pinned: [] }));
+    this.layout.change((layout) => ({ ...layout, order: [], hidden: [], pinned: [], made: [] }));
   }
 }
 

@@ -34,6 +34,9 @@ type Layout struct {
 	// Pinned are the cards shown above the categories, by id, in their order
 	// there.
 	Pinned []string `json:"pinned"`
+	// Made are the values of the details made into cards of their own, by
+	// the card's id, such as "value:kernel/forks".
+	Made []string `json:"made"`
 }
 
 // list is one list of a layout, with its name in JSON.
@@ -45,7 +48,7 @@ type list struct {
 // lists are the lists of the layout, in a fixed order, so the first one that
 // is not valid is always the one a refusal names.
 func (l *Layout) lists() []list {
-	return []list{{"folded", &l.Folded}, {"order", &l.Order}, {"hidden", &l.Hidden}, {"pinned", &l.Pinned}}
+	return []list{{"folded", &l.Folded}, {"order", &l.Order}, {"hidden", &l.Hidden}, {"pinned", &l.Pinned}, {"made", &l.Made}}
 }
 
 // InputError tells what is wrong with a layout sent by the page.
@@ -76,7 +79,7 @@ func (s *Store) Read(ctx context.Context) (Layout, error) {
 	var stored string
 	err := s.db.QueryRowContext(ctx, `SELECT layout FROM page_layout WHERE id = 1`).Scan(&stored)
 	if errors.Is(err, sql.ErrNoRows) {
-		return Layout{Folded: []string{}, Order: []string{}, Hidden: []string{}, Pinned: []string{}}, nil
+		return Layout{Folded: []string{}, Order: []string{}, Hidden: []string{}, Pinned: []string{}, Made: []string{}}, nil
 	}
 	if err != nil {
 		return Layout{}, err

@@ -1,6 +1,6 @@
 import { TextParams, translate } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
-import { chartsOf, extraChartsOf } from './history';
+import { chartsOf, extraChartsOf, valueChartsOf } from './history';
 
 describe('chartsOf', () => {
   it('groups metrics into charts and adds up the network cards', () => {
@@ -132,6 +132,49 @@ describe('chartsOf with GPUs', () => {
 
     expect(charts.map((c) => c.title)).toEqual(['CPU', 'GPU']);
     expect(charts[1].lines.map((l) => l.label)).toEqual(['AMD GPU', 'AMD GPU memory']);
+  });
+});
+
+describe('valueChartsOf', () => {
+  it('draws one chart for each value made into a card', () => {
+    const points = [{ time: 60, value: 2 }];
+    const charts = valueChartsOf(
+      [
+        { metric: 'extra:kernel/forks', points },
+        { metric: 'extra:kernel/version', points },
+        { metric: 'extra:kernel/undescribed', points },
+        { metric: 'extra:kernel/empty', points: [] },
+        { metric: 'extra:kernel/unmade', points },
+      ],
+      {
+        'extra:kernel/forks': {
+          title: 'Kernel',
+          label: 'Forks',
+          labels: { de: 'Neue Prozesse' },
+          unit: 'perSecond',
+        },
+        'extra:kernel/version': { title: 'Kernel', label: 'Version', unit: 'text' },
+        'extra:kernel/empty': { title: 'Kernel', label: 'Empty', unit: 'number' },
+        'extra:kernel/unmade': { title: 'Kernel', label: 'Unmade', unit: 'number' },
+      },
+      new Set([
+        'value:kernel/forks',
+        'value:kernel/version',
+        'value:kernel/undescribed',
+        'value:kernel/empty',
+      ]),
+      'de',
+    );
+    expect(charts).toEqual([
+      {
+        title: 'Kernel · Neue Prozesse',
+        category: 'system',
+        card: 'value:kernel/forks',
+        unit: 'perSecond',
+        max: undefined,
+        lines: [{ label: 'Neue Prozesse', points }],
+      },
+    ]);
   });
 });
 

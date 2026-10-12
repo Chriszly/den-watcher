@@ -76,7 +76,7 @@ export class DevicesDialog {
   /** Every device but the one the website runs on. */
   protected readonly others = computed(() => this.devices.devices().slice(1));
 
-  /** Whether the list of devices is shown; folded when it would make the dialog scroll. */
+  /** Whether the list of devices is shown; folded when the dialog leaves it too little room. */
   protected readonly listOpen = signal(true);
   /** Set once the list was folded or unfolded by hand, which then stays as it was set. */
   private readonly listToggled = signal(false);
@@ -97,16 +97,17 @@ export class DevicesDialog {
   );
 
   constructor() {
-    // Until it is folded by hand, the list folds away as soon as the dialog would scroll with it,
-    // such as when the suggestion fills in a line more. It does not unfold again by itself.
+    // The list scrolls on its own, so the dialog does not. Until it is folded by hand, it folds
+    // away when that leaves it too low to show a device and a half, such as on a phone once the
+    // suggestion fills in a line more. It does not unfold again by itself.
     afterRenderEffect(() => {
       this.others();
       this.suggested();
       if (this.listToggled() || !this.listOpen()) {
         return;
       }
-      const content = this.host.nativeElement.querySelector('mat-dialog-content');
-      if (content && content.scrollHeight > content.clientHeight) {
+      const list = this.host.nativeElement.querySelector('ul');
+      if (list && list.scrollHeight > list.clientHeight && list.clientHeight < remToPixels(7)) {
         this.listOpen.set(false);
       }
     });
@@ -221,6 +222,10 @@ export class DevicesDialog {
         finalize(() => this.busy.set(false)),
       );
   }
+}
+
+function remToPixels(rem: number): number {
+  return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
 
 /** Opens the list of devices. */

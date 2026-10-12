@@ -1,5 +1,12 @@
+/* The list of devices scrolls on its own, so the form to add one stays in view. */
 mat-dialog-content {
+  display: flex;
+  flex-direction: column;
   max-width: 32rem;
+}
+
+mat-dialog-content > * {
+  flex-shrink: 0;
 }
 
 p {
@@ -13,9 +20,13 @@ p {
   color: var(--mat-sys-on-surface-variant);
 }
 
-ul {
+mat-dialog-content > ul {
+  flex-shrink: 1;
+  min-height: 2.5rem;
   margin: 0 0 1rem;
   padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
 }
 
@@ -112,11 +123,13 @@ ul[hidden] {
   display: none;
 }
 
+/* The bottom padding takes the touch target of the button, which is taller than the button. */
 form {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 0.75rem;
+  padding-bottom: 0.25rem;
 }
 
 form h3,

@@ -43,6 +43,29 @@ const EXTRA_CATEGORIES: Record<string, Category> = {
   'containers-memory': 'programs',
 };
 
+/**
+ * The extras groups for experts, such as the kernel's counters: they show as rows of their
+ * category's details table instead of as cards, so the cards stay few.
+ */
+const DETAIL_GROUPS: ReadonlySet<string> = new Set([
+  'pressure',
+  'memory',
+  'memory-committed',
+  'memory-writeback',
+  'memory-faults',
+  'memory-disk',
+  'kernel',
+  'kernel-processes',
+  'kernel-in-use',
+  'kernel-tcp',
+  'inodes',
+]);
+
+/** Whether the extras group `id` shows in its category's details table instead of as a card. */
+export function isDetailGroup(id: string): boolean {
+  return DETAIL_GROUPS.has(id);
+}
+
 /** The category of the card of the extras group `id`. */
 export function extraCategory(id: string): Category {
   return Object.hasOwn(EXTRA_CATEGORIES, id) ? EXTRA_CATEGORIES[id] : 'other';

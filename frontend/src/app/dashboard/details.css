@@ -1,0 +1,74 @@
+:host {
+  display: block;
+  margin-top: 1rem;
+}
+
+details {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+}
+
+summary {
+  padding: 0.75rem 1rem;
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface-variant);
+  cursor: pointer;
+}
+
+summary:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  border-radius: var(--mat-sys-corner-medium);
+}
+
+.count {
+  margin-left: 0.5rem;
+  font: var(--mat-sys-body-small);
+}
+
+/* The groups side by side as wide as they fit, each a table of its own. */
+.groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
+  gap: 0.5rem 2rem;
+  padding: 0 1rem 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+caption {
+  padding: 0.5rem 0 0.25rem;
+  text-align: left;
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+th,
+td {
+  padding: 0.25rem 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+th {
+  font-weight: normal;
+  text-align: left;
+}
+
+.value {
+  padding-inline: 1rem 0.75rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.history {
+  width: 6rem;
+}
+
+app-sparkline {
+  height: 1.25rem;
+}

@@ -300,6 +300,9 @@ export const fr: Messages = {
   'categories.cards.other': '{count} cartes',
   'categories.charts.one': '{count} graphique',
   'categories.charts.other': '{count} graphiques',
+  'details.title': 'Détails',
+  'details.values.one': '{count} valeur',
+  'details.values.other': '{count} valeurs',
   'compare.title': 'Comparer les appareils',
   'compare.intro':
     'Les principales valeurs de chaque appareil côte à côte. Triez par une colonne pour voir l’appareil le plus occupé, le plus plein ou le plus chaud, ou choisissez un nom pour voir l’appareil seul.',

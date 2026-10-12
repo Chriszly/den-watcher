@@ -427,9 +427,9 @@ describe('Dashboard', () => {
       gpus: [{ name: 'AMD Radeon RX 7800 XT', usagePercent: 63.2 }],
       extras: [
         {
-          id: 'pressure',
-          title: 'Pressure',
-          items: [{ id: 'cpu', label: 'CPU waiting', unit: 'percent', value: 3.25 }],
+          id: 'clients',
+          title: 'Clients',
+          items: [{ id: 'laptop', label: 'Laptop', unit: 'number', value: 3 }],
         },
       ],
     });
@@ -439,15 +439,72 @@ describe('Dashboard', () => {
       .filter((card) => card.query(By.css('.label')));
     expect(named.map((card) => shown(card.query(By.css('h3')).nativeElement).trim())).toEqual([
       'GPU',
-      'Pressure',
       'Disks',
       'Network',
+      'Clients',
       'Temperature',
       'Fans',
     ]);
     for (const card of named) {
       expect(card.injector.get(FitLabels, null)).not.toBeNull();
     }
+  });
+
+  it("folds the experts' values of a category into its details, below its cards", () => {
+    respond({
+      ...snapshot,
+      extras: [
+        {
+          id: 'kernel',
+          title: 'Kernel',
+          items: [{ id: 'interrupts', label: 'Interrupts', unit: 'perSecond', value: 912.4 }],
+        },
+        {
+          id: 'pressure',
+          title: 'Pressure',
+          items: [{ id: 'cpu', label: 'CPU waiting', unit: 'percent', value: 3.25 }],
+        },
+      ],
+    });
+    http
+      .expectOne((r) => r.url === '/api/history')
+      .flush({
+        from: 0,
+        to: 1800,
+        stepSeconds: 5,
+        retentionDays: 30,
+        series: [{ metric: 'extra:kernel/interrupts', points: [{ time: 0, value: 900 }] }],
+        extras: {
+          'extra:kernel/interrupts': { title: 'Kernel', label: 'Interrupts', unit: 'perSecond' },
+        },
+      });
+    fixture.detectChanges();
+    const system = (fixture.nativeElement as HTMLElement).querySelector('.category')!;
+    expect([...system.querySelectorAll('.card h3')].map((h) => shown(h).trim())).toEqual([
+      'CPU',
+      'Memory',
+    ]);
+    const details = system.querySelector('app-details')!;
+    expect(details.querySelector('summary')!.textContent).toContain('2 values');
+    expect([...details.querySelectorAll('caption')].map((c) => c.textContent!.trim())).toEqual([
+      'Kernel',
+      'Pressure',
+    ]);
+    const rows = [...details.querySelectorAll('tr')];
+    expect(rows.map((r) => [...r.cells].map((c) => c.textContent!.trim()))).toEqual([
+      ['Interrupts', '912.4/s', ''],
+      ['CPU waiting', '3.3 %', ''],
+    ]);
+    // Only the value with a history gets a chart, in its row instead of below the cards.
+    expect(rows[0].querySelector('app-sparkline')).not.toBeNull();
+    expect(rows[1].querySelector('app-sparkline')).toBeNull();
+    expect(system.querySelector('app-category-charts .card')).toBeNull();
+    // A folded category tells the values in its details too.
+    system.querySelector<HTMLButtonElement>('button.fold')!.click();
+    fixture.detectChanges();
+    expect(system.querySelector('button.fold')!.textContent).toContain('2 cards · 2 values');
+    system.querySelector<HTMLButtonElement>('button.fold')!.click();
+    localStorage.removeItem(FOLDED_STORAGE_KEY);
   });
 
   it('groups the cards by category, with an unknown extra under More', () => {
@@ -467,7 +524,7 @@ describe('Dashboard', () => {
     ]);
     expect(categories).toEqual([
       ['System', ['CPU', 'Memory']],
-      ['Storage', ['Disks', 'Inodes']],
+      ['Storage', ['Disks']],
       ['Network', ['Network']],
       ['Temperature and power', ['Temperature']],
       ['Programs and containers', ['Containers: CPU']],

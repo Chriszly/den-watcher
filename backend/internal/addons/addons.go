@@ -117,16 +117,18 @@ func DefaultDir() string {
 	return "/run/den-watcher-addons"
 }
 
-// run writes a report every interval until ctx is done. A failed write is
+// run writes a report, with what the add-on itself uses, every interval
+// until ctx is done. A failed write is
 // logged once and tried again at the next interval.
 func run(ctx context.Context, read Read, file string, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+	var own metrics.OwnReader
 	failing := false
 	for {
 		// time.Now, not time.Now().UTC(), which drops the monotonic reading.
 		now := time.Now()
-		err := writeReport(file, metrics.AddOnReport{Time: now.UTC(), Extras: read(ctx, now)})
+		err := writeReport(file, metrics.AddOnReport{Time: now.UTC(), Extras: read(ctx, now), Own: own.Read(ctx, now)})
 		switch {
 		case err != nil && !failing:
 			slog.Error("write the add-on's report", "file", file, "error", err)

@@ -24,6 +24,15 @@ export const descriptions: Record<
       es: 'Si al equipo le falta CPU, memoria o disco: cuánto tuvieron que esperarlos las tareas. Por encima de cero, esa parte frena el equipo.',
     },
   },
+  'den-watcher': {
+    description:
+      'What Den-Watcher itself uses of this device: its program and add-ons together, and the size of its history. On Windows, reads and writes include network traffic.',
+    descriptions: {
+      de: 'Was Den-Watcher selbst auf diesem Gerät belegt: sein Programm und die Add-ons zusammen, und die Größe seines Verlaufs. Unter Windows zählt beim Lesen und Schreiben auch der Netzwerkverkehr mit.',
+      fr: "Ce que Den-Watcher utilise lui-même sur cet appareil : son programme et ses modules ensemble, et la taille de son historique. Sous Windows, la lecture et l'écriture incluent le trafic réseau.",
+      es: 'Lo que usa el propio Den-Watcher en este dispositivo: su programa y sus complementos juntos, y el tamaño de su historial. En Windows, la lectura y la escritura incluyen el tráfico de red.',
+    },
+  },
   'containers-cpu': {
     description: 'How much CPU each running container uses.',
     descriptions: {

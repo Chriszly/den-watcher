@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 	"github.com/Chriszly/den-watcher/backend/internal/winservice"
 )
 
@@ -57,8 +58,12 @@ func StartHost(dir string) (stop func()) {
 	if len(installedChildren(exe)) == 0 {
 		return func() {}
 	}
-	return startHost(dir, exe, []string{HostArgument}, Children, childRetryDelay, maxChildRetryDelay)
+	return startHost(dir, exe, []string{HostArgument}, append([]string{hostReport}, Children...), childRetryDelay, maxChildRetryDelay)
 }
+
+// hostReport is the name of the add-on host's report, which holds no values,
+// only what the host itself uses, so den-watcher counts it with the add-ons.
+const hostReport = "host"
 
 // startHost runs program with args as StartHost does, and removes the
 // reports of the add-ons names once it has ended it.
@@ -91,6 +96,12 @@ func startHost(dir, program string, args, names []string, retryDelay, maxRetryDe
 // add-ons too.
 func RunHost(dir string) {
 	StartChildren(dir)
+	go func() {
+		noValues := func(context.Context, time.Time) []metrics.Extra { return nil }
+		if err := Serve(context.Background(), hostReport, noValues); err != nil {
+			slog.Warn("what the add-on host uses is not counted", "error", err)
+		}
+	}()
 	// Go turns a user logging off Windows into SIGTERM, which would end the
 	// host and the add-ons until den-watcher started it again.
 	terms := make(chan os.Signal, 1)

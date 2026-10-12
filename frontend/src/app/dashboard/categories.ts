@@ -52,6 +52,7 @@ const EXTRA_CATEGORIES: Record<string, Category> = {
   'processes-memory': 'programs',
   'containers-cpu': 'programs',
   'containers-memory': 'programs',
+  'den-watcher': 'programs',
 };
 
 /**

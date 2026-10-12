@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -20,6 +21,9 @@ import (
 type AddOnReport struct {
 	Time   time.Time `json:"time"`
 	Extras []Extra   `json:"extras"`
+	// Own is what the add-on itself uses of the machine, which the collector
+	// adds to its own; an add-on that does not report it is not counted.
+	Own *OwnUsage `json:"own,omitempty"`
 }
 
 const (
@@ -58,9 +62,7 @@ type addOnFile struct {
 
 // Read returns the extras of every report that is not older than
 // addOnStaleAfter, in the order of the file names, cut down like another
-// device's extras by CleanExtras. A report from further in the future is
-// left out too: it was written before the clock was set back, so its add-on
-// may have stopped long ago. A file is read again only once its modification
+// device's extras by CleanExtras; see addOnFile.fresh. A file is read again only once its modification
 // time or size has changed.
 func (a *AddOns) Read(now time.Time) []Extra {
 	if a == nil || a.Dir == "" {
@@ -79,13 +81,39 @@ func (a *AddOns) Read(now time.Time) []Extra {
 		f := readAddOnReport(file, a.files[file])
 		read[file] = f
 		a.logOnce(file, f.err)
-		if f.err != nil || now.Sub(f.report.Time) > addOnStaleAfter || f.report.Time.Sub(now) > addOnStaleAfter {
+		if !f.fresh(now) {
 			continue
 		}
 		extras = append(extras, f.report.Extras...)
 	}
 	a.files = read
 	return CleanExtras(extras, a.MaxEntries)
+}
+
+// Own returns what each add-on whose report the last Read kept uses of the
+// machine, for the add-ons that report it.
+func (a *AddOns) Own(now time.Time) []OwnUsage {
+	if a == nil {
+		return nil
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	files := slices.Sorted(maps.Keys(a.files))
+	var usages []OwnUsage
+	for _, file := range files {
+		if f := a.files[file]; f.fresh(now) && f.report.Own != nil {
+			usages = append(usages, *f.report.Own)
+		}
+	}
+	return usages
+}
+
+// fresh reports whether the report was read and is not older than
+// addOnStaleAfter at now. A report from further in the future is not fresh
+// either: it was written before the clock was set back, so its add-on may
+// have stopped long ago.
+func (f addOnFile) fresh(now time.Time) bool {
+	return f.err == nil && now.Sub(f.report.Time) <= addOnStaleAfter && f.report.Time.Sub(now) <= addOnStaleAfter
 }
 
 // readAddOnReport reads a report file, or returns last again when the file

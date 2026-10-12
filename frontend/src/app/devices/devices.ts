@@ -51,6 +51,11 @@ export interface Device {
   alerts?: Alert[];
 }
 
+/** Whether the hub reads the device itself, as it runs no den-watcher: a router or a check. */
+export function readByHub(device: Device): boolean {
+  return !!device.router || !!device.checked;
+}
+
 /** The body of GET /api/availability: how long another device did not answer since it was added. */
 export interface Availability {
   /** Whether the times it did not answer are outages of a server or times a PC was not in use. */

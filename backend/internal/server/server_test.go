@@ -199,6 +199,25 @@ func TestServesTheAlertLog(t *testing.T) {
 	}
 }
 
+func TestMetricsOfEveryDeviceThatAnswers(t *testing.T) {
+	handler := newHandler([]Device{
+		{ID: "local", Metrics: fakeCollector{snapshot: metrics.Snapshot{UptimeSeconds: 1}}},
+		{ID: "pi", Metrics: fakeCollector{snapshot: metrics.Snapshot{UptimeSeconds: 2}}},
+		{ID: "nas", Unreachable: true, Metrics: fakeCollector{snapshot: metrics.Snapshot{UptimeSeconds: 3}}},
+		{ID: "broken", Metrics: fakeCollector{err: errors.New("no /proc")}},
+	}, 0, site)
+
+	rec := get(handler, "/api/devices/metrics", "192.168.1.20:5000")
+
+	var got map[string]metrics.Snapshot
+	if err := json.NewDecoder(rec.Body).Decode(&got); rec.Code != http.StatusOK || err != nil {
+		t.Fatalf("GET /api/devices/metrics = %d, %v", rec.Code, err)
+	}
+	if len(got) != 2 || got["local"].UptimeSeconds != 1 || got["pi"].UptimeSeconds != 2 {
+		t.Errorf("got %+v, want local and pi", got)
+	}
+}
+
 func TestMetricsOfTheRequestedDevice(t *testing.T) {
 	handler := newHandler([]Device{
 		{ID: "local", Metrics: fakeCollector{snapshot: metrics.Snapshot{CPU: metrics.CPU{Cores: 4}}}},

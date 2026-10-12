@@ -49,21 +49,15 @@ var (
 func conditions(ctx context.Context, target Target, now time.Time, levels map[string]Level) ([]Alert, bool) {
 	base := Alert{Device: target.ID, DeviceName: target.Name}
 	if target.Unreachable {
+		// While the device does not answer, its last values are not looked
+		// at, so its alerts last on, an offline one from before a restart
+		// too. Only an outage that lasts is an alert of its own.
 		if target.PC || target.UnreachableSince.IsZero() || now.Sub(target.UnreachableSince) < offlineAfter {
-			// Only an outage that lasts is an alert; while the device does
-			// not answer, its last values are not looked at.
-			active := base
-			active.Kind = KindOffline
-			if levels[active.key()] == "" {
-				return nil, true
-			}
-			// An alert from before a restart, whose time is not known yet.
-			active.Level = Critical
-			return []Alert{active}, true
+			return nil, false
 		}
 		a := base
 		a.Kind, a.Level, a.Started = KindOffline, Critical, target.UnreachableSince
-		return []Alert{a}, true
+		return []Alert{a}, false
 	}
 	if target.Usage == nil {
 		return nil, false

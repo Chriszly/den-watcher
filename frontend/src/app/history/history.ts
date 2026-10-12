@@ -1,6 +1,6 @@
 import { Injectable, computed, inject } from '@angular/core';
 
-import { DeviceService } from '../devices/devices';
+import { DeviceService, readByHub } from '../devices/devices';
 import { I18n, LanguageCode, TextParams } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
 import { ExtraInfo, localized } from '../metrics/extras';
@@ -59,11 +59,7 @@ export class DeviceCharts {
     }
     const device = this.devices.selected();
     return [
-      ...chartsOf(
-        history.series,
-        (key, params) => this.i18n.t(key, params),
-        !!device.router || !!device.checked,
-      ),
+      ...chartsOf(history.series, (key, params) => this.i18n.t(key, params), readByHub(device)),
       ...extraChartsOf(history.series, history.extras ?? {}, this.i18n.language()),
     ];
   }

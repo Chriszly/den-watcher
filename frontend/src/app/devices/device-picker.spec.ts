@@ -31,9 +31,12 @@ describe('DevicePicker', () => {
     fixture = TestBed.createComponent(DevicePicker);
     fixture.detectChanges();
     vi.advanceTimersByTime(0);
-    for (const request of http.match((r) => r.url === '/api/metrics')) {
-      const id = request.request.params.get('device') ?? 'local';
-      request.flush(snapshot(cpu[id] ?? 0));
+    for (const request of http.match('/api/devices/metrics')) {
+      request.flush(
+        Object.fromEntries(
+          devices.filter((d) => !d.unreachable).map((d) => [d.id, snapshot(cpu[d.id] ?? 0)]),
+        ),
+      );
     }
     fixture.detectChanges();
   }

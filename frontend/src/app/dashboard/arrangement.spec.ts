@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { Arrangement } from './arrangement';
-import { EMPTY_LAYOUT, Layout, PageLayout } from './page-layout';
+import { EMPTY_LAYOUT, Layout, MAX_LAYOUT_ENTRIES, PageLayout } from './page-layout';
 
 describe('Arrangement', () => {
   let http: HttpTestingController;
@@ -67,6 +67,16 @@ describe('Arrangement', () => {
     answer({ order: ['disks', 'memory'] });
     arrangement.move(['cpu', 'memory', 'gpus'], 2, 0);
     expect(sent().map((l) => l.order)).toEqual([['disks', 'gpus', 'cpu', 'memory']]);
+  });
+
+  it('keeps no more cards in the order than the host does, dropping the ones moved longest ago', () => {
+    const old = Array.from({ length: MAX_LAYOUT_ENTRIES }, (_, i) => `gone-${i}`);
+    answer({ order: old });
+    arrangement.move(['cpu', 'memory'], 1, 0);
+    const [order] = sent().map((l) => l.order);
+    expect(order.length).toBe(MAX_LAYOUT_ENTRIES);
+    expect(order.slice(0, 1)).toEqual(['gone-2']);
+    expect(order.slice(-2)).toEqual(['memory', 'cpu']);
   });
 
   it('moves no card past the ends of its category', () => {

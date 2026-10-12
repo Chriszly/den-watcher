@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DeviceService } from '../devices/devices';
 import { History, Snapshot } from '../metrics/metrics';
 import { summarize } from '../metrics/summary';
-import { Compare, Row, largest, sortRows } from './compare';
+import { Compare, Row, largest, metric, sortRows } from './compare';
 
 const snapshot: Snapshot = {
   time: '2026-10-02T17:00:00Z',
@@ -129,6 +129,18 @@ describe('largest', () => {
   });
 });
 
+describe('metric', () => {
+  const idle = [{ metric: 'cpu', points: [{ time: 0, value: 0 }] }];
+
+  it("drops a router's CPU that is 0 throughout, as it does not report it", () => {
+    expect(metric(idle, 'cpu', true)).toEqual([]);
+  });
+
+  it('keeps the CPU of an idle device that is no router', () => {
+    expect(metric(idle, 'cpu', false)).toEqual([{ time: 0, value: 0 }]);
+  });
+});
+
 describe('Compare', () => {
   let fixture: ComponentFixture<Compare>;
   let http: HttpTestingController;
@@ -173,9 +185,8 @@ describe('Compare', () => {
   });
 
   function answer(): void {
-    http.expectOne('/api/metrics').flush(snapshot);
-    http.expectOne('/api/metrics?device=router').flush(router);
-    http.expectOne('/api/metrics?device=printer').flush('down', { status: 503, statusText: 'x' });
+    // The printer's usage could not be read.
+    http.expectOne('/api/devices/metrics').flush({ local: snapshot, router });
     const cpu: Record<string, number> = { local: 40, router: 0, pc: 70 };
     const requests = http.match((r) => r.url === '/api/history');
     expect(requests.map((r) => r.request.params.get('device') ?? 'local')).toEqual([

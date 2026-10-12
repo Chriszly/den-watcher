@@ -41,6 +41,9 @@ type Layout struct {
 	Made []string `json:"made"`
 	// Widths are the cards set wider than one card, by id, in cards: 2 or 4.
 	Widths map[string]int `json:"widths"`
+	// Ungrouped shows the cards in one section instead of grouped by their
+	// category; false, the page groups them.
+	Ungrouped bool `json:"ungrouped"`
 }
 
 // list is one list of a layout, with its name in JSON.

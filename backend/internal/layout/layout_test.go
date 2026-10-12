@@ -55,7 +55,7 @@ func TestALayoutStoredBeforeAListWasAddedHasItEmpty(t *testing.T) {
 func TestTheLastWrittenLayoutIsKept(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
-	want := Layout{Folded: []string{"network", "system"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}, Pinned: []string{"temperatures"}, Made: []string{"value:kernel/forks"}, Widths: map[string]int{"cpu": 2, "network": 4}}
+	want := Layout{Folded: []string{"network", "system"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}, Pinned: []string{"temperatures"}, Made: []string{"value:kernel/forks"}, Widths: map[string]int{"cpu": 2, "network": 4}, Ungrouped: true}
 	for _, layout := range []Layout{{Folded: []string{"storage"}, Order: []string{}, Hidden: []string{}}, want} {
 		if err := s.Write(ctx, layout); err != nil {
 			t.Fatalf("Write(%v) error = %v", layout, err)

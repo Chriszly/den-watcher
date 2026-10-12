@@ -298,6 +298,7 @@ export const en = {
   'categories.programs': 'Programs and containers',
   'categories.other': 'More',
   'categories.device': 'Time and uptime',
+  'categories.all': 'All cards',
   'categories.cards.one': '{count} card',
   'categories.cards.other': '{count} cards',
   'categories.charts.one': '{count} chart',
@@ -306,8 +307,9 @@ export const en = {
   'details.values.one': '{count} value',
   'details.values.other': '{count} values',
   'arrange.start': 'Arrange',
+  'arrange.group': 'Group by type',
   'arrange.notice':
-    'Arranging the page: drag cards or use the arrows to move them within their category, pin them to the top, or hide them. A value of the details becomes a card with its + button. A card made wider here stays wide in every browser.',
+    'Arranging the page: drag cards or use the arrows to move them within their section, pin them to the top, or hide them. A value of the details becomes a card with its + button. A card made wider here stays wide in every browser.',
   'arrange.reset': 'Reset',
   'arrange.done': 'Done',
   'arrange.drag': 'Drag {card}',

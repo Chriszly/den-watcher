@@ -18,11 +18,14 @@ export type Category = (typeof CATEGORIES)[number];
 /** The section of the pinned cards, above the categories. */
 export const PINNED = 'pinned';
 
-/** A section of the page: the pinned cards, or a category. */
-export type Section = typeof PINNED | Category;
+/** The section of every card that is not pinned, when the cards are not grouped by category. */
+export const ALL = 'all';
+
+/** A section of the page: the pinned cards, a category, or every other card. */
+export type Section = typeof PINNED | Category | typeof ALL;
 
 /** The sections of the page, in the order it shows them. */
-export const SECTIONS: readonly Section[] = [PINNED, ...CATEGORIES];
+export const SECTIONS: readonly Section[] = [PINNED, ...CATEGORIES, ALL];
 
 /** Where the cards of the extras the page knows go; the others go to `other`. */
 const EXTRA_CATEGORIES: Record<string, Category> = {

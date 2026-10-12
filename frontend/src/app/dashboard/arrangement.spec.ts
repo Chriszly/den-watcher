@@ -49,6 +49,20 @@ describe('Arrangement', () => {
     ]);
   });
 
+  it('sorts several categories as one, keeping each card never moved after the card before it', () => {
+    // Arranged while grouped, only the later category has an order.
+    answer({ order: ['uptime', 'time'] });
+    const across = () =>
+      ids(
+        arrangement.sortAcross([cards('cpu', 'memory'), cards('disks'), cards('time', 'uptime')]),
+      );
+    expect(across()).toEqual(['cpu', 'memory', 'disks', 'uptime', 'time']);
+    // Arranged while not grouped, every card has its place across the categories.
+    arrangement.move(['cpu', 'memory', 'disks', 'uptime', 'time'], 4, 0);
+    sent();
+    expect(across()).toEqual(['time', 'cpu', 'memory', 'disks', 'uptime']);
+  });
+
   it("keeps a moved category's whole order, after the other categories' cards", () => {
     answer({ order: ['disks', 'memory'] });
     arrangement.move(['cpu', 'memory', 'gpus'], 2, 0);
@@ -107,6 +121,16 @@ describe('Arrangement', () => {
       order: ['memory'],
       widths: { cpu: 2 },
     });
+  });
+
+  it('groups the cards by category unless the host says otherwise, and keeps it through Reset', () => {
+    answer({ ungrouped: 'yes' } as unknown as Partial<Layout>);
+    expect(arrangement.grouped()).toBe(true);
+    arrangement.group(false);
+    expect(arrangement.grouped()).toBe(false);
+    expect(arrangement.arranged()).toBe(false);
+    arrangement.reset();
+    expect(sent().at(-1)).toEqual({ ...EMPTY_LAYOUT, ungrouped: true });
   });
 
   it('takes only the widths of 2 and 4 cards from the host', () => {

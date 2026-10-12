@@ -18,6 +18,8 @@ export interface Layout {
   made: string[];
   /** The cards set wider than one card, by id, in cards: 2 or 4. */
   widths: Record<string, number>;
+  /** Whether the cards show in one section instead of grouped by their category. */
+  ungrouped: boolean;
 }
 
 /** The layout of a page that has not been arranged. */
@@ -28,6 +30,7 @@ export const EMPTY_LAYOUT: Layout = {
   pinned: [],
   made: [],
   widths: {},
+  ungrouped: false,
 };
 
 /** The layout as the host answered it, with an empty list for each list it does not have. */
@@ -41,6 +44,7 @@ function fromHost(answer: Partial<Layout> | null): Layout {
     pinned: list(answer?.pinned),
     made: list(answer?.made),
     widths: widths(answer?.widths),
+    ungrouped: answer?.ungrouped === true,
   };
 }
 

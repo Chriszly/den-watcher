@@ -300,6 +300,7 @@ export const es: Messages = {
   'categories.programs': 'Programas y contenedores',
   'categories.other': 'Más',
   'categories.device': 'Hora y actividad',
+  'categories.all': 'Todas las tarjetas',
   'categories.cards.one': '{count} tarjeta',
   'categories.cards.other': '{count} tarjetas',
   'categories.charts.one': '{count} gráfico',
@@ -308,8 +309,9 @@ export const es: Messages = {
   'details.values.one': '{count} valor',
   'details.values.other': '{count} valores',
   'arrange.start': 'Organizar',
+  'arrange.group': 'Agrupar por tipo',
   'arrange.notice':
-    'Organizando la página: arrastra las tarjetas o usa las flechas para moverlas dentro de su categoría, fíjalas arriba u ocúltalas. Un valor de los detalles se convierte en tarjeta con su botón +. Una tarjeta ensanchada aquí sigue ancha en todos los navegadores.',
+    'Organizando la página: arrastra las tarjetas o usa las flechas para moverlas dentro de su sección, fíjalas arriba u ocúltalas. Un valor de los detalles se convierte en tarjeta con su botón +. Una tarjeta ensanchada aquí sigue ancha en todos los navegadores.',
   'arrange.reset': 'Restablecer',
   'arrange.done': 'Hecho',
   'arrange.drag': 'Arrastrar {card}',

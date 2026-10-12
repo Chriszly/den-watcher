@@ -4,12 +4,23 @@ import { I18n } from '../i18n/i18n';
 import { Arrangement } from './arrangement';
 
 /**
- * Above the categories: the button that starts arranging the cards, or, while they are arranged, a
- * notice of how, with the buttons to start over and to finish.
+ * Above the categories: the switch that groups the cards by category, and the button that starts
+ * arranging the cards, or, while they are arranged, a notice of how, with the buttons to start over
+ * and to finish.
  */
 @Component({
   selector: 'app-arrange-bar',
   template: `
+    <button
+      type="button"
+      class="group"
+      role="switch"
+      [attr.aria-checked]="arrangement.grouped()"
+      (click)="arrangement.group(!arrangement.grouped())"
+    >
+      <span class="track" aria-hidden="true"></span>
+      {{ i18n.t('arrange.group') }}
+    </button>
     @if (arrangement.arranging()) {
       <div class="notice" role="status">
         <p>{{ i18n.t('arrange.notice') }}</p>

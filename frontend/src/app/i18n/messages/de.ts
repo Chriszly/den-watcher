@@ -300,6 +300,7 @@ export const de: Messages = {
   'categories.programs': 'Programme und Container',
   'categories.other': 'Weiteres',
   'categories.device': 'Uhrzeit und Laufzeit',
+  'categories.all': 'Alle Karten',
   'categories.cards.one': '{count} Karte',
   'categories.cards.other': '{count} Karten',
   'categories.charts.one': '{count} Diagramm',
@@ -308,8 +309,9 @@ export const de: Messages = {
   'details.values.one': '{count} Wert',
   'details.values.other': '{count} Werte',
   'arrange.start': 'Anordnen',
+  'arrange.group': 'Nach Art gruppieren',
   'arrange.notice':
-    'Seite anordnen: Karten ziehen oder mit den Pfeilen innerhalb ihrer Kategorie verschieben, oben anheften oder ausblenden. Ein Wert der Details wird mit seinem +-Knopf zur Karte. Eine hier breiter gemachte Karte bleibt in jedem Browser breit.',
+    'Seite anordnen: Karten ziehen oder mit den Pfeilen innerhalb ihres Abschnitts verschieben, oben anheften oder ausblenden. Ein Wert der Details wird mit seinem +-Knopf zur Karte. Eine hier breiter gemachte Karte bleibt in jedem Browser breit.',
   'arrange.reset': 'Zurücksetzen',
   'arrange.done': 'Fertig',
   'arrange.drag': '{card} ziehen',

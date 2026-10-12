@@ -5,9 +5,10 @@ import { PageLayout } from './page-layout';
 
 /**
  * How the cards are arranged: their order within each category, which are hidden, which are pinned
- * above the categories and which values of the details are made into cards of their own, kept on
- * the host with the rest of the page's layout. While arranging, the page shows how to move, pin,
- * hide and make cards; otherwise it only shows them as arranged.
+ * above the categories, which values of the details are made into cards of their own and whether
+ * the cards are grouped by category at all, kept on the host with the rest of the page's layout.
+ * While arranging, the page shows how to move, pin, hide and make cards; otherwise it only shows
+ * them as arranged.
  */
 @Injectable({ providedIn: 'root' })
 export class Arrangement {
@@ -20,6 +21,8 @@ export class Arrangement {
   readonly pinned = computed(() => this.layout.layout().pinned);
   /** The values of the details made into cards, by the card's id. */
   readonly made = computed(() => new Set(this.layout.layout().made));
+  /** Whether the cards are grouped by their category, or show in one section. */
+  readonly grouped = computed(() => !this.layout.layout().ungrouped);
   /** Whether the page has been arranged at all, so Reset has something to undo. */
   readonly arranged = computed(() => {
     const { order, hidden, pinned, made, widths } = this.layout.layout();
@@ -44,7 +47,27 @@ export class Arrangement {
   }
 
   /**
-   * Moves the card at `from` among the shown cards of a category, by id in their order, to `to`.
+   * The cards of several categories as one list, as they show when the cards are not grouped: each
+   * category sorted on its own, in turn, then every arranged card in its order across them, each
+   * card never moved right after the card it came after in its category.
+   */
+  sortAcross<T extends { id: string }>(categories: readonly (readonly T[])[]): T[] {
+    const position = this.position();
+    const listed = categories.flatMap((cards) => this.sort(cards));
+    let before = -1;
+    const at = new Map(
+      listed.map((card) => {
+        before = position.get(card.id) ?? before;
+        return [card, position.has(card.id) ? before : before + 0.5];
+      }),
+    );
+    // The sort is stable, so the cards never moved after the same card keep their order.
+    return listed.sort((a, b) => at.get(a)! - at.get(b)!);
+  }
+
+  /**
+   * Moves the card at `from` among the shown cards of a category, or of every category when the
+   * cards are not grouped, by id in their order, to `to`.
    * The whole category's order is kept, so it stays as it is shown when other cards come or go.
    */
   move(ids: readonly string[], from: number, to: number): void {
@@ -105,6 +128,11 @@ export class Arrangement {
     }));
   }
 
+  /** Groups the cards by their category, or shows them in one section. */
+  group(grouped: boolean): void {
+    this.layout.change((layout) => ({ ...layout, ungrouped: !grouped }));
+  }
+
   hide(id: string): void {
     this.layout.change((layout) =>
       layout.hidden.includes(id) ? layout : { ...layout, hidden: [...layout.hidden, id] },
@@ -117,7 +145,8 @@ export class Arrangement {
 
   /**
    * Shows every card again in its category, one card wide and in the order the page puts them in,
-   * and every value in the details; folded categories stay folded.
+   * and every value in the details; folded categories stay folded, and the cards stay grouped or
+   * not.
    */
   reset(): void {
     this.widths.forgetPassing();

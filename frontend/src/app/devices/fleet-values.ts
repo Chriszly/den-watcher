@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, catchError, exhaustMap, forkJoin, map, of, share, tap } from 'rxjs';
+import { Observable, catchError, exhaustMap, map, of, share, tap } from 'rxjs';
 
 import { MetricsService } from '../metrics/metrics';
 import { Summary, summarize } from '../metrics/summary';
@@ -30,19 +30,28 @@ export class FleetValues {
       share(),
     );
 
-  /** The values of every device that answers; the hub does not ask for those of one that does not. */
+  /**
+   * The values of every device that answers, in one request for all of them; the hub does not ask
+   * for those of one that does not.
+   */
   private read(): Observable<Map<string, Summary | null>> {
-    const answering = this.devices.devices().filter((d) => !d.unreachable);
-    if (answering.length === 0) {
+    if (!this.devices.devices().some((d) => !d.unreachable)) {
       return of(new Map());
     }
-    return forkJoin(
-      answering.map((d) =>
-        this.metrics.current(d.id).pipe(
-          map((s): [string, Summary | null] => [d.id, summarize(s)]),
-          catchError(() => of<[string, null]>([d.id, null])),
-        ),
+    return this.metrics.fleet().pipe(
+      catchError(() => of<Record<string, never>>({})),
+      map(
+        (usage) =>
+          new Map(
+            this.devices
+              .devices()
+              .filter((d) => !d.unreachable)
+              .map((d): [string, Summary | null] => [
+                d.id,
+                usage[d.id] ? summarize(usage[d.id]) : null,
+              ]),
+          ),
       ),
-    ).pipe(map((entries) => new Map(entries)));
+    );
   }
 }

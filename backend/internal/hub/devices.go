@@ -35,7 +35,7 @@ type Device struct {
 	Address string
 	// Source, when set, reads the device's usage in place of asking a
 	// den-watcher at Address: a router, which the hub reads in a language
-	// it speaks. Routers come from HUB_ROUTERS.
+	// it speaks, or a check (see Checked). Routers come from HUB_ROUTERS.
 	Source Usage
 	// Checked is set for a thing that is only checked for whether it
 	// answers, such as a printer, whose Source does that. Checks come from
@@ -106,6 +106,12 @@ func NewDevice(name, address string) (Device, error) {
 		return Device{}, err
 	}
 	return Device{ID: id, Name: name, Address: address}, nil
+}
+
+// ReadByHub reports whether the hub reads the device itself, as it runs no
+// den-watcher: a router or a check.
+func (d Device) ReadByHub() bool {
+	return d.Source != nil
 }
 
 // NewRouter returns a router as a device, named name, at address, whose

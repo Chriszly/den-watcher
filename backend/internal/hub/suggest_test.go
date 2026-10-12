@@ -64,6 +64,7 @@ func TestSuggest(t *testing.T) {
 		{"another device with the same name", "192.168.1.20", "raspberrypi", []Device{{ID: "raspberrypi", Name: "raspberrypi", Address: "192.168.1.21:9393"}}, &Suggestion{"192.168.1.20:9393", "office-pc", KindServer}},
 		{"another device has the DNS name", "192.168.1.20", "", []Device{{ID: "office-pc", Name: "office-pc", Address: "192.168.1.21:9393"}}, &Suggestion{"192.168.1.20:9393", "", KindServer}},
 		{"added on another port", "192.168.1.20", "", []Device{{ID: "pc", Name: "PC", Address: "192.168.1.20:8080"}}, &Suggestion{"192.168.1.20:9393", "office-pc", KindServer}},
+		{"a check with its own name", "192.168.1.20", "Office PC", []Device{{ID: "office-pc", Name: "Office PC", Address: "192.168.1.20", Source: &fakeRouter{}, Checked: true}}, &Suggestion{"192.168.1.20:9393", "", KindServer}},
 		{"another device is added", "192.168.1.30", "", []Device{{ID: "pc", Name: "PC", Address: "office-pc.fritz.box:9393"}}, &Suggestion{"192.168.1.30:9393", "", KindServer}},
 		{"the hub itself", "192.168.1.9", "", nil, nil},
 		{"loopback", "127.0.0.1", "", nil, nil},

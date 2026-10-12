@@ -22,6 +22,9 @@ export interface Layout {
   ungrouped: boolean;
 }
 
+/** How many entries the host keeps in each list of the layout at most. */
+export const MAX_LAYOUT_ENTRIES = 200;
+
 /** The layout of a page that has not been arranged. */
 export const EMPTY_LAYOUT: Layout = {
   folded: [],

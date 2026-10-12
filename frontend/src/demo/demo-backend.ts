@@ -59,6 +59,17 @@ export class DemoBackend implements HttpBackend {
     if (request.method === 'GET' && url.pathname === '/api/alerts') {
       return respond(request, alertLog(Math.floor(now)));
     }
+    if (request.method === 'GET' && url.pathname === '/api/devices/metrics') {
+      return respond(
+        request,
+        Object.fromEntries(
+          FLEET.filter((m) => isOnline(m, now)).map((m) => [
+            m.device.id,
+            snapshotOf(m, Math.floor(now), this.version),
+          ]),
+        ),
+      );
+    }
     if (request.method === 'GET' && url.pathname === '/api/devices/suggestion') {
       return respond(request, DEMO_SUGGESTION);
     }

@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { AlertKind, AlertLevel } from '../alerts/alert';
 import { worstLevel } from '../alerts/alerts';
-import { DeviceService } from '../devices/devices';
+import { DeviceService, readByHub } from '../devices/devices';
 import { HistoryStore } from '../history/history-store';
 import { isWan, linesOf, pointsOf, sum } from '../history/history';
 import { ChartUnit } from '../history/line-chart';
@@ -92,7 +92,7 @@ export class Glance {
     const s = this.snapshot();
     const series = this.store.history()?.series ?? [];
     const device = this.devices.selected();
-    const router = !!device.router || !!device.checked;
+    const router = readByHub(device);
     const t = this.i18n.t.bind(this.i18n);
     const language = this.i18n.language();
     const number = (value: number, digits = '1.0-1') => formatNumber(value, language, digits);

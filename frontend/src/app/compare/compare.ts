@@ -94,8 +94,8 @@ interface CompareChart {
   title: MessageKey;
   unit: ChartUnit;
   max?: number;
-  /** The device's line, from its history. */
-  points: (series: Series[]) => Point[];
+  /** The device's line, from its history; `router` is set for a router. */
+  points: (series: Series[], router: boolean) => Point[];
 }
 
 /** The largest value of the series of a kind at each time, such as the fullest disk. */
@@ -110,14 +110,24 @@ export function largest(series: Series[], kind: string): Point[] {
 }
 
 /** The points of a metric; none for a router's CPU and memory when it does not tell them. */
-function metric(series: Series[], name: string): Point[] {
+export function metric(series: Series[], name: string, router: boolean): Point[] {
   const points = series.find((s) => s.metric === name)?.points ?? [];
-  return points.every((p) => p.value === 0) ? [] : points;
+  return router && points.every((p) => p.value === 0) ? [] : points;
 }
 
 const CHARTS: CompareChart[] = [
-  { title: 'compare.cpu', unit: 'percent', max: 100, points: (s) => metric(s, 'cpu') },
-  { title: 'compare.memory', unit: 'percent', max: 100, points: (s) => metric(s, 'memory') },
+  {
+    title: 'compare.cpu',
+    unit: 'percent',
+    max: 100,
+    points: (s, router) => metric(s, 'cpu', router),
+  },
+  {
+    title: 'compare.memory',
+    unit: 'percent',
+    max: 100,
+    points: (s, router) => metric(s, 'memory', router),
+  },
   { title: 'compare.disk', unit: 'percent', max: 100, points: (s) => largest(s, 'disk') },
   { title: 'compare.temperature', unit: 'celsius', points: (s) => largest(s, 'temperature') },
 ];
@@ -183,7 +193,7 @@ export class Compare {
       lines: h.devices
         .map(({ device, history }): ChartLine => ({
           label: deviceName(device, this.i18n),
-          points: chart.points(history.series),
+          points: chart.points(history.series, !!device.router),
         }))
         .filter((line) => line.points.length > 0),
     })).filter((chart) => chart.lines.length > 0);

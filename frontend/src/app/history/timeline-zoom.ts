@@ -34,7 +34,7 @@ export class TimelineZoom {
 
   /**
    * The history of a stretch zoomed into: the latest read, which may still be of the stretch before
-   * while the new one loads.
+   * while the new one loads; null while the whole range shows, or when the stretch could not be read.
    */
   readonly history = signal<History | null>(null);
 
@@ -55,11 +55,7 @@ export class TimelineZoom {
         ),
         takeUntilDestroyed(),
       )
-      .subscribe((history) => {
-        if (history) {
-          this.history.set(history);
-        }
-      });
+      .subscribe((history) => this.history.set(history));
   }
 
   /** Zooms into a stretch of the one shown; one shorter than a minute grows to a minute. */

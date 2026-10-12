@@ -731,7 +731,7 @@ func (r *Remote) Refused() bool {
 // Router reports whether the device is a router, which the hub reads in a
 // language it speaks.
 func (r *Remote) Router() bool {
-	return r.Source != nil && !r.Checked
+	return r.ReadByHub() && !r.Checked
 }
 
 // Kind tells what the device is used as.
@@ -773,7 +773,7 @@ func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
 	// its host name resolves to the hub only later.
 	var agent *Agent
 	switch {
-	case device.Source != nil:
+	case device.ReadByHub():
 		agent = newReaderAgent(device.Source)
 	case fixed:
 		agent = NewAgent(device.Address)
@@ -816,7 +816,7 @@ func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
 	recorder := &history.Recorder{Store: h.store, Recent: recent, Device: device.ID, Collector: watched, MaxEntries: h.historyEntries}
 	// A router or check keeps no minutes to fetch; the hub stores the
 	// average of its own readings.
-	if device.Source == nil {
+	if !device.ReadByHub() {
 		fetcher := &fetcher{agent: agent, store: h.store, device: device.ID, maxEntries: h.historyEntries, retention: h.retention}
 		recorder.Fetch = fetcher.fetch
 	}

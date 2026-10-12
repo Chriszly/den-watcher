@@ -196,6 +196,11 @@ export class MetricsService {
     return this.http.get<Snapshot>('/api/metrics', { params: deviceParam(device) });
   }
 
+  /** The usage of every device that answers, by its id; one whose usage cannot be read is left out. */
+  fleet(): Observable<Record<string, Snapshot>> {
+    return this.http.get<Record<string, Snapshot>>('/api/devices/metrics');
+  }
+
   /** The usage from `from` to `to`, both Unix seconds. */
   history(from: number, to: number, device = LOCAL_DEVICE.id): Observable<History> {
     return this.http.get<History>('/api/history', {

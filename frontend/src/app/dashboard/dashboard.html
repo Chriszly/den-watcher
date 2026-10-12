@@ -132,7 +132,7 @@
         <h2 class="category-title" [id]="'category-' + section.category">
           <app-category-fold
             [category]="section.category"
-            [count]="sectionCount(section.cards.length, section.charts)"
+            [count]="sectionCount(section.cards.length, section.charts.length)"
             [alert]="categoryAlert(section.cards)"
           />
         </h2>
@@ -228,6 +228,7 @@
                             }
                           </p>
                         }
+                        <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
                       </div>
                     }
                     @case ('memory') {
@@ -298,6 +299,7 @@
                             }}
                           </p>
                         }
+                        <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
                       </div>
                     }
                     @case ('disks') {
@@ -379,6 +381,7 @@
                             <p class="detail">{{ i18n.t('dashboard.noDisk') }}</p>
                           }
                         </app-scroll-rows>
+                        <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
                       </div>
                     }
                     @case ('network') {
@@ -429,6 +432,7 @@
                             }}
                           </p>
                         }
+                        <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
                       </div>
                     }
                     @case ('gpus') {
@@ -469,6 +473,7 @@
                             </div>
                           }
                         </app-scroll-rows>
+                        <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
                       </div>
                     }
                     @case ('temperatures') {
@@ -499,6 +504,7 @@
                             <p class="detail">{{ i18n.t('dashboard.noTemperature') }}</p>
                           }
                         </app-scroll-rows>
+                        <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
                       </div>
                     }
                     @case ('fans') {
@@ -517,6 +523,7 @@
                             </p>
                           }
                         </app-scroll-rows>
+                        <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
                       </div>
                     }
                     @case ('battery') {
@@ -560,6 +567,7 @@
                               }}
                             </p>
                           }
+                          <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
                         </div>
                       }
                     }
@@ -605,6 +613,7 @@
                             <p class="value">{{ i18n.t('dashboard.powerOk') }}</p>
                             <p class="detail">{{ i18n.t('dashboard.powerNoProblems') }}</p>
                           }
+                          <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
                         </div>
                       }
                     }
@@ -648,6 +657,7 @@
                             }
                           }
                         </app-scroll-rows>
+                        <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
                       </div>
                     }
                     @case ('time') {
@@ -680,7 +690,7 @@
               </div>
             }
           }
-          <app-category-charts [category]="section.category" />
+          <app-category-charts [charts]="section.charts" />
         }
       </section>
     }

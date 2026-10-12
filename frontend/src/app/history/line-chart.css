@@ -37,7 +37,7 @@
   grid-row: 2;
   display: grid;
   grid-template-columns: auto 1fr;
-  grid-template-rows: 9rem auto;
+  grid-template-rows: var(--plot-height, 9rem) auto;
   column-gap: 0.5rem;
   font: var(--mat-sys-body-small);
   color: var(--mat-sys-on-surface-variant);
@@ -95,7 +95,14 @@ svg {
   grid-column: 2;
   display: flex;
   justify-content: space-between;
+  gap: 0.5rem;
   margin-top: 0.25rem;
+  white-space: nowrap;
+}
+
+/* A small chart, such as one in a card, shows only the start and end of its time axis. */
+.x-axis > :nth-child(2) {
+  display: var(--middle-time, inline);
 }
 
 .crosshair {

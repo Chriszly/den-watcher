@@ -85,13 +85,17 @@ export class Timeline {
   protected readonly cursor = signal<number | null>(null);
 
   /**
-   * Each line of each chart, in the order of the categories; a chart of several names each line.
+   * Each line of each chart, in the order of the categories; a chart of several names each line,
+   * unless the line is named as the chart, such as the memory line of the memory chart.
    * Every strip fits its own values, without the chart's top, so a change shows in each row.
    */
   protected readonly lines = computed((): TimelineLine[] =>
     [...this.charts().values()].flat().flatMap((chart) =>
       chart.lines.map((line, index) => ({
-        label: chart.lines.length > 1 ? `${chart.title} · ${line.label}` : chart.title,
+        label:
+          chart.lines.length > 1 && line.label !== chart.title
+            ? `${chart.title} · ${line.label}`
+            : chart.title,
         unit: chart.unit,
         points: line.points,
         series: index % COLORS,

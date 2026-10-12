@@ -1,0 +1,62 @@
+/* At the bottom of its card, as the card lays out its content in a column. */
+:host {
+  --plot-height: 5rem;
+  --middle-time: none;
+  display: block;
+  margin-top: auto;
+}
+
+:host(.wide) {
+  --plot-height: 12rem;
+  --middle-time: inline;
+}
+
+.chart {
+  margin-top: 1rem;
+}
+
+h4 {
+  margin: 0 0 0.25rem;
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* In the card's top border at the right, as its title is at the left; the card is the nearest
+   positioned box. */
+.widen {
+  position: absolute;
+  top: -1rem;
+  right: 0.75rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface-variant);
+  cursor: pointer;
+}
+
+.widen:hover {
+  background: color-mix(in srgb, var(--mat-sys-on-surface) 8%, var(--mat-sys-surface));
+}
+
+.widen:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+}
+
+.widen[aria-pressed='true'] {
+  color: var(--mat-sys-primary);
+}
+
+svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

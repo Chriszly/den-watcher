@@ -12,6 +12,10 @@ import { ChartLine, ChartUnit } from './line-chart';
 export interface Chart {
   title: string;
   category: Category;
+  /** The id of the dashboard card the chart is drawn in, such as "cpu" or "extra:pressure". */
+  card: string;
+  /** The chart's name within its card, where it is shorter than the title; the title otherwise. */
+  part?: string;
   unit: ChartUnit;
   max?: number;
   lines: ChartLine[];
@@ -41,6 +45,15 @@ export class DeviceCharts {
       ),
       ...extraChartsOf(history.series, history.extras ?? {}, this.i18n.language()),
     ];
+  });
+
+  /** The charts of each card that has any, by the card's id. */
+  readonly byCard = computed(() => {
+    const charts = new Map<string, Chart[]>();
+    for (const chart of this.charts()) {
+      charts.set(chart.card, [...(charts.get(chart.card) ?? []), chart]);
+    }
+    return charts;
   });
 
   /** The charts of each category that has any, in the order the dashboard shows its cards. */
@@ -112,12 +125,20 @@ export function chartsOf(
 
   const charts: Chart[] = [
     {
-      title: t('history.cpuAndMemory'),
+      title: t('history.cpu'),
       category: 'system',
+      card: 'cpu',
+      unit: 'percent',
+      max: 100,
+      lines: [{ label: t('history.cpu'), points: metric('cpu') }],
+    },
+    {
+      title: t('history.memory'),
+      category: 'system',
+      card: 'memory',
       unit: 'percent',
       max: 100,
       lines: [
-        { label: t('history.cpu'), points: metric('cpu') },
         { label: t('history.memory'), points: metric('memory') },
         // Machines without swap space have no swap line.
         ...(metric('swap').length > 0
@@ -128,6 +149,7 @@ export function chartsOf(
     {
       title: t('history.battery'),
       category: 'temperature',
+      card: 'battery',
       unit: 'percent',
       max: 100,
       lines: [{ label: t('history.charge'), points: metric('battery') }],
@@ -135,6 +157,7 @@ export function chartsOf(
     {
       title: t('history.gpu'),
       category: 'system',
+      card: 'gpus',
       unit: 'percent',
       max: 100,
       lines: [
@@ -148,18 +171,21 @@ export function chartsOf(
     {
       title: t('history.temperature'),
       category: 'temperature',
+      card: 'temperatures',
       unit: 'celsius',
       lines: named('temperature'),
     },
     {
       title: t('history.network'),
       category: 'network',
+      card: 'network',
       unit: 'bytesPerSecond',
       lines: networkLines(named('network.receive'), named('network.send'), t, router),
     },
     {
       title: t('history.disks'),
       category: 'storage',
+      card: 'disks',
       unit: 'percent',
       max: 100,
       lines: named('disk'),
@@ -167,6 +193,7 @@ export function chartsOf(
     {
       title: t('history.diskActivity'),
       category: 'storage',
+      card: 'disks',
       unit: 'bytesPerSecond',
       lines: [
         ...named('disk.read').map((line) => ({
@@ -206,6 +233,7 @@ export function extraChartsOf(
       chart = {
         title: localized(info.title, info.titles, language),
         category: extraCategory(group.slice('extra:'.length)),
+        card: group,
         unit: info.unit,
         max: info.unit === 'percent' ? 100 : undefined,
         lines: [],
@@ -214,10 +242,15 @@ export function extraChartsOf(
     }
     chart.lines.push({ label: localized(info.label, info.labels, language), points: s.points });
   }
-  // A chart of one line has no legend, so its title names the value.
+  // A chart of one line has no legend, so its title names the value; in its card, the card's title
+  // names the group.
   return [...charts.values()].map((chart) =>
     chart.lines.length === 1
-      ? { ...chart, title: `${chart.title} · ${chart.lines[0].label}` }
+      ? {
+          ...chart,
+          title: `${chart.title} · ${chart.lines[0].label}`,
+          part: chart.lines[0].label,
+        }
       : chart,
   );
 }

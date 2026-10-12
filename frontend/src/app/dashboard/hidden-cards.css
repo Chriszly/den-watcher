@@ -1,0 +1,27 @@
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+button {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px dashed var(--mat-sys-outline);
+  border-radius: var(--mat-sys-corner-full);
+  background: none;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-label-large);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mat-sys-surface-container-high);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+  }
+}

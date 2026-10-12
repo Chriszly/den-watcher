@@ -1,6 +1,15 @@
+import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
 import { DecimalPipe, NgTemplateOutlet, formatDate, formatNumber } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, exhaustMap, of, switchMap, tap } from 'rxjs';
 
@@ -29,12 +38,16 @@ import {
   TimeZone,
 } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
+import { ArrangeBar } from './arrange-bar';
+import { ArrangeControls } from './arrange-controls';
+import { Arrangement } from './arrangement';
 import { CardInfo } from './card-info';
 import { CATEGORIES, Category, FoldedCategories, extraCategory, isDetailGroup } from './categories';
-import { CategoryFold } from './category-fold';
+import { CATEGORY_TITLES, CategoryFold } from './category-fold';
 import { Details } from './details';
 import { FitLabels } from './fit-labels';
 import { Glance } from './glance';
+import { HiddenCard, HiddenCards } from './hidden-cards';
 
 /** How often the dashboard asks the backend for new values. */
 export const REFRESH_INTERVAL_MS = 2000;
@@ -119,6 +132,21 @@ export type Card =
     }
   | { id: string; kind: 'extra'; category: Category; group: Extra };
 
+/** The message of the title of each fixed card. */
+const CARD_TITLES = {
+  cpu: 'dashboard.cpu',
+  memory: 'dashboard.memory',
+  disks: 'dashboard.disks',
+  network: 'dashboard.network',
+  gpus: 'dashboard.gpu',
+  temperatures: 'dashboard.temperature',
+  fans: 'dashboard.fans',
+  battery: 'dashboard.battery',
+  throttling: 'dashboard.power',
+  time: 'dashboard.time',
+  uptime: 'dashboard.uptime',
+} as const satisfies Record<Exclude<Card['kind'], 'extra'>, string>;
+
 /** What the alerts of each kind are shown on, besides the strip above the cards. */
 const ALERT_CARDS: Partial<Record<AlertKind, string>> = {
   cpu: 'cpu',
@@ -137,8 +165,12 @@ type Problem = 'backend' | 'device';
   selector: 'app-dashboard',
   imports: [
     AlertIcon,
+    ArrangeBar,
+    ArrangeControls,
     BytesPipe,
     CardInfo,
+    CdkDrag,
+    CdkDropList,
     CardCharts,
     CategoryCharts,
     CategoryFold,
@@ -147,6 +179,7 @@ type Problem = 'backend' | 'device';
     EvenColumns,
     FitLabels,
     Glance,
+    HiddenCards,
     NgTemplateOutlet,
     RangePicker,
     ScrollRows,
@@ -202,27 +235,42 @@ export class Dashboard {
     const s = this.snapshot();
     const cards = s ? this.cards(s) : [];
     const charts = this.deviceCharts.byCategory();
+    const hidden = this.arrangement.hidden();
+    const arranging = this.arrangement.arranging();
     return CATEGORIES.map((category) => {
       const all = cards.filter((card) => card.category === category);
       const details = all.flatMap((card) =>
         card.kind === 'extra' && isDetailGroup(card.group.id) ? [card.group] : [],
       );
-      const shown = all.filter((card) => card.kind !== 'extra' || !isDetailGroup(card.group.id));
-      // The details draw their values' history in their rows.
+      const arranged = this.arrangement.sort(
+        all.filter((card) => card.kind !== 'extra' || !isDetailGroup(card.group.id)),
+      );
+      // The details draw their values' history in their rows, and hidden cards draw none.
       const ids = new Set(all.map((card) => card.id));
       return {
         category,
-        cards: shown,
+        cards: arranged.filter((card) => !hidden.has(card.id)),
+        hidden: arranged
+          .filter((card) => hidden.has(card.id))
+          .map((card): HiddenCard => ({ id: card.id, title: this.cardTitle(card) })),
         details,
         values: details.reduce((sum, group) => sum + group.items.length, 0),
         charts: (charts.get(category) ?? []).filter((chart) => !ids.has(chart.card)),
       };
     }).filter(
       (section) =>
-        section.cards.length > 0 || section.details.length > 0 || section.charts.length > 0,
+        section.cards.length > 0 ||
+        // Only while arranging do the hidden cards show, as chips that show them again.
+        (arranging && section.hidden.length > 0) ||
+        section.details.length > 0 ||
+        section.charts.length > 0,
     );
   });
   protected readonly foldedCategories = inject(FoldedCategories);
+  protected readonly arrangement = inject(Arrangement);
+  private readonly host: HTMLElement = inject(ElementRef).nativeElement;
+  private readonly injector = inject(Injector);
+  protected readonly categoryTitles = CATEGORY_TITLES;
   protected readonly coreColumns = coreColumns;
   protected readonly hottestFirst = hottestFirst;
   protected readonly extraSections = extraSections;
@@ -300,6 +348,64 @@ export class Dashboard {
       ...fixed('time', 'device', s.timeZone),
       ...fixed('uptime', 'device', this.showsUptime(s) || this.shownAvailability()),
     ];
+  }
+
+  /** The title of a card, as its heading shows it. */
+  protected cardTitle(card: Card): string {
+    return card.kind === 'extra'
+      ? this.extraText(card.group.title, card.group.titles)
+      : this.i18n.t(CARD_TITLES[card.kind]);
+  }
+
+  /**
+   * Moves a card among the shown cards of its category, by their places in it. Moved with an arrow,
+   * the focus stays on that arrow, or on the card's other one at the end of its category, as the
+   * page draws the card in its new place.
+   */
+  protected moveCard(
+    cards: readonly Card[],
+    from: number,
+    to: number,
+    arrow?: 'earlier' | 'later',
+  ): void {
+    const id = cards[from].id;
+    this.arrangement.move(
+      cards.map((card) => card.id),
+      from,
+      to,
+    );
+    if (arrow) {
+      this.focusAfterRender(() => {
+        const controls = this.slot(id)?.querySelector('app-arrange-controls');
+        return (
+          controls?.querySelector<HTMLButtonElement>(`.${arrow}:not(:disabled)`) ??
+          controls?.querySelector<HTMLButtonElement>(
+            '.earlier:not(:disabled), .later:not(:disabled)',
+          )
+        );
+      });
+    }
+  }
+
+  /** Hides a card; the focus goes to the chip that shows it again. */
+  protected hideCard(id: string): void {
+    this.arrangement.hide(id);
+    this.focusAfterRender(() =>
+      [...this.host.querySelectorAll<HTMLButtonElement>('app-hidden-cards button')].find(
+        (chip) => chip.dataset['card'] === id,
+      ),
+    );
+  }
+
+  private slot(id: string): HTMLElement | undefined {
+    return [...this.host.querySelectorAll<HTMLElement>('.slot')].find(
+      (slot) => slot.dataset['card'] === id,
+    );
+  }
+
+  /** Focuses an element the page draws next, as the one that had the focus went away or moved. */
+  private focusAfterRender(target: () => HTMLElement | null | undefined): void {
+    afterNextRender(() => target()?.focus(), { injector: this.injector });
   }
 
   /** How many cards, charts and detail values a folded category holds, for its title. */

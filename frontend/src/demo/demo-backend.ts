@@ -9,6 +9,7 @@ import { DOCUMENT, Injectable, inject } from '@angular/core';
 import { Observable, delay, mergeMap, of, throwError, timer } from 'rxjs';
 
 import { Availability, DeviceList, LOCAL_DEVICE, Suggestion } from '../app/devices/devices';
+import { EMPTY_LAYOUT } from '../app/dashboard/page-layout';
 import { History, Series } from '../app/metrics/metrics';
 import { DEMO_BUILD, demoVersion } from './demo-build';
 import { alertLog, fleetAlerts } from './alerts';
@@ -106,7 +107,7 @@ export class DemoBackend implements HttpBackend {
         return respond(request, null);
       }
       const stored = storage?.getItem(LAYOUT_STORAGE_KEY);
-      return respond(request, stored ? (JSON.parse(stored) as unknown) : { folded: [] });
+      return respond(request, stored ? (JSON.parse(stored) as unknown) : EMPTY_LAYOUT);
     } catch {
       // Without storage (a private window, blocked site data) the layout lasts for this visit.
       return fail(request, 500, 'could not keep the layout');

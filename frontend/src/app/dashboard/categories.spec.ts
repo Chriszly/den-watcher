@@ -7,6 +7,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 
 import { FoldedCategories, byCategory, extraCategory } from './categories';
+import { EMPTY_LAYOUT } from './page-layout';
 
 describe('categories', () => {
   let http: HttpTestingController;
@@ -67,7 +68,9 @@ describe('categories', () => {
 
     read.flush({ folded: ['system'] });
     expect([...folded.folded()]).toEqual(['system', 'network']);
-    expect(writes().map((w) => w.request.body)).toEqual([{ folded: ['system', 'network'] }]);
+    expect(writes().map((w) => w.request.body)).toEqual([
+      { ...EMPTY_LAYOUT, folded: ['system', 'network'] },
+    ]);
   });
 
   it('sends one layout at a time, the newest last', () => {
@@ -78,10 +81,10 @@ describe('categories', () => {
     folded.toggle('storage');
     folded.toggle('network');
     const first = writes();
-    expect(first.map((w) => w.request.body)).toEqual([{ folded: ['storage'] }]);
+    expect(first.map((w) => w.request.body)).toEqual([{ ...EMPTY_LAYOUT, folded: ['storage'] }]);
 
     first[0].flush(null, { status: 204, statusText: 'No Content' });
-    expect(writes().map((w) => w.request.body)).toEqual([{ folded: ['network'] }]);
+    expect(writes().map((w) => w.request.body)).toEqual([{ ...EMPTY_LAYOUT, folded: ['network'] }]);
   });
 
   it('reads the layout again when the page is shown, to take changes made elsewhere', () => {
@@ -94,7 +97,9 @@ describe('categories', () => {
     expect([...folded.folded()]).toEqual(['programs']);
 
     folded.toggle('storage');
-    expect(writes().map((w) => w.request.body)).toEqual([{ folded: ['programs', 'storage'] }]);
+    expect(writes().map((w) => w.request.body)).toEqual([
+      { ...EMPTY_LAYOUT, folded: ['programs', 'storage'] },
+    ]);
   });
 
   it('starts with none folded when the host has no layout', () => {

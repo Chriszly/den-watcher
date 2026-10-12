@@ -303,6 +303,17 @@ export const en = {
   'details.title': 'Details',
   'details.values.one': '{count} value',
   'details.values.other': '{count} values',
+  'arrange.start': 'Arrange',
+  'arrange.notice':
+    'Arranging the page: drag cards or use the arrows to move them within their category, or hide them.',
+  'arrange.reset': 'Reset',
+  'arrange.done': 'Done',
+  'arrange.drag': 'Drag {card}',
+  'arrange.earlier': 'Move {card} earlier',
+  'arrange.later': 'Move {card} later',
+  'arrange.hide': 'Hide {card}',
+  'arrange.show': 'Show {card} again',
+  'arrange.hidden': 'Hidden in {category}:',
   'compare.title': 'Compare devices',
   'compare.intro':
     'The main values of every device side by side. Sort by a column to see which device is the busiest, fullest or hottest, or pick a name to see the device on its own.',

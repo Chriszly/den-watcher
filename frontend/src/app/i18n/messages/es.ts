@@ -305,6 +305,17 @@ export const es: Messages = {
   'details.title': 'Detalles',
   'details.values.one': '{count} valor',
   'details.values.other': '{count} valores',
+  'arrange.start': 'Organizar',
+  'arrange.notice':
+    'Organizando la página: arrastra las tarjetas o usa las flechas para moverlas dentro de su categoría, u ocúltalas.',
+  'arrange.reset': 'Restablecer',
+  'arrange.done': 'Hecho',
+  'arrange.drag': 'Arrastrar {card}',
+  'arrange.earlier': 'Mover {card} antes',
+  'arrange.later': 'Mover {card} después',
+  'arrange.hide': 'Ocultar {card}',
+  'arrange.show': 'Mostrar {card} de nuevo',
+  'arrange.hidden': 'Oculto en {category}:',
   'compare.title': 'Comparar dispositivos',
   'compare.intro':
     'Los valores principales de cada dispositivo uno al lado del otro. Ordena por una columna para ver qué dispositivo está más ocupado, más lleno o más caliente, o elige un nombre para ver el dispositivo solo.',

@@ -31,14 +31,14 @@ func TestKeepsTheLayoutForEveryBrowser(t *testing.T) {
 	store := &fakeLayout{stored: layout.Layout{Folded: []string{}}}
 	handler := newLayoutHandler(store)
 
-	if rec := send(handler, http.MethodPut, "/api/layout", `{"folded":["storage"]}`); rec.Code != http.StatusNoContent {
+	if rec := send(handler, http.MethodPut, "/api/layout", `{"folded":["storage"],"order":["memory","cpu"],"hidden":["extra:wifi"]}`); rec.Code != http.StatusNoContent {
 		t.Fatalf("PUT status = %d, want %d: %s", rec.Code, http.StatusNoContent, rec.Body)
 	}
-	if want := []string{"storage"}; !reflect.DeepEqual(store.stored.Folded, want) {
-		t.Errorf("stored Folded = %v, want %v", store.stored.Folded, want)
+	if want := (layout.Layout{Folded: []string{"storage"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}}); !reflect.DeepEqual(store.stored, want) {
+		t.Errorf("stored = %#v, want %#v", store.stored, want)
 	}
 	rec := send(handler, http.MethodGet, "/api/layout", "")
-	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"folded":["storage"]}` {
+	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"folded":["storage"],"order":["memory","cpu"],"hidden":["extra:wifi"]}` {
 		t.Errorf("GET = %d %s, want 200 with the stored layout", rec.Code, rec.Body)
 	}
 }
@@ -48,7 +48,7 @@ func TestRefusesALayoutThatIsNotValid(t *testing.T) {
 		"refused by the store": `{"folded":["nothing"]}`,
 		"unknown field":        `{"folded":[],"colors":"pink"}`,
 		"not JSON":             `folded=storage`,
-		"too large":            `{"folded":["` + strings.Repeat("a", maxChangeBytes) + `"]}`,
+		"too large":            `{"folded":["` + strings.Repeat("a", maxLayoutBytes) + `"]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			store := &fakeLayout{stored: layout.Layout{Folded: []string{"network"}}}

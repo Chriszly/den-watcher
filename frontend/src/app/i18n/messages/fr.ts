@@ -303,6 +303,17 @@ export const fr: Messages = {
   'details.title': 'Détails',
   'details.values.one': '{count} valeur',
   'details.values.other': '{count} valeurs',
+  'arrange.start': 'Organiser',
+  'arrange.notice':
+    'Organisation de la page : faites glisser les cartes ou utilisez les flèches pour les déplacer dans leur catégorie, ou masquez-les.',
+  'arrange.reset': 'Réinitialiser',
+  'arrange.done': 'Terminé',
+  'arrange.drag': 'Faire glisser {card}',
+  'arrange.earlier': 'Avancer {card}',
+  'arrange.later': 'Reculer {card}',
+  'arrange.hide': 'Masquer {card}',
+  'arrange.show': 'Afficher de nouveau {card}',
+  'arrange.hidden': 'Masqué dans {category} :',
   'compare.title': 'Comparer les appareils',
   'compare.intro':
     'Les principales valeurs de chaque appareil côte à côte. Triez par une colonne pour voir l’appareil le plus occupé, le plus plein ou le plus chaud, ou choisissez un nom pour voir l’appareil seul.',

@@ -184,13 +184,8 @@ progress {
   border: 2px solid light-dark(#c62828, #f85149);
 }
 
-.card.alerting:has(> h3 > app-alert-icon.warning) {
+.card.alerting:has(> h3 > app-card-alert.warning) {
   border-color: light-dark(#b26a00, #f0a030);
-}
-
-h3 > app-alert-icon {
-  --alert-icon-size: 1.5rem;
-  margin-left: 0.25rem;
 }
 
 /* The alerts of the picked device, above its cards, big enough to see from across the room. */

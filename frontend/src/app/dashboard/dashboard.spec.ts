@@ -805,6 +805,11 @@ describe('Dashboard', () => {
     const fold = () => storage().querySelector<HTMLButtonElement>('button.fold')!;
     expect(fold().getAttribute('aria-expanded')).toBe('true');
     expect(storage().querySelector('.card')).not.toBeNull();
+    // The sign on the card tells which alert it has, apart from the card's title.
+    const sign = storage().querySelector('.card h3 app-card-alert')!;
+    expect(sign.querySelector('button')!.getAttribute('aria-label')).toBe('Needs attention');
+    expect(sign.querySelector('.tip')!.textContent).toBe('Disk / is 96 % full');
+    expect(storage().querySelector('.card h3')!.getAttribute('aria-label')).not.toContain('full');
 
     fold().click();
     fixture.detectChanges();

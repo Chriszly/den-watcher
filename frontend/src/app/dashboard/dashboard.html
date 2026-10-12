@@ -180,12 +180,7 @@
                           <h3>
                             {{ cardTitle(card) }}
                             @if (alertOn('cpu'); as level) {
-                              <app-alert-icon
-                                [level]="level"
-                                role="img"
-                                [attr.aria-label]="i18n.t('alerts.onCard')"
-                                [title]="alertTitle('cpu')"
-                              />
+                              <app-card-alert [level]="level" [text]="cardAlertText('cpu')" />
                             }
                             <app-card-info [text]="i18n.t('dashboard.info.cpu')" />
                           </h3>
@@ -276,12 +271,7 @@
                           <h3>
                             {{ cardTitle(card) }}
                             @if (alertOn('memory'); as level) {
-                              <app-alert-icon
-                                [level]="level"
-                                role="img"
-                                [attr.aria-label]="i18n.t('alerts.onCard')"
-                                [title]="alertTitle('memory')"
-                              />
+                              <app-card-alert [level]="level" [text]="cardAlertText('memory')" />
                             }
                             <app-card-info [text]="i18n.t('dashboard.info.memory')" />
                           </h3>
@@ -351,12 +341,7 @@
                           <h3>
                             {{ cardTitle(card) }}
                             @if (alertOn('disk'); as level) {
-                              <app-alert-icon
-                                [level]="level"
-                                role="img"
-                                [attr.aria-label]="i18n.t('alerts.onCard')"
-                                [title]="alertTitle('disk')"
-                              />
+                              <app-card-alert [level]="level" [text]="cardAlertText('disk')" />
                             }
                             <app-card-info [text]="i18n.t('dashboard.info.disks')" />
                           </h3>
@@ -534,11 +519,9 @@
                           <h3>
                             {{ cardTitle(card) }}
                             @if (alertOn('temperature'); as level) {
-                              <app-alert-icon
+                              <app-card-alert
                                 [level]="level"
-                                role="img"
-                                [attr.aria-label]="i18n.t('alerts.onCard')"
-                                [title]="alertTitle('temperature')"
+                                [text]="cardAlertText('temperature')"
                               />
                             }
                             <app-card-info [text]="i18n.t('dashboard.info.temperature')" />
@@ -628,11 +611,9 @@
                             <h3>
                               {{ cardTitle(card) }}
                               @if (alertOn('throttling'); as level) {
-                                <app-alert-icon
+                                <app-card-alert
                                   [level]="level"
-                                  role="img"
-                                  [attr.aria-label]="i18n.t('alerts.onCard')"
-                                  [title]="alertTitle('throttling')"
+                                  [text]="cardAlertText('throttling')"
                                 />
                               }
                               <app-card-info [text]="i18n.t('dashboard.info.power')" />
@@ -679,12 +660,7 @@
                           <h3>
                             {{ cardTitle(card) }}
                             @if (groupAlert; as level) {
-                              <app-alert-icon
-                                [level]="level"
-                                role="img"
-                                [attr.aria-label]="i18n.t('alerts.onCard')"
-                                [title]="alertTitle('smart')"
-                              />
+                              <app-card-alert [level]="level" [text]="cardAlertText('smart')" />
                             }
                             @if (group.description) {
                               <app-card-info

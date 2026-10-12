@@ -236,7 +236,7 @@ h3 > app-alert-icon {
 /* A card with charts lays out its content in a column, so the charts sit at its bottom and line up
    with the charts of the cards beside it. Its rows' margins add up in a column instead of
    overlapping, so they are halved. */
-.cards > .card:has(> app-card-charts:not(:empty)) {
+.slot > .card:has(> app-card-charts:not(:empty)) {
   display: flex;
   flex-direction: column;
 
@@ -246,6 +246,38 @@ h3 > app-alert-icon {
 }
 
 /* Widened by the button in its corner, a card takes its whole row. */
-.cards > .card:has(> app-card-charts.wide) {
+.cards > .slot:has(> .card > app-card-charts.wide) {
   grid-column: 1 / -1;
+}
+
+/* Each card sits in a slot of the grid, which the arrange mode moves; the card fills it, so the
+   cards of a row are as tall as each other. */
+.slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  > .card {
+    flex: 1;
+  }
+}
+
+.slot.arranging > .card {
+  border-style: dashed;
+}
+
+/* While a card is dragged, its place shows where it goes, and the others make room smoothly. */
+.slot.cdk-drag-placeholder {
+  opacity: 0.4;
+}
+
+.slot.cdk-drag-preview {
+  box-shadow: var(--mat-sys-level3);
+  border-radius: var(--mat-sys-corner-medium);
+}
+
+.cdk-drop-list-dragging > .slot:not(.cdk-drag-placeholder),
+.slot.cdk-drag-animating {
+  transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
 }

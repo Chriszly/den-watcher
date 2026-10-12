@@ -8,6 +8,10 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/layout"
 )
 
+// maxLayoutBytes is the largest body of PUT /api/layout: room for every list
+// of the layout at its longest.
+const maxLayoutBytes = 64 << 10
+
 // readLayout serves GET /api/layout: how the page is arranged.
 func readLayout(store LayoutStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +31,7 @@ func readLayout(store LayoutStore) http.HandlerFunc {
 func writeLayout(store LayoutStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var l layout.Layout
-		if !readJSON(w, r, &l) {
+		if !readJSONUpTo(w, r, &l, maxLayoutBytes) {
 			return
 		}
 		err := store.Write(r.Context(), l)

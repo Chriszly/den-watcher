@@ -155,7 +155,10 @@ export class ScrollRows {
       list.style.maxHeight = maxHeight;
     }
     this.scrolls.set(height !== null);
-    this.locks.set(sharesRow(this.host.closest('.card') ?? this.host));
+    // On the dashboard a card fills a slot of the grid, which is what shares the row.
+    this.locks.set(
+      sharesRow(this.host.closest('.slot') ?? this.host.closest('.card') ?? this.host),
+    );
     this.update();
   }
 }

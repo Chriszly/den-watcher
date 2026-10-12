@@ -13,11 +13,11 @@ import (
 	"unicode/utf8"
 )
 
-// MaxEntries and MaxNameBytes limit a layout sent by the page: more entries
-// than the page has categories, and longer names than it uses.
+// MaxEntries and MaxNameBytes limit each list of a layout sent by the page:
+// more entries than the page has cards, and longer names than it uses.
 const (
-	MaxEntries   = 50
-	MaxNameBytes = 50
+	MaxEntries   = 200
+	MaxNameBytes = 100
 )
 
 // Layout is how the page is arranged.
@@ -25,6 +25,24 @@ type Layout struct {
 	// Folded are the categories of cards that show only their title, such
 	// as "storage".
 	Folded []string `json:"folded"`
+	// Order are the cards the page was arranged in, by id, such as "cpu" or
+	// "extra:wifi"; within its category, a listed card comes before the
+	// others, in this order.
+	Order []string `json:"order"`
+	// Hidden are the cards the page does not show, by id.
+	Hidden []string `json:"hidden"`
+}
+
+// list is one list of a layout, with its name in JSON.
+type list struct {
+	name    string
+	entries *[]string
+}
+
+// lists are the lists of the layout, in a fixed order, so the first one that
+// is not valid is always the one a refusal names.
+func (l *Layout) lists() []list {
+	return []list{{"folded", &l.Folded}, {"order", &l.Order}, {"hidden", &l.Hidden}}
 }
 
 // InputError tells what is wrong with a layout sent by the page.
@@ -55,7 +73,7 @@ func (s *Store) Read(ctx context.Context) (Layout, error) {
 	var stored string
 	err := s.db.QueryRowContext(ctx, `SELECT layout FROM page_layout WHERE id = 1`).Scan(&stored)
 	if errors.Is(err, sql.ErrNoRows) {
-		return Layout{Folded: []string{}}, nil
+		return Layout{Folded: []string{}, Order: []string{}, Hidden: []string{}}, nil
 	}
 	if err != nil {
 		return Layout{}, err
@@ -64,8 +82,11 @@ func (s *Store) Read(ctx context.Context) (Layout, error) {
 	if err := json.Unmarshal([]byte(stored), &layout); err != nil {
 		return Layout{}, fmt.Errorf("read the stored layout: %w", err)
 	}
-	if layout.Folded == nil {
-		layout.Folded = []string{}
+	// A layout stored before a list was added has none.
+	for _, list := range layout.lists() {
+		if *list.entries == nil {
+			*list.entries = []string{}
+		}
 	}
 	return layout, nil
 }
@@ -73,8 +94,10 @@ func (s *Store) Read(ctx context.Context) (Layout, error) {
 // Write checks the layout and stores it in place of the one before. A layout
 // that is not valid is an *InputError.
 func (s *Store) Write(ctx context.Context, layout Layout) error {
-	if err := check(layout.Folded); err != nil {
-		return err
+	for _, list := range layout.lists() {
+		if err := check(list.name, *list.entries); err != nil {
+			return err
+		}
 	}
 	stored, err := json.Marshal(layout)
 	if err != nil {
@@ -86,19 +109,19 @@ func (s *Store) Write(ctx context.Context, layout Layout) error {
 	return err
 }
 
-// check checks the folded categories: few enough, each short, printable and
+// check checks one list of the layout: few enough, each short, printable and
 // named once.
-func check(names []string) error {
+func check(field string, names []string) error {
 	if len(names) > MaxEntries {
-		return &InputError{fmt.Sprintf("folded has more than %d entries", MaxEntries)}
+		return &InputError{fmt.Sprintf("%s has more than %d entries", field, MaxEntries)}
 	}
 	seen := make(map[string]bool, len(names))
 	for _, name := range names {
 		if name == "" || len(name) > MaxNameBytes || !utf8.ValidString(name) || !printable(name) {
-			return &InputError{fmt.Sprintf("each entry of folded must be printable text of 1 to %d bytes", MaxNameBytes)}
+			return &InputError{fmt.Sprintf("each entry of %s must be printable text of 1 to %d bytes", field, MaxNameBytes)}
 		}
 		if seen[name] {
-			return &InputError{fmt.Sprintf("folded names %q twice", name)}
+			return &InputError{fmt.Sprintf("%s names %q twice", field, name)}
 		}
 		seen[name] = true
 	}

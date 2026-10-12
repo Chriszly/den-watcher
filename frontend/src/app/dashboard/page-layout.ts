@@ -8,6 +8,20 @@ import { PageVisibility } from '../page-visibility';
 export interface Layout {
   /** The categories of cards that show only their title. */
   folded: string[];
+  /** The cards by id in the order they were arranged in, each before the others of its category. */
+  order: string[];
+  /** The cards the page does not show, by id. */
+  hidden: string[];
+}
+
+/** The layout of a page that has not been arranged. */
+export const EMPTY_LAYOUT: Layout = { folded: [], order: [], hidden: [] };
+
+/** The layout as the host answered it, with an empty list for each list it does not have. */
+function fromHost(answer: Partial<Layout> | null): Layout {
+  const list = (value: unknown) =>
+    Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+  return { folded: list(answer?.folded), order: list(answer?.order), hidden: list(answer?.hidden) };
 }
 
 type Change = (layout: Layout) => Layout;
@@ -21,7 +35,7 @@ type Change = (layout: Layout) => Layout;
 @Injectable({ providedIn: 'root' })
 export class PageLayout {
   private readonly http = inject(HttpClient);
-  private readonly current = signal<Layout>({ folded: [] });
+  private readonly current = signal<Layout>(EMPTY_LAYOUT);
   readonly layout = this.current.asReadonly();
 
   /** The changes made while the host's layout is being read, or before it has ever been read. */
@@ -55,18 +69,14 @@ export class PageLayout {
     }
     this.reading = true;
     this.http
-      .get<Layout>('/api/layout')
+      .get<Partial<Layout> | null>('/api/layout')
       .pipe(finalize(() => (this.reading = false)))
       .subscribe({
         next: (layout) => {
           this.read = true;
           const changes = this.pending;
           this.pending = [];
-          this.current.set(
-            changes.reduce((l, change) => change(l), {
-              folded: Array.isArray(layout?.folded) ? layout.folded : [],
-            }),
-          );
+          this.current.set(changes.reduce((l, change) => change(l), fromHost(layout)));
           if (changes.length > 0) {
             this.send();
           }

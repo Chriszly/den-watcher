@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
 import { AlertService } from '../app/alerts/alerts';
+import { EMPTY_LAYOUT } from '../app/dashboard/page-layout';
 import { DeviceService, LOCAL_DEVICE, problemMessage } from '../app/devices/devices';
 import { I18n } from '../app/i18n/i18n';
 import { MetricsService } from '../app/metrics/metrics';
@@ -25,9 +26,10 @@ describe('DemoBackend', () => {
   it("keeps the page's layout in the visitor's browser, as there is no host", async () => {
     const http = TestBed.inject(HttpClient);
     try {
-      expect(await firstValueFrom(http.get('/api/layout'))).toEqual({ folded: [] });
-      await firstValueFrom(http.put('/api/layout', { folded: ['storage'] }));
-      expect(await firstValueFrom(http.get('/api/layout'))).toEqual({ folded: ['storage'] });
+      expect(await firstValueFrom(http.get('/api/layout'))).toEqual(EMPTY_LAYOUT);
+      const layout = { folded: ['storage'], order: ['memory'], hidden: ['cpu'] };
+      await firstValueFrom(http.put('/api/layout', layout));
+      expect(await firstValueFrom(http.get('/api/layout'))).toEqual(layout);
     } finally {
       localStorage.removeItem(LAYOUT_STORAGE_KEY);
     }

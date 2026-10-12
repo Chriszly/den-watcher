@@ -16,6 +16,8 @@ import {
   hottestFirst,
 } from './dashboard';
 import { FitLabels } from './fit-labels';
+import { Arrangement } from './arrangement';
+import { EMPTY_LAYOUT } from './page-layout';
 
 const snapshot: Snapshot = {
   time: '2026-10-02T17:00:00Z',
@@ -80,14 +82,17 @@ describe('Dashboard', () => {
     fixture.detectChanges();
   }
 
-  /** The layouts the page sent to the host since the last call, each answered. */
+  /** The layouts the page sent to the host since the last call, each answered, which lets the next go. */
   function layoutWrites(): unknown[] {
-    return http
-      .match((r) => r.method === 'PUT' && r.url === '/api/layout')
-      .map((w) => {
-        w.flush(null, { status: 204, statusText: 'No Content' });
-        return w.request.body;
-      });
+    const layouts: unknown[] = [];
+    for (;;) {
+      const [write] = http.match((r) => r.method === 'PUT' && r.url === '/api/layout');
+      if (!write) {
+        return layouts;
+      }
+      layouts.push(write.request.body);
+      write.flush(null, { status: 204, statusText: 'No Content' });
+    }
   }
 
   /** The text of an element as the page shows it, without the texts behind the (i) of the cards. */
@@ -542,6 +547,70 @@ describe('Dashboard', () => {
     ]);
   });
 
+  it('arranges the cards: moves and hides them, and keeps it on the host', () => {
+    respond(snapshot);
+    http.expectOne('/api/layout').flush(EMPTY_LAYOUT);
+    const element = fixture.nativeElement as HTMLElement;
+    const system = () => element.querySelector('.category')!;
+    const titles = () =>
+      [...system().querySelectorAll('.slot > .card > h3')].map((h) => shown(h).trim());
+    const controls = (index: number) =>
+      system().querySelectorAll('app-arrange-controls')[index] as HTMLElement;
+    const click = (target: Element | null) => {
+      (target as HTMLElement).click();
+      fixture.detectChanges();
+    };
+    expect(element.querySelector('app-arrange-controls')).toBeNull();
+
+    click(element.querySelector('app-arrange-bar .start'));
+    expect(controls(0).getAttribute('aria-label')).toBe('CPU');
+    expect(controls(0).querySelector<HTMLButtonElement>('.earlier')!.disabled).toBe(true);
+    expect(controls(1).querySelector<HTMLButtonElement>('.later')!.disabled).toBe(true);
+
+    click(controls(1).querySelector('.earlier'));
+    expect(titles()).toEqual(['Memory', 'CPU']);
+    expect(layoutWrites()).toEqual([{ ...EMPTY_LAYOUT, order: ['memory', 'cpu'] }]);
+    // At the start of its category, the moved card's other arrow keeps the focus.
+    expect(document.activeElement).toBe(controls(0).querySelector('.later'));
+
+    click(controls(1).querySelector('.hide'));
+    expect(titles()).toEqual(['Memory']);
+    const chip = system().querySelector('app-hidden-cards button')!;
+    expect(document.activeElement).toBe(chip);
+    expect(shown(system().querySelector('app-hidden-cards')!)).toContain('Hidden in System:');
+    expect(chip.textContent!.trim()).toBe('CPU');
+    expect(layoutWrites()).toEqual([
+      { ...EMPTY_LAYOUT, order: ['memory', 'cpu'], hidden: ['cpu'] },
+    ]);
+
+    click(element.querySelector('app-arrange-bar .done'));
+    expect(element.querySelector('app-arrange-controls')).toBeNull();
+    expect(element.querySelector('app-hidden-cards')).toBeNull();
+    expect(titles()).toEqual(['Memory']);
+
+    click(element.querySelector('app-arrange-bar .start'));
+    click(system().querySelector('app-hidden-cards button'));
+    expect(titles()).toEqual(['Memory', 'CPU']);
+
+    // A category whose cards are all hidden shows only while arranging, for its chips.
+    const time = () =>
+      [...element.querySelectorAll('.category h2')].some((h) => h.textContent!.includes('Time'));
+    layoutWrites();
+    TestBed.inject(Arrangement).hide('time');
+    TestBed.inject(Arrangement).hide('uptime');
+    fixture.detectChanges();
+    expect(time()).toBe(true);
+    click(element.querySelector('app-arrange-bar .done'));
+    expect(time()).toBe(false);
+    click(element.querySelector('app-arrange-bar .start'));
+    TestBed.inject(Arrangement).show('time');
+    TestBed.inject(Arrangement).show('uptime');
+    fixture.detectChanges();
+    click(element.querySelector('app-arrange-bar .reset'));
+    expect(titles()).toEqual(['CPU', 'Memory']);
+    expect(layoutWrites().at(-1)).toEqual(EMPTY_LAYOUT);
+  });
+
   it('folds a category to its title, with the sign of its alerts, and remembers it', () => {
     TestBed.inject(DeviceService).devices.set([
       {
@@ -577,12 +646,12 @@ describe('Dashboard', () => {
     expect(storage().querySelector('.card')).toBeNull();
     expect(fold().querySelector('app-alert-icon')).not.toBeNull();
     expect(fold().textContent).toContain('1 card');
-    expect(layoutWrites()).toEqual([{ folded: ['storage'] }]);
+    expect(layoutWrites()).toEqual([{ ...EMPTY_LAYOUT, folded: ['storage'] }]);
 
     fold().click();
     fixture.detectChanges();
     expect(storage().querySelector('.card')).not.toBeNull();
-    expect(layoutWrites()).toEqual([{ folded: [] }]);
+    expect(layoutWrites()).toEqual([{ ...EMPTY_LAYOUT, folded: [] }]);
   });
 
   it('draws each chart in its card, folded with its category', () => {

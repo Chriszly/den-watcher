@@ -305,6 +305,17 @@ export const de: Messages = {
   'details.title': 'Details',
   'details.values.one': '{count} Wert',
   'details.values.other': '{count} Werte',
+  'arrange.start': 'Anordnen',
+  'arrange.notice':
+    'Seite anordnen: Karten ziehen oder mit den Pfeilen innerhalb ihrer Kategorie verschieben, oder ausblenden.',
+  'arrange.reset': 'Zurücksetzen',
+  'arrange.done': 'Fertig',
+  'arrange.drag': '{card} ziehen',
+  'arrange.earlier': '{card} nach vorne',
+  'arrange.later': '{card} nach hinten',
+  'arrange.hide': '{card} ausblenden',
+  'arrange.show': '{card} wieder anzeigen',
+  'arrange.hidden': 'Ausgeblendet in {category}:',
   'compare.title': 'Geräte vergleichen',
   'compare.intro':
     'Die wichtigsten Werte aller Geräte nebeneinander. Nach einer Spalte sortiert sieht man, welches Gerät am stärksten ausgelastet, am vollsten oder am heißesten ist; ein Klick auf den Namen zeigt das Gerät allein.',

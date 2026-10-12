@@ -128,9 +128,10 @@ export function extraSections(group: Extra): ExtraSection[] {
 
 /**
  * The cards of a group of extras: one card, or one for each unit of the values it charts where they
- * have several, as values of different units share no chart and a card draws one chart at most. The
- * first card keeps the group's id and the values it does not chart. The groups for experts stay one,
- * as they show in the details.
+ * have several, as values of different units share no chart and a card draws one chart at most.
+ * Each unit's card has the id of its unit, so it keeps its place, pin and width whichever units
+ * the device tells of now; the values it does not chart stay on a card with the group's id. The
+ * groups for experts stay one, as they show in the details.
  */
 export function extraCards(group: Extra): Card[] {
   const id = 'extra:' + group.id;
@@ -140,17 +141,20 @@ export function extraCards(group: Extra): Card[] {
   if (units.length <= 1 || isDetailGroup(group.id)) {
     return [{ id, kind: 'extra', category, group, unit: units[0] }];
   }
-  return units.map((unit, i) => ({
-    id: i === 0 ? id : unitCard(group.id, unit),
+  const rest = group.items.filter((item) => !charted(item));
+  const cards: Card[] = units.map((unit) => ({
+    id: unitCard(group.id, unit),
     kind: 'extra',
     category,
-    group: {
-      ...group,
-      items: group.items.filter((item) => (charted(item) ? item.unit === unit : i === 0)),
-    },
+    group: { ...group, items: group.items.filter((item) => charted(item) && item.unit === unit) },
     unit,
-    split: i > 0,
+    split: true,
   }));
+  if (rest.length > 0) {
+    return [{ id, kind: 'extra', category, group: { ...group, items: rest } }, ...cards];
+  }
+  // Without values of its own, the group's title and description go to its first unit's card.
+  return [{ ...cards[0], split: false } as Card, ...cards.slice(1)];
 }
 
 /** The id of the chart a card draws: its own, or the one of the unit an extras card charts. */
@@ -160,12 +164,14 @@ function chartId(card: Card): string {
 
 /**
  * Whether a card draws the chart of id `chart`, or holds its values in the details. The card of a
- * group of extras that tells of no history, or of one for experts, takes any chart of the group.
+ * group for experts takes any chart of the group; a card of extras that charts no unit takes none,
+ * so the group's charts show below the cards.
  */
 function ownsChart(card: Card, chart: string): boolean {
-  return card.kind === 'extra' && (!card.unit || isDetailGroup(card.group.id))
-    ? chart.startsWith(`extra:${card.group.id}@`)
-    : chart === chartId(card);
+  if (card.kind === 'extra' && isDetailGroup(card.group.id)) {
+    return chart.startsWith(`extra:${card.group.id}@`);
+  }
+  return card.kind === 'extra' && !card.unit ? false : chart === chartId(card);
 }
 
 /** Whether any disk tells how fast it is read and written. */
@@ -340,6 +346,8 @@ export class Dashboard {
         : [];
     return new Map(charts.map((chart) => [chart.card, [chart]]));
   });
+  /** The card the SMART alerts show on: the one with the group's values, not the ones split off it. */
+  protected readonly smartCard = ALERT_CARDS.smart;
   /** Whether every value shows on one timeline instead of in the categories; the mascot switches it. */
   protected readonly timeline = inject(TimelineMode);
   /**
@@ -568,7 +576,10 @@ export class Dashboard {
   /** The one chart a card draws, if any. */
   protected chartOf(card: Card): Chart | undefined {
     const charts = card.kind === 'value' ? this.valueCharts() : this.cardCharts();
-    return [...charts.values()].flat().find((chart) => ownsChart(card, chart.card));
+    if (card.kind === 'extra' && isDetailGroup(card.group.id)) {
+      return [...charts.values()].flat().find((chart) => ownsChart(card, chart.card));
+    }
+    return ownsChart(card, chartId(card)) ? charts.get(chartId(card))?.[0] : undefined;
   }
 
   /** Whether a card draws a chart, which a wider card shows larger. */

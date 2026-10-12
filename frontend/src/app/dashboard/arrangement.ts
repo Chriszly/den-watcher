@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { CardWidths } from './card-widths';
-import { MAX_LAYOUT_ENTRIES, PageLayout } from './page-layout';
+import { PageLayout } from './page-layout';
 
 /**
  * How the cards are arranged: their order within each category, which are hidden, which are pinned
@@ -68,8 +68,7 @@ export class Arrangement {
   /**
    * Moves the card at `from` among the shown cards of a category, or of every category when the
    * cards are not grouped, by id in their order, to `to`.
-   * The whole category's order is kept, so it stays as it is shown when other cards come or go. The
-   * cards moved longest ago, which may be gone, make room once the host would keep no more.
+   * The whole category's order is kept, so it stays as it is shown when other cards come or go.
    */
   move(ids: readonly string[], from: number, to: number): void {
     const moved = reordered(ids, from, to);
@@ -78,9 +77,7 @@ export class Arrangement {
     }
     this.layout.change((layout) => ({
       ...layout,
-      order: [...layout.order.filter((id) => !moved.includes(id)), ...moved].slice(
-        -MAX_LAYOUT_ENTRIES,
-      ),
+      order: [...layout.order.filter((id) => !moved.includes(id)), ...moved],
     }));
   }
 

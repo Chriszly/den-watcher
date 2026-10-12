@@ -356,6 +356,22 @@ describe('DevicesDialog', () => {
     expect(list().hidden).toBe(true);
   });
 
+  it('folds the list away when it is lower than a device row', async () => {
+    Object.defineProperty(list().querySelector('li')!, 'offsetHeight', {
+      configurable: true,
+      value: 120,
+    });
+    const ul = list();
+    Object.defineProperty(ul, 'scrollHeight', { configurable: true, value: 240 });
+    Object.defineProperty(ul, 'clientHeight', { configurable: true, value: 100 });
+    window.dispatchEvent(new Event('resize'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(list().hidden).toBe(true);
+  });
+
   it('keeps a list unfolded by hand open', async () => {
     await overflow(true);
     button('Added devices 2').click();

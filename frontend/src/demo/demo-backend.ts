@@ -5,7 +5,7 @@ import {
   HttpRequest,
   HttpResponse,
 } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { DOCUMENT, Injectable, inject } from '@angular/core';
 import { Observable, delay, mergeMap, of, throwError, timer } from 'rxjs';
 
 import { Availability, DeviceList, LOCAL_DEVICE, Suggestion } from '../app/devices/devices';
@@ -30,16 +30,21 @@ const DEMO_SUGGESTION: Suggestion = {
   kind: 'pc',
 };
 
+/** Where the demo keeps the page's layout, which a real hub keeps on the host. */
+export const LAYOUT_STORAGE_KEY = 'demoLayout';
+
 /** How long the made-up devices take to answer, so the page loads like it does on a real hub. */
 const LATENCY_MS = 60;
 
 /**
  * Answers the page's requests to /api with made-up values from the sample
- * devices instead of sending them anywhere. Devices cannot be added, removed or changed.
+ * devices instead of sending them anywhere. Devices cannot be added, removed or changed; the
+ * page's layout is kept in the visitor's browser.
  */
 @Injectable()
 export class DemoBackend implements HttpBackend {
   private readonly version = demoVersion(inject(DEMO_BUILD));
+  private readonly window = inject(DOCUMENT).defaultView;
 
   handle(request: HttpRequest<unknown>): Observable<HttpEvent<unknown>> {
     const url = new URL(request.urlWithParams, 'http://demo');
@@ -55,6 +60,9 @@ export class DemoBackend implements HttpBackend {
     }
     if (request.method === 'GET' && url.pathname === '/api/devices/suggestion') {
       return respond(request, DEMO_SUGGESTION);
+    }
+    if (url.pathname === '/api/layout') {
+      return this.layout(request);
     }
     if (request.method === 'POST' || request.method === 'PUT' || request.method === 'DELETE') {
       return fail(request, 403, { problem: 'demo' });
@@ -82,6 +90,26 @@ export class DemoBackend implements HttpBackend {
       default:
         // No /api/update: the demo names no newer release.
         return fail(request, 404, 'not found');
+    }
+  }
+
+  /**
+   * GET and PUT /api/layout: the demo has no host, so the layout is kept in the visitor's browser,
+   * where it lasts as long as on a real hub for that visitor.
+   */
+  private layout(request: HttpRequest<unknown>): Observable<HttpEvent<unknown>> {
+    try {
+      // Reading localStorage itself throws where site data is blocked.
+      const storage = this.window?.localStorage;
+      if (request.method === 'PUT') {
+        storage?.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(request.body));
+        return respond(request, null);
+      }
+      const stored = storage?.getItem(LAYOUT_STORAGE_KEY);
+      return respond(request, stored ? (JSON.parse(stored) as unknown) : { folded: [] });
+    } catch {
+      // Without storage (a private window, blocked site data) the layout lasts for this visit.
+      return fail(request, 500, 'could not keep the layout');
     }
   }
 }

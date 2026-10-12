@@ -1,4 +1,6 @@
-import { DOCUMENT, Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject } from '@angular/core';
+
+import { PageLayout } from './page-layout';
 
 /** What the cards of the dashboard are grouped by, in the order the page shows them. */
 export const CATEGORIES = [
@@ -82,44 +84,28 @@ export function byCategory<T>(
   })).filter((group) => group.items.length > 0);
 }
 
-/** Where the folded categories are kept between visits, in the browser's localStorage. */
-export const FOLDED_STORAGE_KEY = 'foldedCategories';
-
-/** Which categories of cards are folded, so only their title shows; kept for the next visit. */
+/** Which categories of cards are folded, so only their title shows; kept on the host. */
 @Injectable({ providedIn: 'root' })
 export class FoldedCategories {
-  private readonly document = inject(DOCUMENT);
-  readonly folded = signal<ReadonlySet<Category>>(this.stored());
+  private readonly layout = inject(PageLayout);
+  readonly folded = computed<ReadonlySet<Category>>(
+    () =>
+      new Set(
+        this.layout
+          .layout()
+          .folded.filter((c): c is Category => CATEGORIES.includes(c as Category)),
+      ),
+  );
 
   /** Folds the category, or unfolds it when it is folded. */
   toggle(category: Category): void {
-    const folded = new Set(this.folded());
-    if (!folded.delete(category)) {
-      folded.add(category);
-    }
-    this.folded.set(folded);
-    try {
-      this.document.defaultView?.localStorage.setItem(
-        FOLDED_STORAGE_KEY,
-        JSON.stringify([...folded]),
-      );
-    } catch {
-      // Without storage (a private window, blocked site data) the choice lasts for this visit.
-    }
-  }
-
-  private stored(): ReadonlySet<Category> {
-    try {
-      const value: unknown = JSON.parse(
-        this.document.defaultView?.localStorage.getItem(FOLDED_STORAGE_KEY) ?? '[]',
-      );
-      return new Set(
-        Array.isArray(value)
-          ? value.filter((c): c is Category => CATEGORIES.includes(c as Category))
-          : [],
-      );
-    } catch {
-      return new Set();
-    }
+    // The change works on the layout it is given, which is the host's newer one when it answers
+    // after the click.
+    this.layout.change((layout) => ({
+      ...layout,
+      folded: layout.folded.includes(category)
+        ? layout.folded.filter((c) => c !== category)
+        : [...layout.folded, category],
+    }));
   }
 }

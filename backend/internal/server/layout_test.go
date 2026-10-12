@@ -1,0 +1,69 @@
+package server
+
+import (
+	"context"
+	"net/http"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/Chriszly/den-watcher/backend/internal/layout"
+)
+
+// fakeLayout keeps a layout in memory, refusing one that folds "nothing".
+type fakeLayout struct{ stored layout.Layout }
+
+func (f *fakeLayout) Read(context.Context) (layout.Layout, error) { return f.stored, nil }
+
+func (f *fakeLayout) Write(_ context.Context, l layout.Layout) error {
+	if len(l.Folded) > 0 && l.Folded[0] == "nothing" {
+		return &layout.InputError{Message: "not a category"}
+	}
+	f.stored = l
+	return nil
+}
+
+func newLayoutHandler(store LayoutStore) http.Handler {
+	return New(Site{Devices: DeviceList(device(fakeCollector{}, nil)), Layout: store, Files: site})
+}
+
+func TestKeepsTheLayoutForEveryBrowser(t *testing.T) {
+	store := &fakeLayout{stored: layout.Layout{Folded: []string{}}}
+	handler := newLayoutHandler(store)
+
+	if rec := send(handler, http.MethodPut, "/api/layout", `{"folded":["storage"]}`); rec.Code != http.StatusNoContent {
+		t.Fatalf("PUT status = %d, want %d: %s", rec.Code, http.StatusNoContent, rec.Body)
+	}
+	if want := []string{"storage"}; !reflect.DeepEqual(store.stored.Folded, want) {
+		t.Errorf("stored Folded = %v, want %v", store.stored.Folded, want)
+	}
+	rec := send(handler, http.MethodGet, "/api/layout", "")
+	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"folded":["storage"]}` {
+		t.Errorf("GET = %d %s, want 200 with the stored layout", rec.Code, rec.Body)
+	}
+}
+
+func TestRefusesALayoutThatIsNotValid(t *testing.T) {
+	for name, body := range map[string]string{
+		"refused by the store": `{"folded":["nothing"]}`,
+		"unknown field":        `{"folded":[],"colors":"pink"}`,
+		"not JSON":             `folded=storage`,
+		"too large":            `{"folded":["` + strings.Repeat("a", maxChangeBytes) + `"]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := &fakeLayout{stored: layout.Layout{Folded: []string{"network"}}}
+			if rec := send(newLayoutHandler(store), http.MethodPut, "/api/layout", body); rec.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+			}
+			if want := []string{"network"}; !reflect.DeepEqual(store.stored.Folded, want) {
+				t.Errorf("stored Folded = %v, want it unchanged at %v", store.stored.Folded, want)
+			}
+		})
+	}
+}
+
+func TestNoLayoutWithoutAStore(t *testing.T) {
+	if rec := send(newLayoutHandler(nil), http.MethodGet, "/api/layout", ""); rec.Code == http.StatusOK && strings.HasPrefix(rec.Header().Get("Content-Type"), "application/json") {
+		t.Errorf("GET /api/layout answered %d with JSON, want it left out", rec.Code)
+	}
+}

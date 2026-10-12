@@ -1,4 +1,4 @@
-import { HttpBackend, provideHttpClient } from '@angular/common/http';
+import { HttpBackend, HttpClient, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
@@ -6,7 +6,7 @@ import { AlertService } from '../app/alerts/alerts';
 import { DeviceService, LOCAL_DEVICE, problemMessage } from '../app/devices/devices';
 import { I18n } from '../app/i18n/i18n';
 import { MetricsService } from '../app/metrics/metrics';
-import { DEMO_RETENTION_DAYS, DemoBackend } from './demo-backend';
+import { DEMO_RETENTION_DAYS, DemoBackend, LAYOUT_STORAGE_KEY } from './demo-backend';
 import { demoVersion } from './demo-build';
 import { FLEET } from './fleet';
 
@@ -20,6 +20,17 @@ describe('DemoBackend', () => {
     });
     metrics = TestBed.inject(MetricsService);
     devices = TestBed.inject(DeviceService);
+  });
+
+  it("keeps the page's layout in the visitor's browser, as there is no host", async () => {
+    const http = TestBed.inject(HttpClient);
+    try {
+      expect(await firstValueFrom(http.get('/api/layout'))).toEqual({ folded: [] });
+      await firstValueFrom(http.put('/api/layout', { folded: ['storage'] }));
+      expect(await firstValueFrom(http.get('/api/layout'))).toEqual({ folded: ['storage'] });
+    } finally {
+      localStorage.removeItem(LAYOUT_STORAGE_KEY);
+    }
   });
 
   it('shows the alerts of the values that need attention, and a log', async () => {

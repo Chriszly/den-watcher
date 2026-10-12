@@ -16,6 +16,7 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/alerts"
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 	"github.com/Chriszly/den-watcher/backend/internal/lan"
+	"github.com/Chriszly/den-watcher/backend/internal/layout"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 	"github.com/Chriszly/den-watcher/backend/internal/update"
 )
@@ -98,6 +99,16 @@ type Site struct {
 	Minutes MinuteSource
 	// Alerts is the log of alerts; nil leaves out GET /api/alerts.
 	Alerts AlertLog
+	// Layout keeps how the page is arranged; nil leaves out GET and PUT
+	// /api/layout.
+	Layout LayoutStore
+}
+
+// LayoutStore keeps how the page is arranged, for every browser that opens it.
+// A layout that is not valid is refused with a *layout.InputError.
+type LayoutStore interface {
+	Read(ctx context.Context) (layout.Layout, error)
+	Write(ctx context.Context, l layout.Layout) error
 }
 
 // AlertLog tells the newest alerts of every device.
@@ -130,6 +141,10 @@ func New(site Site) http.Handler {
 	}
 	if site.Alerts != nil {
 		mux.HandleFunc("GET /api/alerts", alertsHandler(site.Alerts))
+	}
+	if site.Layout != nil {
+		mux.HandleFunc("GET /api/layout", readLayout(site.Layout))
+		mux.HandleFunc("PUT /api/layout", writeLayout(site.Layout))
 	}
 	if site.Update != nil {
 		mux.HandleFunc("GET /api/update", func(w http.ResponseWriter, _ *http.Request) {

@@ -11,6 +11,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/alerts"
@@ -122,6 +123,7 @@ type AlertLog interface {
 func New(site Site) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/devices", devicesHandler(site))
+	mux.HandleFunc("GET /api/devices/metrics", fleetMetricsHandler(site.Devices))
 	if site.Hub != nil && site.Password != nil {
 		changes := &deviceChanges{hub: site.Hub, password: site.Password}
 		mux.HandleFunc("GET /api/devices/suggestion", changes.suggest)
@@ -194,6 +196,36 @@ func devicesHandler(site Site) http.HandlerFunc {
 			response.PasswordSet = set
 		}
 		writeJSON(w, http.StatusOK, response)
+	}
+}
+
+// fleetMetricsHandler serves GET /api/devices/metrics: the usage of every
+// device that answers, by its id, read side by side, for the list of devices
+// and the comparison in one request. A device whose usage cannot be read is
+// left out.
+func fleetMetricsHandler(devices Devices) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var (
+			mu    sync.Mutex
+			wait  sync.WaitGroup
+			usage = map[string]metrics.Snapshot{}
+		)
+		for _, d := range devices.List() {
+			if d.Unreachable || d.Metrics == nil {
+				continue
+			}
+			wait.Go(func() {
+				snapshot, err := d.Metrics.Collect(r.Context())
+				if err != nil {
+					return
+				}
+				mu.Lock()
+				usage[d.ID] = snapshot
+				mu.Unlock()
+			})
+		}
+		wait.Wait()
+		writeJSON(w, http.StatusOK, usage)
 	}
 }
 

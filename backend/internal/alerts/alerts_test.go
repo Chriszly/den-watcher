@@ -259,3 +259,19 @@ func TestTheLogKeepsAnAlertThatLasts(t *testing.T) {
 		t.Fatalf("got %d, first %+v", len(log), log[0])
 	}
 }
+
+func TestAnOfflineAlertEndsWhenTheDeviceBecomesAPC(t *testing.T) {
+	ctx := context.Background()
+	now := time.Unix(1_800_000_000, 0)
+	targets := []Target{{ID: "office", Name: "Office", Unreachable: true, UnreachableSince: now.Add(-3 * time.Minute)}}
+	w, _ := openTest(t, &targets)
+	w.Check(ctx, now)
+	if got := w.Active("office"); len(got) != 1 || got[0].Kind != KindOffline {
+		t.Fatalf("as a server: %+v", got)
+	}
+	targets[0].PC = true
+	w.Check(ctx, now.Add(Interval))
+	if got := w.Active("office"); len(got) != 0 {
+		t.Fatalf("as a PC: %+v", got)
+	}
+}

@@ -116,12 +116,20 @@ func (s suggester) suggest(ctx context.Context, from netip.Addr, known []Device,
 		}
 	})
 	for i, device := range known {
-		wait.Go(func() { knownAddress[i], knownChecked[i] = s.reaches(ctx, device.Address, from) })
+		if !device.ReadByHub() {
+			wait.Go(func() { knownAddress[i], knownChecked[i] = s.reaches(ctx, device.Address, from) })
+		}
 	}
 	wait.Wait()
 
 	taken := make(map[string]bool, len(known))
 	for i, device := range known {
+		// A router or a check runs no den-watcher, so it is not the visitor;
+		// only its name is taken.
+		if device.ReadByHub() {
+			taken[device.ID] = true
+			continue
+		}
 		if knownAddress[i] {
 			return Suggestion{}, false
 		}

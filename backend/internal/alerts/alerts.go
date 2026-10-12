@@ -186,7 +186,9 @@ func (w *Watcher) Check(ctx context.Context, now time.Time) {
 	w.mu.Unlock()
 	seen := map[string]Alert{}
 	unknown := map[string]bool{}
+	pcs := map[string]bool{}
 	for _, target := range w.devices() {
+		pcs[target.ID] = target.PC
 		list, known := conditions(ctx, target, now, levels)
 		if !known {
 			unknown[target.ID] = true
@@ -199,9 +201,10 @@ func (w *Watcher) Check(ctx context.Context, now time.Time) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	// The alerts of a device whose usage could not be read for a moment
-	// last on, as do the conditions it was waiting on.
+	// last on, as do the conditions it was waiting on; but a PC that is off
+	// is not offline, even when it was a server before.
 	for key, a := range w.active {
-		if unknown[a.Device] {
+		if unknown[a.Device] && (a.Kind != KindOffline || !pcs[a.Device]) {
 			seen[key] = *a
 		}
 	}

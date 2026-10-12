@@ -58,7 +58,7 @@
     }
   </ul>
 
-  <form (ngSubmit)="add()">
+  <form id="devices-dialog-add" (ngSubmit)="add()">
     <h3>{{ i18n.t('devicesDialog.addTitle') }}</h3>
     @if (suggested()) {
       <p class="hint">{{ i18n.t('devicesDialog.suggested') }}</p>
@@ -86,13 +86,6 @@
       }
     </div>
     <p class="hint">{{ i18n.t('devicesDialog.kindHint') }}</p>
-    <button
-      mat-flat-button
-      type="submit"
-      [disabled]="busy() || !name().trim() || !address().trim()"
-    >
-      {{ i18n.t('devicesDialog.add') }}
-    </button>
   </form>
 
   @if (problem()) {
@@ -100,6 +93,15 @@
   }
 </mat-dialog-content>
 
-<mat-dialog-actions align="end">
+<!-- Adding sits next to closing, which keeps the dialog low enough for the list on a phone. -->
+<mat-dialog-actions>
+  <button
+    mat-flat-button
+    type="submit"
+    form="devices-dialog-add"
+    [disabled]="busy() || !name().trim() || !address().trim()"
+  >
+    {{ i18n.t('devicesDialog.add') }}
+  </button>
   <button mat-button type="button" mat-dialog-close>{{ i18n.t('devicesDialog.close') }}</button>
 </mat-dialog-actions>

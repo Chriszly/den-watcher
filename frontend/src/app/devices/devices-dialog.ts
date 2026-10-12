@@ -98,7 +98,7 @@ export class DevicesDialog {
 
   constructor() {
     // The list scrolls on its own, so the dialog does not. Until it is folded by hand, it folds
-    // away when that leaves it too low to show a device and a half, such as on a phone once the
+    // away when that leaves it too low to show a whole device, such as on a small phone once the
     // suggestion fills in a line more. It does not unfold again by itself.
     afterRenderEffect(() => {
       this.others();
@@ -107,7 +107,7 @@ export class DevicesDialog {
         return;
       }
       const list = this.host.nativeElement.querySelector('ul');
-      if (list && list.scrollHeight > list.clientHeight && list.clientHeight < remToPixels(7)) {
+      if (list && list.scrollHeight > list.clientHeight && list.clientHeight < remToPixels(5)) {
         this.listOpen.set(false);
       }
     });

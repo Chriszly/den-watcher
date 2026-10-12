@@ -123,13 +123,16 @@ ul[hidden] {
   display: none;
 }
 
-/* The bottom padding takes the touch target of the button, which is taller than the button. */
 form {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 0.75rem;
-  padding-bottom: 0.25rem;
+}
+
+/* The button to add a device below the form, the one to close at the other end. */
+mat-dialog-actions {
+  justify-content: space-between;
 }
 
 form h3,

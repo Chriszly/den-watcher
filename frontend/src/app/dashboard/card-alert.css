@@ -6,3 +6,8 @@
 .tip {
   white-space: pre-line;
 }
+
+/* The (i)'s text shows in the same place, so the alerts make way while the mouse is on the (i). */
+:host(:has(~ app-card-info:hover)) .tip {
+  display: none;
+}

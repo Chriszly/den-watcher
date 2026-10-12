@@ -64,8 +64,8 @@ export class SidebarState {
 }
 
 /**
- * A sidebar at the left of the page for what is put in it. On wide screens a button at its top
- * collapses it to a rail, marked », and expands it again, marked «. On narrow screens it opens
+ * A sidebar at the left of the page for what is put in it. On wide screens a button across its
+ * bottom collapses it to a rail, marked «, and expands it again, marked ». On narrow screens it opens
  * over the page and takes the focus, and closes again when anything in it is picked, the page
  * beside it is clicked or Escape is pressed.
  */
@@ -73,6 +73,7 @@ export class SidebarState {
   selector: 'app-sidebar',
   template: `
     <aside #aside [attr.aria-label]="label()">
+      <div class="content"><ng-content /></div>
       <button
         type="button"
         class="collapse"
@@ -85,7 +86,6 @@ export class SidebarState {
           i18n.t(state.collapsed() ? 'sidebar.expand' : 'sidebar.collapse')
         }}</span>
       </button>
-      <ng-content />
     </aside>
     <div class="scrim" aria-hidden="true" (click)="state.open.set(false)"></div>
   `,

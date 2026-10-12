@@ -1,4 +1,4 @@
-/* Stays in view while the page beside it scrolls, and scrolls on its own when it is longer. */
+/* Stays in view while the page beside it scrolls. */
 :host {
   position: sticky;
   top: 0;
@@ -8,37 +8,42 @@
 aside {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
   box-sizing: border-box;
   width: 17rem;
   height: 100vh;
   height: 100dvh;
-  overflow-y: auto;
-  padding: 1.25rem 0.75rem 0.75rem;
   border-right: 1px solid var(--mat-sys-outline-variant);
   background: var(--mat-sys-surface-container-low);
 }
 
 :host(.collapsed) aside {
   width: 4.5rem;
+}
+
+/* What the sidebar holds scrolls on its own when it is longer, above the button. */
+.content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  padding: 1.25rem 0.75rem 0.75rem;
+}
+
+:host(.collapsed) .content {
   padding-inline: 0.25rem;
 }
 
+/* Across the bottom of the sidebar, apart from what it holds by a line. */
 .collapse {
-  align-self: flex-end;
-  width: 2.5rem;
-  height: 2.5rem;
-  margin-bottom: -0.5rem;
+  flex: none;
+  height: 3rem;
   border: none;
-  border-radius: 50%;
+  border-top: 1px solid var(--mat-sys-outline-variant);
   background: transparent;
   color: var(--mat-sys-on-surface-variant);
   font: var(--mat-sys-title-medium);
   cursor: pointer;
-}
-
-:host(.collapsed) .collapse {
-  align-self: center;
 }
 
 .collapse:hover {
@@ -47,6 +52,7 @@ aside {
 
 .collapse:focus-visible {
   outline: 2px solid var(--mat-sys-primary);
+  outline-offset: -2px;
 }
 
 .scrim {
@@ -66,13 +72,16 @@ aside {
     z-index: 3;
     inset: 0 auto 0 0;
     width: min(18rem, 85vw);
-    padding-inline: 0.75rem;
     box-shadow: var(--mat-sys-level3);
     translate: -100%;
     visibility: hidden;
     transition:
       translate 0.2s,
       visibility 0.2s;
+  }
+
+  :host(.collapsed) .content {
+    padding-inline: 0.75rem;
   }
 
   :host(.open) aside {

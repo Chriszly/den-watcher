@@ -31,6 +31,13 @@ describe('Sidebar', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  it('puts the collapse button below what the sidebar holds', () => {
+    create();
+    const aside = element().querySelector('aside')!;
+    expect(aside.lastElementChild?.classList).toContain('collapse');
+    expect(aside.querySelector('.content .pick')).not.toBeNull();
+  });
+
   it('collapses with « and expands with », and keeps the choice for the next visit', () => {
     create();
     const toggle = element().querySelector<HTMLButtonElement>('.collapse')!;

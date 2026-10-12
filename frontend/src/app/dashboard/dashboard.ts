@@ -19,7 +19,7 @@ import { alertText, worstLevel } from '../alerts/alerts';
 import { HubConnection } from '../connection/connection';
 import { CardCharts } from '../history/card-charts';
 import { CategoryCharts } from '../history/category-charts';
-import { DeviceCharts } from '../history/history';
+import { Chart, DeviceCharts } from '../history/history';
 import { RangePicker } from '../history/range-picker';
 import { Timeline, TimelineMode } from '../history/timeline';
 import { Availability, DeviceService, LOCAL_DEVICE, deviceName } from '../devices/devices';
@@ -42,7 +42,15 @@ import { ArrangeBar } from './arrange-bar';
 import { ArrangeControls } from './arrange-controls';
 import { Arrangement } from './arrangement';
 import { CardInfo } from './card-info';
-import { CATEGORIES, Category, FoldedCategories, extraCategory, isDetailGroup } from './categories';
+import {
+  CATEGORIES,
+  Category,
+  FoldedCategories,
+  PINNED,
+  Section,
+  extraCategory,
+  isDetailGroup,
+} from './categories';
 import { CATEGORY_TITLES, CategoryFold } from './category-fold';
 import { Details } from './details';
 import { FitLabels } from './fit-labels';
@@ -131,6 +139,20 @@ export type Card =
       category: Category;
     }
   | { id: string; kind: 'extra'; category: Category; group: Extra };
+
+/** A section of the dashboard as the page draws it: the pinned cards, or a category. */
+interface DashboardSection {
+  category: Section;
+  cards: Card[];
+  /** The hidden cards, shown as chips while arranging; a category's only. */
+  hidden: HiddenCard[];
+  /** The groups of extras for experts, in the details table below the cards. */
+  details: Extra[];
+  /** How many values the details hold. */
+  values: number;
+  /** The charts of cards the page does not show. */
+  charts: Chart[];
+}
 
 /** The message of the title of each fixed card. */
 const CARD_TITLES = {
@@ -226,10 +248,10 @@ export class Dashboard {
   /** Whether every value shows on one timeline instead of in the categories; the mascot switches it. */
   protected readonly timeline = inject(TimelineMode);
   /**
-   * The categories of the page, each with its cards and then the details for experts, in the order
-   * the page shows them. Each chart is drawn in its card; the charts of cards the page does not show
-   * come after the cards, as a device that has not answered since the page opened has no cards, but
-   * it can have charts up to its last reading.
+   * The sections of the page: the pinned cards, then the categories, each with its cards and then
+   * the details for experts, in the order the page shows them. Each chart is drawn in its card; the
+   * charts of cards the page does not show come after the cards, as a device that has not answered
+   * since the page opened has no cards, but it can have charts up to its last reading.
    */
   protected readonly sections = computed(() => {
     const s = this.snapshot();
@@ -237,19 +259,30 @@ export class Dashboard {
     const charts = this.deviceCharts.byCategory();
     const hidden = this.arrangement.hidden();
     const arranging = this.arrangement.arranging();
-    return CATEGORIES.map((category) => {
+    const isCard = (card: Card) => card.kind !== 'extra' || !isDetailGroup(card.group.id);
+    const pinned = this.arrangement
+      .pinned()
+      .flatMap((id) => cards.filter((card) => card.id === id && isCard(card) && !hidden.has(id)));
+    const pinnedIds = new Set(pinned.map((card) => card.id));
+    const pinnedSection: DashboardSection = {
+      category: PINNED,
+      cards: pinned,
+      hidden: [],
+      details: [],
+      values: 0,
+      charts: [],
+    };
+    const categories = CATEGORIES.map((category): DashboardSection => {
       const all = cards.filter((card) => card.category === category);
       const details = all.flatMap((card) =>
         card.kind === 'extra' && isDetailGroup(card.group.id) ? [card.group] : [],
       );
-      const arranged = this.arrangement.sort(
-        all.filter((card) => card.kind !== 'extra' || !isDetailGroup(card.group.id)),
-      );
+      const arranged = this.arrangement.sort(all.filter(isCard));
       // The details draw their values' history in their rows, and hidden cards draw none.
       const ids = new Set(all.map((card) => card.id));
       return {
         category,
-        cards: arranged.filter((card) => !hidden.has(card.id)),
+        cards: arranged.filter((card) => !hidden.has(card.id) && !pinnedIds.has(card.id)),
         hidden: arranged
           .filter((card) => hidden.has(card.id))
           .map((card): HiddenCard => ({ id: card.id, title: this.cardTitle(card) })),
@@ -257,7 +290,8 @@ export class Dashboard {
         values: details.reduce((sum, group) => sum + group.items.length, 0),
         charts: (charts.get(category) ?? []).filter((chart) => !ids.has(chart.card)),
       };
-    }).filter(
+    });
+    return [pinnedSection, ...categories].filter(
       (section) =>
         section.cards.length > 0 ||
         // Only while arranging do the hidden cards show, as chips that show them again.
@@ -363,17 +397,18 @@ export class Dashboard {
    * page draws the card in its new place.
    */
   protected moveCard(
-    cards: readonly Card[],
+    section: DashboardSection,
     from: number,
     to: number,
     arrow?: 'earlier' | 'later',
   ): void {
-    const id = cards[from].id;
-    this.arrangement.move(
-      cards.map((card) => card.id),
-      from,
-      to,
-    );
+    const ids = section.cards.map((card) => card.id);
+    if (section.category === PINNED) {
+      this.arrangement.movePinned(ids, from, to);
+    } else {
+      this.arrangement.move(ids, from, to);
+    }
+    const id = ids[from];
     if (arrow) {
       this.focusAfterRender(() => {
         const controls = this.slot(id)?.querySelector('app-arrange-controls');
@@ -385,6 +420,14 @@ export class Dashboard {
         );
       });
     }
+  }
+
+  /** Pins a card above the categories, or unpins it; the focus stays on the button in its new place. */
+  protected pinCard(id: string): void {
+    this.arrangement.togglePin(id);
+    this.focusAfterRender(() =>
+      this.slot(id)?.querySelector<HTMLButtonElement>('app-arrange-controls .pin'),
+    );
   }
 
   /** Hides a card; the focus goes to the chip that shows it again. */

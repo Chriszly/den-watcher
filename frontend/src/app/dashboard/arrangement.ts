@@ -3,9 +3,9 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { PageLayout } from './page-layout';
 
 /**
- * How the cards are arranged: their order within each category and which are hidden, kept on the
- * host with the rest of the page's layout. While arranging, the page shows how to move and hide
- * cards; otherwise it only shows them as arranged.
+ * How the cards are arranged: their order within each category, which are hidden and which are
+ * pinned above the categories, kept on the host with the rest of the page's layout. While arranging,
+ * the page shows how to move, pin and hide cards; otherwise it only shows them as arranged.
  */
 @Injectable({ providedIn: 'root' })
 export class Arrangement {
@@ -13,10 +13,12 @@ export class Arrangement {
   /** Whether the page is being arranged, which shows the controls to move and hide cards. */
   readonly arranging = signal(false);
   readonly hidden = computed(() => new Set(this.layout.layout().hidden));
+  /** The pinned cards by id, in their order above the categories. */
+  readonly pinned = computed(() => this.layout.layout().pinned);
   /** Whether the page has been arranged at all, so Reset has something to undo. */
   readonly arranged = computed(() => {
-    const { order, hidden } = this.layout.layout();
-    return order.length > 0 || hidden.length > 0;
+    const { order, hidden, pinned } = this.layout.layout();
+    return order.length > 0 || hidden.length > 0 || pinned.length > 0;
   });
   private readonly position = computed(
     () => new Map(this.layout.layout().order.map((id, index) => [id, index])),
@@ -35,14 +37,38 @@ export class Arrangement {
    * The whole category's order is kept, so it stays as it is shown when other cards come or go.
    */
   move(ids: readonly string[], from: number, to: number): void {
-    if (from === to || to < 0 || to >= ids.length) {
+    const moved = reordered(ids, from, to);
+    if (!moved) {
       return;
     }
-    const moved = [...ids];
-    moved.splice(to, 0, ...moved.splice(from, 1));
     this.layout.change((layout) => ({
       ...layout,
       order: [...layout.order.filter((id) => !moved.includes(id)), ...moved],
+    }));
+  }
+
+  /**
+   * Moves the pinned card at `from` among the shown pinned cards, by id in their order, to `to`. The
+   * pinned cards the device does not have keep their places after them.
+   */
+  movePinned(ids: readonly string[], from: number, to: number): void {
+    const moved = reordered(ids, from, to);
+    if (!moved) {
+      return;
+    }
+    this.layout.change((layout) => ({
+      ...layout,
+      pinned: [...moved, ...layout.pinned.filter((id) => !moved.includes(id))],
+    }));
+  }
+
+  /** Pins a card above the categories, after the cards pinned before; unpins a pinned one. */
+  togglePin(id: string): void {
+    this.layout.change((layout) => ({
+      ...layout,
+      pinned: layout.pinned.includes(id)
+        ? layout.pinned.filter((p) => p !== id)
+        : [...layout.pinned, id],
     }));
   }
 
@@ -56,8 +82,21 @@ export class Arrangement {
     this.layout.change((layout) => ({ ...layout, hidden: layout.hidden.filter((h) => h !== id) }));
   }
 
-  /** Shows every card again, in the order the page puts them in; folded categories stay folded. */
+  /**
+   * Shows every card again in its category, in the order the page puts them in; folded categories
+   * stay folded.
+   */
   reset(): void {
-    this.layout.change((layout) => ({ ...layout, order: [], hidden: [] }));
+    this.layout.change((layout) => ({ ...layout, order: [], hidden: [], pinned: [] }));
   }
+}
+
+/** The ids with the one at `from` moved to `to`; null when it does not move or `to` is outside. */
+function reordered(ids: readonly string[], from: number, to: number): string[] | null {
+  if (from === to || to < 0 || to >= ids.length) {
+    return null;
+  }
+  const moved = [...ids];
+  moved.splice(to, 0, ...moved.splice(from, 1));
+  return moved;
 }

@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -31,14 +33,14 @@ func TestKeepsTheLayoutForEveryBrowser(t *testing.T) {
 	store := &fakeLayout{stored: layout.Layout{Folded: []string{}}}
 	handler := newLayoutHandler(store)
 
-	if rec := send(handler, http.MethodPut, "/api/layout", `{"folded":["storage"],"order":["memory","cpu"],"hidden":["extra:wifi"]}`); rec.Code != http.StatusNoContent {
+	if rec := send(handler, http.MethodPut, "/api/layout", `{"folded":["storage"],"order":["memory","cpu"],"hidden":["extra:wifi"],"pinned":["fans"]}`); rec.Code != http.StatusNoContent {
 		t.Fatalf("PUT status = %d, want %d: %s", rec.Code, http.StatusNoContent, rec.Body)
 	}
-	if want := (layout.Layout{Folded: []string{"storage"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}}); !reflect.DeepEqual(store.stored, want) {
+	if want := (layout.Layout{Folded: []string{"storage"}, Order: []string{"memory", "cpu"}, Hidden: []string{"extra:wifi"}, Pinned: []string{"fans"}}); !reflect.DeepEqual(store.stored, want) {
 		t.Errorf("stored = %#v, want %#v", store.stored, want)
 	}
 	rec := send(handler, http.MethodGet, "/api/layout", "")
-	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"folded":["storage"],"order":["memory","cpu"],"hidden":["extra:wifi"]}` {
+	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"folded":["storage"],"order":["memory","cpu"],"hidden":["extra:wifi"],"pinned":["fans"]}` {
 		t.Errorf("GET = %d %s, want 200 with the stored layout", rec.Code, rec.Body)
 	}
 }
@@ -59,6 +61,22 @@ func TestRefusesALayoutThatIsNotValid(t *testing.T) {
 				t.Errorf("stored Folded = %v, want it unchanged at %v", store.stored.Folded, want)
 			}
 		})
+	}
+}
+
+func TestTakesTheLongestValidLayout(t *testing.T) {
+	names := make([]string, layout.MaxEntries)
+	for i := range names {
+		names[i] = fmt.Sprintf("%0*d", layout.MaxNameBytes, i)
+	}
+	l := layout.Layout{Folded: names, Order: names, Hidden: names, Pinned: names}
+	body, err := json.Marshal(l)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &fakeLayout{}
+	if rec := send(newLayoutHandler(store), http.MethodPut, "/api/layout", string(body)); rec.Code != http.StatusNoContent {
+		t.Errorf("status = %d, want %d for a layout of %d bytes", rec.Code, http.StatusNoContent, len(body))
 	}
 }
 

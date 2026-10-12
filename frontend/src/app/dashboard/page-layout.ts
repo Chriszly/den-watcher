@@ -12,16 +12,23 @@ export interface Layout {
   order: string[];
   /** The cards the page does not show, by id. */
   hidden: string[];
+  /** The cards shown above the categories, by id, in their order there. */
+  pinned: string[];
 }
 
 /** The layout of a page that has not been arranged. */
-export const EMPTY_LAYOUT: Layout = { folded: [], order: [], hidden: [] };
+export const EMPTY_LAYOUT: Layout = { folded: [], order: [], hidden: [], pinned: [] };
 
 /** The layout as the host answered it, with an empty list for each list it does not have. */
 function fromHost(answer: Partial<Layout> | null): Layout {
   const list = (value: unknown) =>
     Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
-  return { folded: list(answer?.folded), order: list(answer?.order), hidden: list(answer?.hidden) };
+  return {
+    folded: list(answer?.folded),
+    order: list(answer?.order),
+    hidden: list(answer?.hidden),
+    pinned: list(answer?.pinned),
+  };
 }
 
 type Change = (layout: Layout) => Layout;

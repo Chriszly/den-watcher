@@ -74,11 +74,24 @@ describe('Arrangement', () => {
     expect(sent().map((l) => l.hidden)).toEqual([['fans', 'cpu'], ['cpu']]);
   });
 
-  it('resets the order and the hidden cards, keeping the folded categories', () => {
-    answer({ folded: ['storage'], order: ['memory'], hidden: ['cpu'] });
+  it('pins a card after the others, unpins it, and orders the shown pinned cards', () => {
+    answer({ pinned: ['fans', 'extra:wifi'] });
+    arrangement.togglePin('cpu');
+    expect(arrangement.pinned()).toEqual(['fans', 'extra:wifi', 'cpu']);
+    arrangement.togglePin('fans');
+    expect(arrangement.pinned()).toEqual(['extra:wifi', 'cpu']);
+    // This device has no Wi-Fi, so only the CPU is shown; Wi-Fi keeps its place after it.
+    arrangement.togglePin('fans');
+    arrangement.movePinned(['cpu', 'fans'], 1, 0);
+    expect(arrangement.pinned()).toEqual(['fans', 'cpu', 'extra:wifi']);
+    expect(sent().at(-1)!.pinned).toEqual(['fans', 'cpu', 'extra:wifi']);
+  });
+
+  it('resets the order, the hidden and the pinned cards, keeping the folded categories', () => {
+    answer({ folded: ['storage'], order: ['memory'], hidden: ['cpu'], pinned: ['fans'] });
     expect(arrangement.arranged()).toBe(true);
     arrangement.reset();
     expect(arrangement.arranged()).toBe(false);
-    expect(sent()).toEqual([{ folded: ['storage'], order: [], hidden: [] }]);
+    expect(sent()).toEqual([{ folded: ['storage'], order: [], hidden: [], pinned: [] }]);
   });
 });

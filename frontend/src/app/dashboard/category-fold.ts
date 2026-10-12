@@ -3,10 +3,11 @@ import { Component, computed, inject, input } from '@angular/core';
 import { AlertLevel } from '../alerts/alert';
 import { AlertIcon } from '../alerts/alert-icon';
 import { I18n } from '../i18n/i18n';
-import { Category, FoldedCategories } from './categories';
+import { FoldedCategories, Section } from './categories';
 
-/** The message of the title of each category. */
+/** The message of the title of each section. */
 export const CATEGORY_TITLES = {
+  pinned: 'categories.pinned',
   system: 'categories.system',
   storage: 'categories.storage',
   network: 'categories.network',
@@ -14,7 +15,7 @@ export const CATEGORY_TITLES = {
   programs: 'categories.programs',
   other: 'categories.other',
   device: 'categories.device',
-} as const satisfies Record<Category, string>;
+} as const satisfies Record<Section, string>;
 
 /**
  * The title of a category of cards or charts, as a button that folds it away. Folded, it tells
@@ -42,7 +43,7 @@ export const CATEGORY_TITLES = {
   styleUrl: './category-fold.css',
 })
 export class CategoryFold {
-  readonly category = input.required<Category>();
+  readonly category = input.required<Section>();
   /** What the category holds, such as "3 cards", shown while it is folded. */
   readonly count = input.required<string>();
   readonly alert = input<AlertLevel | null>(null);

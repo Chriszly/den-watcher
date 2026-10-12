@@ -29,6 +29,7 @@ describe('categories', () => {
     expect(extraCategory('smart-checks')).toBe('storage');
     expect(extraCategory('wifi')).toBe('network');
     expect(extraCategory('containers-memory')).toBe('programs');
+    expect(extraCategory('den-watcher')).toBe('programs');
     expect(extraCategory('weather')).toBe('other');
     expect(extraCategory('toString')).toBe('other');
   });

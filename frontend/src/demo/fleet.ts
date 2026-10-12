@@ -132,6 +132,68 @@ function powerAddOn(
   ];
 }
 
+/** What Den-Watcher itself uses, as the backend reports it; its values come from ownValues(). */
+function ownUsage(): Extra[] {
+  const item = (
+    id: string,
+    label: string,
+    labels: Record<string, string>,
+    unit: ExtraUnit,
+    history = false,
+  ) => ({ id, label, labels, unit, history });
+  return [
+    {
+      id: 'den-watcher',
+      title: 'Den-Watcher itself',
+      titles: { de: 'Den-Watcher selbst', fr: 'Den-Watcher lui-même', es: 'El propio Den-Watcher' },
+      items: [
+        item('cpu', 'CPU', {}, 'percent', true),
+        item('memory', 'Memory', memoryLabels, 'bytes', true),
+        item('read', 'Read', { de: 'Gelesen', fr: 'Lecture', es: 'Lectura' }, 'bytesPerSecond'),
+        item(
+          'written',
+          'Written',
+          { de: 'Geschrieben', fr: 'Écriture', es: 'Escritura' },
+          'bytesPerSecond',
+        ),
+        item(
+          'database',
+          'Database',
+          { de: 'Datenbank', fr: 'Base de données', es: 'Base de datos' },
+          'bytes',
+        ),
+        item(
+          'programs',
+          'Programs',
+          { de: 'Programme', fr: 'Programmes', es: 'Programas' },
+          'number',
+        ),
+      ],
+    },
+  ];
+}
+
+/**
+ * The values of ownUsage(): programs of Den-Watcher running, each holding about 12 MB, and a
+ * database of about databaseBytes, which stays the same size once it keeps all the days it should.
+ */
+function ownValues(
+  t: number,
+  step: number,
+  seed: number,
+  programs: number,
+  databaseBytes: number,
+): Values {
+  return {
+    'extra:den-watcher/cpu': vary(t, step, seed, 0.25 * programs, [[0.1 * programs, 60]], 0.05),
+    'extra:den-watcher/memory': vary(t, step, seed + 1, 12e6 * programs, [[2e6, 900]], 1e6, 1e9),
+    'extra:den-watcher/read': vary(t, step, seed + 2, 400, [[400, 60]], 0, 1e9),
+    'extra:den-watcher/written': vary(t, step, seed + 3, 30e3, [[20e3, 60]], 0, 1e9),
+    'extra:den-watcher/database': databaseBytes * (1 + 0.01 * drift(t, 86400, seed + 4)),
+    'extra:den-watcher/programs': programs,
+  };
+}
+
 /** What the pressure add-on reports; its percentages come from values() as "extra:pressure/<id>". */
 function pressureAddOn(): Extra[] {
   const items: { id: string; label: string; labels: Record<string, string> }[] = [
@@ -1058,6 +1120,7 @@ const piHub: DemoMachine = {
         [1, 'systemd'],
       ],
     ),
+    ...ownUsage(),
   ],
   bootedDaysAgo: 12.3,
   values: (t, step) => {
@@ -1120,6 +1183,8 @@ const piHub: DemoMachine = {
         { 812: 0.3, 655: 0.18, 1432: 0.12, 610: 0.08, 1: 0.03, 433: 0.02 },
         { 655: 92e6, 1432: 61e6, 812: 38e6, 610: 34e6, 433: 21e6, 1: 12e6 },
       ),
+      // The program and its eight add-ons; the hub keeps the history of every device.
+      ...ownValues(t, step, 320, 9, 180e6),
     };
   },
 };
@@ -1309,7 +1374,7 @@ const windowsServer: DemoMachine = {
     { name: 'Ethernet 3' },
     { name: 'Ethernet 4' },
   ],
-  extras: windowsMemoryAddOn(),
+  extras: [...windowsMemoryAddOn(), ...ownUsage()],
   utc: true,
   bootedDaysAgo: 23.6,
   values: (t, step) => {
@@ -1342,6 +1407,8 @@ const windowsServer: DemoMachine = {
       'network.receive:Ethernet 2': vary(t, step, 62, 800e3, [[600e3, 300]], 0, 1e9),
       'network.send:Ethernet 2': vary(t, step, 63, 300e3, [[250e3, 300]], 0, 1e9),
       ...windowsMemoryValues(t, step, 170, 64 * GB, busy),
+      // The program, the add-on host and the memory add-on.
+      ...ownValues(t, step, 330, 3, 25e6),
     };
   },
 };

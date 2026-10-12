@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
+	"slices"
 	"sync"
 	"time"
 
@@ -90,6 +91,9 @@ type Collector struct {
 	Name string
 	// AddOns are read for the Snapshot's Extras; nil reads none.
 	AddOns *AddOns
+	// DatabasePath is the history database, whose size the Snapshot's Extras
+	// count to what den-watcher uses; empty leaves it out.
+	DatabasePath string
 
 	diskPaths      []string
 	disks          *diskReader
@@ -102,6 +106,7 @@ type Collector struct {
 	// readCounters reads the network counters; nil reads the machine's.
 	readCounters func(ctx context.Context) (map[string]counters, error)
 	temperatures *temperatureReader
+	own          OwnReader
 
 	// mu guards the readings of the previous call, which CPU usage and
 	// network and disk speeds are measured against, and whether reading
@@ -190,8 +195,26 @@ func (c *Collector) Collect(ctx context.Context) (Snapshot, error) {
 		Throttling:   readThrottling(c.throttlingFile),
 		Battery:      c.batteries.read(),
 		Fans:         readFans(c.fans),
-		Extras:       c.AddOns.Read(now),
+		Extras:       c.readExtras(ctx, now),
 	}, nil
+}
+
+// readExtras returns the extras of the add-ons and, after them, what
+// den-watcher itself uses: this program and the add-ons that report it.
+func (c *Collector) readExtras(ctx context.Context, now time.Time) []Extra {
+	extras := c.AddOns.Read(now)
+	if slices.ContainsFunc(extras, func(e Extra) bool { return e.ID == OwnExtraID }) {
+		return extras
+	}
+	var usages []OwnUsage
+	if own := c.own.Read(ctx, now); own != nil {
+		usages = append(usages, *own)
+	}
+	usages = append(usages, c.AddOns.Own(now)...)
+	if len(usages) == 0 {
+		return extras
+	}
+	return append(extras, ownExtra(usages, databaseSize(c.DatabasePath)))
 }
 
 // readDisks returns the usage of each disk, with its activity measured since

@@ -80,6 +80,9 @@ func TestServeWritesTheReportAndRemovesItAtTheEnd(t *testing.T) {
 	if len(report.Extras) != 1 || report.Extras[0].Items[0].ID != "a" || report.Time.IsZero() {
 		t.Errorf("report = %+v", report)
 	}
+	if report.Own == nil || report.Own.MemoryBytes == 0 {
+		t.Errorf("report.Own = %+v, want what the add-on itself uses", report.Own)
+	}
 	if !<-monotonic {
 		t.Error("read got a time without the monotonic clock reading, so rates jump when the clock is set")
 	}

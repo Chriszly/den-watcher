@@ -200,13 +200,14 @@ func run(ctx context.Context) error {
 		slog.Info("showing the values of the add-ons", "folder", dir)
 	}
 
-	// One sampler reads the usage for every page, hub and the recorder.
-	sampler := metrics.NewSampler(collector)
-
 	databasePath := os.Getenv("DATABASE_PATH")
 	if databasePath == "" {
 		databasePath = "usage-control.db"
 	}
+	collector.DatabasePath = databasePath
+
+	// One sampler reads the usage for every page, hub and the recorder.
+	sampler := metrics.NewSampler(collector)
 
 	// With DATA_ONLY, a hub collects the usage and keeps the history, so this
 	// device keeps only the minutes the hub has not fetched yet.

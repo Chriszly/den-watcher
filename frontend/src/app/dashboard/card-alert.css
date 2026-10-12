@@ -1,0 +1,8 @@
+:host {
+  --alert-icon-size: 1.5rem;
+  margin-left: 0.25rem;
+}
+
+.tip {
+  white-space: pre-line;
+}

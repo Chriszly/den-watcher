@@ -42,6 +42,7 @@ import { PageVisibility } from '../page-visibility';
 import { ArrangeBar } from './arrange-bar';
 import { ArrangeControls } from './arrange-controls';
 import { Arrangement } from './arrangement';
+import { CardAlert } from './card-alert';
 import { CardInfo } from './card-info';
 import { CardSlot } from './card-slot';
 import {
@@ -198,6 +199,7 @@ type Problem = 'backend' | 'device';
     ArrangeBar,
     ArrangeControls,
     BytesPipe,
+    CardAlert,
     CardInfo,
     CardSlot,
     CdkDrag,
@@ -581,7 +583,7 @@ export class Dashboard {
   }
 
   /** What the alerts of a kind are about, as the tooltip of the sign on its card. */
-  protected alertTitle(kind: AlertKind): string {
+  protected cardAlertText(kind: AlertKind): string {
     return this.deviceAlerts()
       .filter((a) => a.kind === kind)
       .map((a) => alertText(a, this.i18n))

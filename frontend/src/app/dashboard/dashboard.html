@@ -156,6 +156,7 @@
                   <div
                     class="slot"
                     cdkDrag
+                    [appCardSlot]="card.id"
                     [class.arranging]="arranging"
                     [attr.data-card]="card.id"
                   >
@@ -169,6 +170,7 @@
                         [pinned]="section.category === 'pinned'"
                         (pin)="pinCard(card.id)"
                         [made]="card.kind === 'value'"
+                        [charts]="hasCharts(card)"
                         (hide)="hideCard(card)"
                       />
                     }

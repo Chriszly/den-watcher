@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
+import { CardWidths } from './card-widths';
 import { PageLayout } from './page-layout';
 
 /**
@@ -11,6 +12,7 @@ import { PageLayout } from './page-layout';
 @Injectable({ providedIn: 'root' })
 export class Arrangement {
   private readonly layout = inject(PageLayout);
+  private readonly widths = inject(CardWidths);
   /** Whether the page is being arranged, which shows the controls to move and hide cards. */
   readonly arranging = signal(false);
   readonly hidden = computed(() => new Set(this.layout.layout().hidden));
@@ -20,8 +22,14 @@ export class Arrangement {
   readonly made = computed(() => new Set(this.layout.layout().made));
   /** Whether the page has been arranged at all, so Reset has something to undo. */
   readonly arranged = computed(() => {
-    const { order, hidden, pinned, made } = this.layout.layout();
-    return order.length > 0 || hidden.length > 0 || pinned.length > 0 || made.length > 0;
+    const { order, hidden, pinned, made, widths } = this.layout.layout();
+    return (
+      order.length > 0 ||
+      hidden.length > 0 ||
+      pinned.length > 0 ||
+      made.length > 0 ||
+      Object.keys(widths).length > 0
+    );
   });
   private readonly position = computed(
     () => new Map(this.layout.layout().order.map((id, index) => [id, index])),
@@ -83,8 +91,8 @@ export class Arrangement {
   }
 
   /**
-   * Puts a value made into a card back in the details. Its pin and its place go too, so made again
-   * it comes after the other cards of its category.
+   * Puts a value made into a card back in the details. Its pin, its place and its width go too, so
+   * made again it comes one card wide after the other cards of its category.
    */
   unmake(id: string): void {
     const drop = (ids: string[]) => ids.filter((other) => other !== id);
@@ -93,6 +101,7 @@ export class Arrangement {
       made: drop(layout.made),
       pinned: drop(layout.pinned),
       order: drop(layout.order),
+      widths: Object.fromEntries(Object.entries(layout.widths).filter(([card]) => card !== id)),
     }));
   }
 
@@ -107,11 +116,19 @@ export class Arrangement {
   }
 
   /**
-   * Shows every card again in its category, in the order the page puts them in, and every value in
-   * the details; folded categories stay folded.
+   * Shows every card again in its category, one card wide and in the order the page puts them in,
+   * and every value in the details; folded categories stay folded.
    */
   reset(): void {
-    this.layout.change((layout) => ({ ...layout, order: [], hidden: [], pinned: [], made: [] }));
+    this.widths.forgetPassing();
+    this.layout.change((layout) => ({
+      ...layout,
+      order: [],
+      hidden: [],
+      pinned: [],
+      made: [],
+      widths: {},
+    }));
   }
 }
 

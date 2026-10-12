@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { Arrangement } from './arrangement';
-import { EMPTY_LAYOUT, Layout } from './page-layout';
+import { EMPTY_LAYOUT, Layout, PageLayout } from './page-layout';
 
 describe('Arrangement', () => {
   let http: HttpTestingController;
@@ -92,6 +92,7 @@ describe('Arrangement', () => {
       made: ['value:kernel/forks'],
       pinned: ['value:kernel/forks', 'cpu'],
       order: ['value:kernel/forks', 'memory'],
+      widths: { 'value:kernel/forks': 4, cpu: 2 },
     });
     arrangement.make('value:pressure/cpu');
     arrangement.make('value:pressure/cpu');
@@ -104,16 +105,23 @@ describe('Arrangement', () => {
       made: ['value:pressure/cpu'],
       pinned: ['cpu'],
       order: ['memory'],
+      widths: { cpu: 2 },
     });
   });
 
-  it('resets the order, the hidden, the pinned and the made cards, keeping the folded categories', () => {
+  it('takes only the widths of 2 and 4 cards from the host', () => {
+    answer({ widths: { cpu: 2, memory: 3, fans: 4, disks: '2' } as unknown as Layout['widths'] });
+    expect(TestBed.inject(PageLayout).layout().widths).toEqual({ cpu: 2, fans: 4 });
+  });
+
+  it('resets the order, the hidden, the pinned and the made cards and the widths, keeping the folded categories', () => {
     answer({
       folded: ['storage'],
       order: ['memory'],
       hidden: ['cpu'],
       pinned: ['fans'],
       made: ['value:kernel/forks'],
+      widths: { cpu: 2 },
     });
     expect(arrangement.arranged()).toBe(true);
     arrangement.reset();

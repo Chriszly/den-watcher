@@ -6,7 +6,13 @@
   margin-top: auto;
 }
 
-:host(.wide) {
+:host([data-width='2']) {
+  --plot-height: 9rem;
+  --middle-time: inline;
+}
+
+:host([data-width='3']),
+:host([data-width='4']) {
   --plot-height: 12rem;
   --middle-time: inline;
 }

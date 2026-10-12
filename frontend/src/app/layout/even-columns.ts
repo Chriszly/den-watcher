@@ -1,4 +1,17 @@
-import { DestroyRef, Directive, ElementRef, booleanAttribute, inject, input } from '@angular/core';
+import {
+  DestroyRef,
+  Directive,
+  ElementRef,
+  booleanAttribute,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+
+/** How many cards at least `minCard` pixels wide fit side by side in a grid `width` pixels wide. */
+export function cardsFit(width: number, minCard: number, gap: number): number {
+  return Math.max(1, Math.floor((width + gap) / (minCard + gap)));
+}
 
 /**
  * How many columns `cards` cards get in a grid `width` pixels wide: as many as fit, but no more
@@ -13,7 +26,7 @@ export function evenColumns(
   gap: number,
   keepWidth = false,
 ): number {
-  const fit = Math.max(1, Math.floor((width + gap) / (minCard + gap)));
+  const fit = cardsFit(width, minCard, gap);
   const rows = Math.max(1, Math.ceil(cards / fit));
   return keepWidth && rows === 1 ? fit : Math.max(1, Math.ceil(cards / rows));
 }
@@ -29,7 +42,9 @@ export function minCardWidth(minCard: string, rem: number): number {
 
 /**
  * Sets `--columns` on a grid of cards to the count that keeps its rows even. It counts again when
- * cards come or go (some only show when the device reports them) and when the grid's width changes.
+ * cards come or go (some only show when the device reports them), when a card's `data-width` (how
+ * many cards wide it is set) changes and when the grid's width changes. A grid with a card set wider
+ * than one gets as many columns as cards fit side by side.
  */
 @Directive({ selector: '[appEvenColumns]' })
 export class EvenColumns {
@@ -37,10 +52,18 @@ export class EvenColumns {
   readonly keepCardWidth = input(false, { transform: booleanAttribute });
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private width = 0;
+  private readonly fitting = signal(1);
+  private readonly counted = signal(1);
+  /** How many cards fit side by side; 1 until the grid is laid out. */
+  readonly fit = this.fitting.asReadonly();
+  /** The columns of the grid, as `--columns` sets them; 1 until the grid is laid out. */
+  readonly columns = this.counted.asReadonly();
 
   constructor() {
     const cards = new MutationObserver(() => this.update());
     cards.observe(this.host, { childList: true });
+    const widths = new MutationObserver(() => this.update());
+    widths.observe(this.host, { subtree: true, attributeFilter: ['data-width'] });
 
     // Only the width changes how many cards fit; the columns never change the grid's width. The
     // observer also reports the first width once the grid is laid out, which does the first count.
@@ -54,6 +77,7 @@ export class EvenColumns {
 
     inject(DestroyRef).onDestroy(() => {
       cards.disconnect();
+      widths.disconnect();
       size.disconnect();
     });
   }
@@ -65,13 +89,17 @@ export class EvenColumns {
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const style = getComputedStyle(this.host);
     const gap = parseFloat(style.columnGap) || 0;
-    const columns = evenColumns(
-      this.host.children.length,
-      this.width,
-      minCardWidth(style.getPropertyValue('--min-card'), rem),
-      gap,
-      this.keepCardWidth(),
+    const minCard = minCardWidth(style.getPropertyValue('--min-card'), rem);
+    const fit = cardsFit(this.width, minCard, gap);
+    const wider = [...this.host.children].some(
+      (card) => Number((card as HTMLElement).dataset['width']) > 1,
     );
+    // Rows with a wider card are not even anyway, so the cards keep the width of a full row.
+    const columns = wider
+      ? fit
+      : evenColumns(this.host.children.length, this.width, minCard, gap, this.keepCardWidth());
     this.host.style.setProperty('--columns', String(columns));
+    this.fitting.set(fit);
+    this.counted.set(columns);
   }
 }

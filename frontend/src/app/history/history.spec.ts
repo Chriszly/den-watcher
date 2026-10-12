@@ -78,7 +78,7 @@ describe('chartsOf for a router', () => {
 });
 
 describe('chartsOf with swap and disk activity', () => {
-  it('adds swap to the memory chart and charts disk speeds in the disks card', () => {
+  it('adds swap to the memory chart and charts disk speeds in a card of their own', () => {
     const charts = chartsOf(
       [
         { metric: 'memory', points: [{ time: 0, value: 40 }] },
@@ -91,7 +91,7 @@ describe('chartsOf with swap and disk activity', () => {
 
     expect(charts.map((c) => c.title)).toEqual(['Memory', 'Disk activity']);
     expect(charts[0].lines.map((l) => l.label)).toEqual(['Memory', 'Swap']);
-    expect(charts[1].card).toBe('disks');
+    expect(charts[1].card).toBe('diskActivity');
     expect(charts[1].unit).toBe('bytesPerSecond');
     expect(charts[1].lines.map((l) => l.label)).toEqual(['/ read', '/ written']);
   });
@@ -211,7 +211,7 @@ describe('extraChartsOf', () => {
       {
         title: 'Druck',
         category: 'system',
-        card: 'extra:pressure',
+        card: 'extra:pressure@percent',
         unit: 'percent',
         max: 100,
         lines: [
@@ -222,8 +222,7 @@ describe('extraChartsOf', () => {
       {
         title: 'Pressure · Stalls',
         category: 'system',
-        card: 'extra:pressure',
-        part: 'Stalls',
+        card: 'extra:pressure@perSecond',
         unit: 'perSecond',
         max: undefined,
         lines: [{ label: 'Stalls', points }],

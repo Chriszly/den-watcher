@@ -21,12 +21,6 @@
   margin-top: 1rem;
 }
 
-h4 {
-  margin: 0 0 0.25rem;
-  font: var(--mat-sys-label-medium);
-  color: var(--mat-sys-on-surface-variant);
-}
-
 /* In the card's top border at the right, as its title is at the left; the card is the nearest
    positioned box. */
 .widen {

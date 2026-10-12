@@ -86,6 +86,14 @@ export function valueCard(group: string, item: string): string {
   return `value:${group}/${item}`;
 }
 
+/**
+ * The id of the chart of the values of one unit of the extras group `group`, such as
+ * "extra:smart@celsius", which the group's card of that unit draws.
+ */
+export function unitCard(group: string, unit: string): string {
+  return `extra:${group}@${unit}`;
+}
+
 /** The category of the card of the extras group `id`. */
 export function extraCategory(id: string): Category {
   return Object.hasOwn(EXTRA_CATEGORIES, id) ? EXTRA_CATEGORIES[id] : 'other';

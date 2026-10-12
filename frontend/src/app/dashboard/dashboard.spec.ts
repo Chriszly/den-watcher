@@ -12,6 +12,7 @@ import {
   Dashboard,
   REFRESH_INTERVAL_MS,
   coreColumns,
+  extraCards,
   extraSections,
   hottestFirst,
 } from './dashboard';
@@ -858,6 +859,56 @@ describe('Dashboard', () => {
     expect(storage().querySelector('button.fold')!.textContent).not.toContain('chart');
   });
 
+  it('draws one chart in each card, with the disk activity and each unit of an extra in cards of their own', () => {
+    respond({
+      ...snapshot,
+      disks: [{ ...snapshot.disks[0], readBytesPerSecond: 2048, writeBytesPerSecond: 512 }],
+      extras: [
+        {
+          id: 'den-watcher',
+          title: 'Den-Watcher',
+          items: [
+            { id: 'cpu', label: 'CPU', unit: 'percent', value: 2, history: true },
+            { id: 'memory', label: 'Memory', unit: 'bytes', value: 1024, history: true },
+            { id: 'database', label: 'Database', unit: 'bytes', value: 4096 },
+          ],
+        },
+      ],
+    });
+    http
+      .expectOne((r) => r.url === '/api/history')
+      .flush({
+        from: 0,
+        to: 1800,
+        stepSeconds: 5,
+        retentionDays: 30,
+        series: [
+          { metric: 'disk:/', points: [{ time: 0, value: 30 }] },
+          { metric: 'disk.read:/', points: [{ time: 0, value: 2048 }] },
+          { metric: 'disk.write:/', points: [{ time: 0, value: 512 }] },
+          { metric: 'extra:den-watcher/cpu', points: [{ time: 0, value: 2 }] },
+          { metric: 'extra:den-watcher/memory', points: [{ time: 0, value: 1024 }] },
+        ],
+        extras: {
+          'extra:den-watcher/cpu': { title: 'Den-Watcher', label: 'CPU', unit: 'percent' },
+          'extra:den-watcher/memory': { title: 'Den-Watcher', label: 'Memory', unit: 'bytes' },
+        },
+      });
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const cards = [...element.querySelectorAll('.card')].filter((card) => card.querySelector('h3'));
+    const charts = (title: string) =>
+      cards
+        .find((card) => shown(card.querySelector('h3')!).trim() === title)!
+        .querySelectorAll('app-line-chart').length;
+    expect(charts('Disks')).toBe(1);
+    expect(charts('Disk activity')).toBe(1);
+    expect(charts('Den-Watcher')).toBe(1);
+    expect(charts('Den-Watcher · Memory')).toBe(1);
+    expect(cards.every((card) => card.querySelectorAll('app-line-chart').length <= 1)).toBe(true);
+    expect(element.querySelector('app-category-charts .card')).toBeNull();
+  });
+
   it('shows the charts up to the last reading of a device that has not answered', () => {
     respond(null);
     http
@@ -1330,5 +1381,51 @@ describe('Dashboard', () => {
       (h) => shown(h).trim(),
     );
     expect(titles).not.toContain('Availability');
+  });
+});
+
+describe('extraCards', () => {
+  const item = (id: string, unit: 'percent' | 'bytes' | 'text', history = true) => ({
+    id,
+    label: `sda: ${id}`,
+    section: 'sda',
+    unit,
+    value: 1,
+    history,
+  });
+
+  it('keeps a group that charts one unit in one card', () => {
+    const group = { id: 'power', title: 'Power', items: [item('cpu', 'percent')] };
+    expect(extraCards(group)).toEqual([
+      { id: 'extra:power', kind: 'extra', category: 'temperature', group, unit: 'percent' },
+    ]);
+  });
+
+  it('splits a group into a card for each unit it charts, the first one keeping the rest', () => {
+    const group = {
+      id: 'smart',
+      title: 'Disk health',
+      items: [
+        item('wear', 'percent'),
+        item('model', 'text'),
+        item('written', 'bytes'),
+        item('size', 'bytes', false),
+      ],
+    };
+    const cards = extraCards(group);
+    expect(cards.map((c) => c.id)).toEqual(['extra:smart', 'extra:smart@bytes']);
+    expect(cards.map((c) => (c.kind === 'extra' ? c.group.items.map((i) => i.id) : []))).toEqual([
+      ['wear', 'model', 'size'],
+      ['written'],
+    ]);
+  });
+
+  it('keeps a group for experts in one card, as it shows in the details', () => {
+    const group = {
+      id: 'kernel',
+      title: 'Kernel',
+      items: [item('forks', 'percent'), item('memory', 'bytes')],
+    };
+    expect(extraCards(group).map((c) => c.id)).toEqual(['extra:kernel']);
   });
 });

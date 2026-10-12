@@ -28,7 +28,7 @@ import { I18n } from '../i18n/i18n';
 import { EvenColumns } from '../layout/even-columns';
 import { ScrollRows } from '../layout/scroll-rows';
 import { BytesPipe } from '../metrics/bytes.pipe';
-import { Extra, ExtraItem, formatExtra, localized } from '../metrics/extras';
+import { Extra, ExtraItem, ExtraUnit, formatExtra, localized } from '../metrics/extras';
 import {
   MetricsService,
   NetworkInterface,
@@ -54,6 +54,7 @@ import {
   Section,
   extraCategory,
   isDetailGroup,
+  unitCard,
   valueCard,
 } from './categories';
 import { CATEGORY_TITLES, CategoryFold } from './category-fold';
@@ -126,6 +127,55 @@ export function extraSections(group: Extra): ExtraSection[] {
 }
 
 /**
+ * The cards of a group of extras: one card, or one for each unit of the values it charts where they
+ * have several, as values of different units share no chart and a card draws one chart at most. The
+ * first card keeps the group's id and the values it does not chart. The groups for experts stay one,
+ * as they show in the details.
+ */
+export function extraCards(group: Extra): Card[] {
+  const id = 'extra:' + group.id;
+  const category = extraCategory(group.id);
+  const charted = (item: ExtraItem) => !!item.history && item.unit !== 'text';
+  const units = [...new Set(group.items.filter(charted).map((item) => item.unit))];
+  if (units.length <= 1 || isDetailGroup(group.id)) {
+    return [{ id, kind: 'extra', category, group, unit: units[0] }];
+  }
+  return units.map((unit, i) => ({
+    id: i === 0 ? id : unitCard(group.id, unit),
+    kind: 'extra',
+    category,
+    group: {
+      ...group,
+      items: group.items.filter((item) => (charted(item) ? item.unit === unit : i === 0)),
+    },
+    unit,
+    split: i > 0,
+  }));
+}
+
+/** The id of the chart a card draws: its own, or the one of the unit an extras card charts. */
+function chartId(card: Card): string {
+  return card.kind === 'extra' && card.unit ? unitCard(card.group.id, card.unit) : card.id;
+}
+
+/**
+ * Whether a card draws the chart of id `chart`, or holds its values in the details. The card of a
+ * group of extras that tells of no history, or of one for experts, takes any chart of the group.
+ */
+function ownsChart(card: Card, chart: string): boolean {
+  return card.kind === 'extra' && (!card.unit || isDetailGroup(card.group.id))
+    ? chart.startsWith(`extra:${card.group.id}@`)
+    : chart === chartId(card);
+}
+
+/** Whether any disk tells how fast it is read and written. */
+function hasDiskActivity(s: Snapshot): boolean {
+  return s.disks.some(
+    (d) => d.readBytesPerSecond !== undefined && d.writeBytesPerSecond !== undefined,
+  );
+}
+
+/**
  * A card of the dashboard: one of the fixed ones, the card of a group of extras, or a value of the
  * details made into a card of its own.
  */
@@ -136,6 +186,7 @@ export type Card =
         | 'cpu'
         | 'memory'
         | 'disks'
+        | 'diskActivity'
         | 'network'
         | 'gpus'
         | 'temperatures'
@@ -146,7 +197,16 @@ export type Card =
         | 'uptime';
       category: Category;
     }
-  | { id: string; kind: 'extra'; category: Category; group: Extra }
+  | {
+      id: string;
+      kind: 'extra';
+      category: Category;
+      group: Extra;
+      /** The unit of the values the card charts; none when it charts none. */
+      unit?: ExtraUnit;
+      /** Whether the card holds the values of one unit split off the group's first card. */
+      split?: boolean;
+    }
   | { id: string; kind: 'value'; category: Category; group: Extra; item: ExtraItem };
 
 /** A section of the dashboard as the page draws it: the pinned cards, or a category. */
@@ -168,6 +228,7 @@ const CARD_TITLES = {
   cpu: 'dashboard.cpu',
   memory: 'dashboard.memory',
   disks: 'dashboard.disks',
+  diskActivity: 'dashboard.diskActivity',
   network: 'dashboard.network',
   gpus: 'dashboard.gpu',
   temperatures: 'dashboard.temperature',
@@ -177,6 +238,18 @@ const CARD_TITLES = {
   time: 'dashboard.time',
   uptime: 'dashboard.uptime',
 } as const satisfies Record<Exclude<Card['kind'], 'extra' | 'value'>, string>;
+
+/** The name of the kind of value of each unit, for the card of the values of one unit. */
+const UNIT_PARTS = {
+  percent: 'dashboard.unit.percent',
+  celsius: 'dashboard.unit.celsius',
+  bytes: 'dashboard.unit.bytes',
+  bytesPerSecond: 'dashboard.unit.bytesPerSecond',
+  watts: 'dashboard.unit.watts',
+  milliseconds: 'dashboard.unit.milliseconds',
+  perSecond: 'dashboard.unit.perSecond',
+  number: 'dashboard.unit.number',
+} as const satisfies Record<Exclude<ExtraUnit, 'text'>, string>;
 
 /** What the alerts of each kind are shown on, besides the strip above the cards. */
 const ALERT_CARDS: Partial<Record<AlertKind, string>> = {
@@ -254,8 +327,8 @@ export class Dashboard {
     this.refused() ? null : this.availability(),
   );
   private readonly deviceCharts = inject(DeviceCharts);
-  /** The charts drawn in each card, by the card's id. */
-  protected readonly cardCharts = this.deviceCharts.byCard;
+  /** The charts drawn in the cards, by the id of the chart. */
+  private readonly cardCharts = this.deviceCharts.byCard;
   private readonly history = inject(HistoryStore);
   /** The chart of each value of the details made into a card, by the card's id. */
   protected readonly valueCharts = computed(() => {
@@ -329,7 +402,7 @@ export class Dashboard {
           return items.length > 0 ? [{ ...group, items }] : [];
         });
         // The details draw their values' history in their rows, and hidden cards draw none.
-        const ids = new Set(all.map((card) => card.id));
+        const owned = (chart: Chart) => all.some((card) => ownsChart(card, chart.card));
         return {
           category: section,
           cards: arranged.filter((card) => !hidden.has(card.id) && !pinnedIds.has(card.id)),
@@ -338,7 +411,7 @@ export class Dashboard {
             .map((card): HiddenCard => ({ id: card.id, title: this.cardTitle(card) })),
           details,
           values: details.reduce((sum, group) => sum + group.items.length, 0),
-          charts: drawn.filter((chart) => !ids.has(chart.card)),
+          charts: drawn.filter((chart) => !owned(chart)),
         };
       },
     );
@@ -418,18 +491,14 @@ export class Dashboard {
       ...fixed('cpu', 'system', !readsLess || s.cpu.cores > 0),
       ...fixed('memory', 'system', !readsLess || s.memory.totalBytes > 0),
       ...fixed('disks', 'storage', !readsLess || s.disks.length > 0),
+      ...fixed('diskActivity', 'storage', hasDiskActivity(s)),
       ...fixed('network', 'network', !this.isChecked() || s.network.length > 0),
       ...fixed('gpus', 'system', s.gpus?.length),
       ...fixed('temperatures', 'temperature', !readsLess || s.temperatures.length > 0),
       ...fixed('fans', 'temperature', s.fans?.length),
       ...fixed('battery', 'temperature', s.battery),
       ...fixed('throttling', 'temperature', s.throttling),
-      ...(s.extras ?? []).map((group): Card => ({
-        id: 'extra:' + group.id,
-        kind: 'extra',
-        category: extraCategory(group.id),
-        group,
-      })),
+      ...(s.extras ?? []).flatMap(extraCards),
       ...this.madeCards(s.extras ?? []),
       ...fixed('time', 'device', s.timeZone),
       ...fixed('uptime', 'device', this.showsUptime(s) || this.shownAvailability()),
@@ -454,8 +523,10 @@ export class Dashboard {
   /** The title of a card, as its heading shows it. */
   protected cardTitle(card: Card): string {
     switch (card.kind) {
-      case 'extra':
-        return this.extraText(card.group.title, card.group.titles);
+      case 'extra': {
+        const title = this.extraText(card.group.title, card.group.titles);
+        return card.split ? `${title} · ${this.unitPart(card.group, card.unit)}` : title;
+      }
       case 'value':
         return `${this.extraText(card.group.title, card.group.titles)} · ${this.extraText(card.item.label, card.item.labels)}`;
       default:
@@ -494,10 +565,26 @@ export class Dashboard {
     }
   }
 
-  /** Whether a card draws charts, which a wider card shows larger. */
-  protected hasCharts(card: Card): boolean {
+  /** The one chart a card draws, if any. */
+  protected chartOf(card: Card): Chart | undefined {
     const charts = card.kind === 'value' ? this.valueCharts() : this.cardCharts();
-    return (charts.get(card.id)?.length ?? 0) > 0;
+    return [...charts.values()].flat().find((chart) => ownsChart(card, chart.card));
+  }
+
+  /** Whether a card draws a chart, which a wider card shows larger. */
+  protected hasCharts(card: Card): boolean {
+    return !!this.chartOf(card);
+  }
+
+  /**
+   * What the card of one unit of a group of extras holds, after the group's title: the label its
+   * values share, such as "Temperature" for that of each disk, or else the kind of value.
+   */
+  private unitPart(group: Extra, unit: ExtraUnit | undefined): string {
+    const labels = new Set(group.items.map((item) => this.extraLabel(item)));
+    return labels.size === 1 || !unit || unit === 'text'
+      ? [...labels][0]
+      : this.i18n.t(UNIT_PARTS[unit]);
   }
 
   /** Pins a card above the categories, or unpins it; the focus stays on the button in its new place. */

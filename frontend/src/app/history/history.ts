@@ -4,7 +4,7 @@ import { DeviceService } from '../devices/devices';
 import { I18n, LanguageCode, TextParams } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
 import { ExtraInfo, localized } from '../metrics/extras';
-import { Point, Series } from '../metrics/metrics';
+import { History, Point, Series } from '../metrics/metrics';
 import { Category, byCategory, extraCategory, valueCard } from '../dashboard/categories';
 import { HistoryStore } from './history-store';
 import { ChartLine, ChartUnit } from './line-chart';
@@ -31,8 +31,29 @@ export class DeviceCharts {
   private readonly store = inject(HistoryStore);
   private readonly i18n = inject(I18n);
 
-  private readonly charts = computed(() => {
-    const history = this.store.history();
+  private readonly charts = computed(() => this.chartsOf(this.store.history()));
+
+  /** The charts of each card that has any, by the card's id. */
+  readonly byCard = computed(() => {
+    const charts = new Map<string, Chart[]>();
+    for (const chart of this.charts()) {
+      charts.set(chart.card, [...(charts.get(chart.card) ?? []), chart]);
+    }
+    return charts;
+  });
+
+  /** The charts of each category that has any, in the order the dashboard shows its cards. */
+  readonly byCategory = computed(() => groupByCategory(this.charts()));
+
+  /**
+   * The charts of another history of the picked device, such as a zoomed-in part of the range,
+   * by category as `byCategory` has them.
+   */
+  categoriesOf(history: History | null): Map<Category, Chart[]> {
+    return groupByCategory(this.chartsOf(history));
+  }
+
+  private chartsOf(history: History | null): Chart[] {
     if (!history) {
       return [];
     }
@@ -45,24 +66,11 @@ export class DeviceCharts {
       ),
       ...extraChartsOf(history.series, history.extras ?? {}, this.i18n.language()),
     ];
-  });
+  }
+}
 
-  /** The charts of each card that has any, by the card's id. */
-  readonly byCard = computed(() => {
-    const charts = new Map<string, Chart[]>();
-    for (const chart of this.charts()) {
-      charts.set(chart.card, [...(charts.get(chart.card) ?? []), chart]);
-    }
-    return charts;
-  });
-
-  /** The charts of each category that has any, in the order the dashboard shows its cards. */
-  readonly byCategory = computed(
-    () =>
-      new Map(
-        byCategory(this.charts(), (chart) => chart.category).map((g) => [g.category, g.items]),
-      ),
-  );
+function groupByCategory(charts: Chart[]): Map<Category, Chart[]> {
+  return new Map(byCategory(charts, (chart) => chart.category).map((g) => [g.category, g.items]));
 }
 
 /**

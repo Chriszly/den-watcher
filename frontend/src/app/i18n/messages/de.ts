@@ -27,6 +27,15 @@ export const de: Messages = {
   'dashboard.memoryUsage': 'Arbeitsspeicher-Auslastung',
   'dashboard.usedOfTotal': '{used} von {total}',
   'dashboard.disks': 'Datenträger',
+  'dashboard.diskActivity': 'Datenträgeraktivität',
+  'dashboard.unit.percent': 'Prozent',
+  'dashboard.unit.celsius': 'Temperatur',
+  'dashboard.unit.bytes': 'Größe',
+  'dashboard.unit.bytesPerSecond': 'Geschwindigkeit',
+  'dashboard.unit.watts': 'Leistung',
+  'dashboard.unit.milliseconds': 'Zeit',
+  'dashboard.unit.perSecond': 'Pro Sekunde',
+  'dashboard.unit.number': 'Anzahl',
   'dashboard.diskUsage': 'Belegung von {path}',
   'dashboard.noDisk': 'Kein Datenträger eingerichtet',
   'dashboard.network': 'Netzwerk',
@@ -256,8 +265,9 @@ export const de: Messages = {
     'Wie ausgelastet der Prozessor ist: insgesamt und je Kern, mit Taktrate, durchschnittlicher Last und den Prozessen.',
   'dashboard.info.memory':
     'Wie viel Arbeitsspeicher (RAM) belegt und wie viel noch verfügbar ist, und der Auslagerungsspeicher auf dem Datenträger.',
-  'dashboard.info.disks':
-    'Wie voll jedes Laufwerk oder jede Partition ist und wie schnell gerade gelesen und geschrieben wird.',
+  'dashboard.info.disks': 'Wie voll jedes Laufwerk oder jede Partition ist.',
+  'dashboard.info.diskActivity':
+    'Wie schnell jedes Laufwerk oder jede Partition gerade gelesen und geschrieben wird und, wo das System es angibt, wie oft und wie lange es beschäftigt ist.',
   'dashboard.info.network':
     'Wie schnell jede Netzwerkschnittstelle gerade empfängt und sendet, die meistgenutzte zuerst, mit ihren Adressen und ihrer Verbindungsgeschwindigkeit.',
   'dashboard.info.gpu':

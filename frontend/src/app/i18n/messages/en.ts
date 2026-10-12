@@ -28,6 +28,15 @@ export const en = {
   'dashboard.memoryUsage': 'Memory usage',
   'dashboard.usedOfTotal': '{used} of {total}',
   'dashboard.disks': 'Disks',
+  'dashboard.diskActivity': 'Disk activity',
+  'dashboard.unit.percent': 'Percent',
+  'dashboard.unit.celsius': 'Temperature',
+  'dashboard.unit.bytes': 'Size',
+  'dashboard.unit.bytesPerSecond': 'Speed',
+  'dashboard.unit.watts': 'Power',
+  'dashboard.unit.milliseconds': 'Time',
+  'dashboard.unit.perSecond': 'Per second',
+  'dashboard.unit.number': 'Counts',
   'dashboard.diskUsage': 'Disk usage of {path}',
   'dashboard.noDisk': 'No disk configured',
   'dashboard.network': 'Network',
@@ -255,8 +264,9 @@ export const en = {
     'How busy the processor is: in total and per core, with its clock speed, the load average and the processes.',
   'dashboard.info.memory':
     'How much of the working memory (RAM) is in use and how much is still available, and the swap space on disk.',
-  'dashboard.info.disks':
-    'How full each drive or partition is, and how fast it is read and written right now.',
+  'dashboard.info.disks': 'How full each drive or partition is.',
+  'dashboard.info.diskActivity':
+    'How fast each drive or partition is read and written right now, and, where the system tells, how often and how long it is busy.',
   'dashboard.info.network':
     'How fast each network interface receives and sends right now, busiest first, with its addresses and link speed.',
   'dashboard.info.gpu': 'How busy each graphics card is, with its memory and temperature.',

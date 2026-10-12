@@ -39,8 +39,8 @@ describe('CardCharts', () => {
     vi.useRealTimers();
   });
 
-  function show(charts: Chart[]): HTMLElement {
-    fixture.componentRef.setInput('charts', charts);
+  function show(chart: Chart | undefined): HTMLElement {
+    fixture.componentRef.setInput('chart', chart);
     fixture.detectChanges();
     vi.advanceTimersByTime(0);
     http.expectOne((r) => r.url === '/api/history').flush(HISTORY);
@@ -48,35 +48,19 @@ describe('CardCharts', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('draws a lone chart without a title, as the card names it', () => {
-    const element = show([DISKS]);
+  it('draws the chart without a title, as the card names it', () => {
+    const element = show(DISKS);
     expect(element.querySelectorAll('app-line-chart').length).toBe(1);
     expect(element.querySelector('h4')).toBeNull();
   });
 
-  it('names each chart when the card has several', () => {
-    const element = show([DISKS, { ...DISKS, title: 'Disk activity' }]);
-    expect([...element.querySelectorAll('h4')].map((h) => h.textContent!.trim())).toEqual([
-      'Disks',
-      'Disk activity',
-    ]);
-  });
-
-  it('names a chart by its part of the card where it has one', () => {
-    const element = show([
-      DISKS,
-      { ...DISKS, title: 'Kernel: TCP · Retransmissions', part: 'Retransmissions' },
-    ]);
-    expect(element.querySelectorAll('h4')[1].textContent!.trim()).toBe('Retransmissions');
-  });
-
   it('has no width button outside a grid of cards', () => {
-    const element = show([DISKS]);
+    const element = show(DISKS);
     expect(element.querySelector('button.widen')).toBeNull();
   });
 
-  it('shows nothing, not even the button, without charts', () => {
-    const element = show([]);
+  it('shows nothing, not even the button, without a chart', () => {
+    const element = show(undefined);
     expect(element.querySelector('app-line-chart')).toBeNull();
     expect(element.querySelector('button')).toBeNull();
   });

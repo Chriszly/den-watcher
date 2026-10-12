@@ -27,6 +27,15 @@ export const es: Messages = {
   'dashboard.memoryUsage': 'Uso de memoria',
   'dashboard.usedOfTotal': '{used} de {total}',
   'dashboard.disks': 'Discos',
+  'dashboard.diskActivity': 'Actividad de discos',
+  'dashboard.unit.percent': 'Porcentajes',
+  'dashboard.unit.celsius': 'Temperatura',
+  'dashboard.unit.bytes': 'Tamaño',
+  'dashboard.unit.bytesPerSecond': 'Velocidad',
+  'dashboard.unit.watts': 'Potencia',
+  'dashboard.unit.milliseconds': 'Tiempo',
+  'dashboard.unit.perSecond': 'Por segundo',
+  'dashboard.unit.number': 'Cantidades',
   'dashboard.diskUsage': 'Uso de {path}',
   'dashboard.noDisk': 'Ningún disco configurado',
   'dashboard.network': 'Red',
@@ -256,8 +265,9 @@ export const es: Messages = {
     'Lo ocupado que está el procesador, en total y por núcleo, con su frecuencia, la carga media y los procesos.',
   'dashboard.info.memory':
     'Cuánta memoria (RAM) está en uso y cuánta queda disponible, y el espacio de intercambio en el disco.',
-  'dashboard.info.disks':
-    'Lo lleno que está cada disco o partición, y a qué velocidad se lee y escribe ahora mismo.',
+  'dashboard.info.disks': 'Lo lleno que está cada disco o partición.',
+  'dashboard.info.diskActivity':
+    'A qué velocidad se lee y escribe ahora mismo cada disco o partición y, donde el sistema lo indica, con qué frecuencia y durante cuánto tiempo está ocupado.',
   'dashboard.info.network':
     'A qué velocidad recibe y envía ahora cada interfaz de red, la más usada primero, con sus direcciones y la velocidad del enlace.',
   'dashboard.info.gpu':

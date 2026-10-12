@@ -5,17 +5,15 @@ import { I18n, LanguageCode, TextParams } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
 import { ExtraInfo, localized } from '../metrics/extras';
 import { History, Point, Series } from '../metrics/metrics';
-import { Category, byCategory, extraCategory, valueCard } from '../dashboard/categories';
+import { Category, byCategory, extraCategory, unitCard, valueCard } from '../dashboard/categories';
 import { HistoryStore } from './history-store';
 import { ChartLine, ChartUnit } from './line-chart';
 
 export interface Chart {
   title: string;
   category: Category;
-  /** The id of the dashboard card the chart is drawn in, such as "cpu" or "extra:pressure". */
+  /** The id of the chart, which its dashboard card draws, such as "cpu" or "extra:pressure@percent". */
   card: string;
-  /** The chart's name within its card, where it is shorter than the title; the title otherwise. */
-  part?: string;
   unit: ChartUnit;
   max?: number;
   lines: ChartLine[];
@@ -197,7 +195,7 @@ export function chartsOf(
     {
       title: t('history.diskActivity'),
       category: 'storage',
-      card: 'disks',
+      card: 'diskActivity',
       unit: 'bytesPerSecond',
       lines: [
         ...named('disk.read').map((line) => ({
@@ -215,9 +213,9 @@ export function chartsOf(
 }
 
 /**
- * Draws the extras: one chart per group and unit, titled and labelled as the
- * device describes them, in the page's language. Series without a description
- * are left out.
+ * Draws the extras: one chart per group and unit, for the card of that unit,
+ * titled and labelled as the device describes them, in the page's language.
+ * Series without a description are left out.
  */
 export function extraChartsOf(
   series: Series[],
@@ -237,7 +235,7 @@ export function extraChartsOf(
       chart = {
         title: localized(info.title, info.titles, language),
         category: extraCategory(group.slice('extra:'.length)),
-        card: group,
+        card: unitCard(group.slice('extra:'.length), info.unit),
         unit: info.unit,
         max: info.unit === 'percent' ? 100 : undefined,
         lines: [],
@@ -246,15 +244,10 @@ export function extraChartsOf(
     }
     chart.lines.push({ label: localized(info.label, info.labels, language), points: s.points });
   }
-  // A chart of one line has no legend, so its title names the value; in its card, the card's title
-  // names the group.
+  // A chart of one line has no legend, so its title names the value.
   return [...charts.values()].map((chart) =>
     chart.lines.length === 1
-      ? {
-          ...chart,
-          title: `${chart.title} · ${chart.lines[0].label}`,
-          part: chart.lines[0].label,
-        }
+      ? { ...chart, title: `${chart.title} · ${chart.lines[0].label}` }
       : chart,
   );
 }

@@ -25,6 +25,15 @@ export const fr: Messages = {
   'dashboard.memoryUsage': 'Utilisation de la mémoire',
   'dashboard.usedOfTotal': '{used} sur {total}',
   'dashboard.disks': 'Disques',
+  'dashboard.diskActivity': 'Activité des disques',
+  'dashboard.unit.percent': 'Pourcentages',
+  'dashboard.unit.celsius': 'Température',
+  'dashboard.unit.bytes': 'Taille',
+  'dashboard.unit.bytesPerSecond': 'Vitesse',
+  'dashboard.unit.watts': 'Puissance',
+  'dashboard.unit.milliseconds': 'Durée',
+  'dashboard.unit.perSecond': 'Par seconde',
+  'dashboard.unit.number': 'Nombres',
   'dashboard.diskUsage': 'Utilisation de {path}',
   'dashboard.noDisk': 'Aucun disque configuré',
   'dashboard.network': 'Réseau',
@@ -254,8 +263,9 @@ export const fr: Messages = {
     "L'occupation du processeur, au total et par cœur, avec sa fréquence, la charge moyenne et les processus.",
   'dashboard.info.memory':
     "La part de la mémoire vive (RAM) utilisée et celle encore disponible, ainsi que l'espace d'échange sur le disque.",
-  'dashboard.info.disks':
-    "Le remplissage de chaque disque ou partition, et la vitesse de lecture et d'écriture actuelle.",
+  'dashboard.info.disks': 'Le remplissage de chaque disque ou partition.',
+  'dashboard.info.diskActivity':
+    "La vitesse de lecture et d'écriture actuelle de chaque disque ou partition et, quand le système l'indique, la fréquence et la durée de son activité.",
   'dashboard.info.network':
     "La vitesse de réception et d'envoi actuelle de chaque interface réseau, la plus utilisée en premier, avec ses adresses et son débit de liaison.",
   'dashboard.info.gpu':

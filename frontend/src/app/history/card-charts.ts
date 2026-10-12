@@ -8,7 +8,7 @@ import { Chart } from './history';
 import { LineChart } from './line-chart';
 
 /**
- * The charts of one dashboard card, over the range picked at the top of the page, at the bottom of
+ * The chart of one dashboard card, over the range picked at the top of the page, at the bottom of
  * the card, taller as the card is wider. Outside the arrange mode, a button in the card's corner
  * steps the card to 2 and 4 cards wide, as far as they fit, and back, until the page loads again.
  */
@@ -17,11 +17,8 @@ import { LineChart } from './line-chart';
   imports: [LineChart, WidthIcon],
   template: `
     @if (store.history(); as h) {
-      @for (chart of charts(); track $index) {
+      @if (chart(); as chart) {
         <div class="chart">
-          @if (charts().length > 1) {
-            <h4>{{ chart.part ?? chart.title }}</h4>
-          }
           <app-line-chart
             [chartTitle]="chart.title"
             [lines]="chart.lines"
@@ -34,7 +31,7 @@ import { LineChart } from './line-chart';
         </div>
       }
       @if (slot; as slot) {
-        @if (charts().length > 0 && slot.widens() && !slot.arranging()) {
+        @if (chart() && slot.widens() && !slot.arranging()) {
           @let label = i18n.t(slot.next() > 1 ? 'history.wider' : 'history.narrower');
           <button
             type="button"
@@ -54,12 +51,13 @@ import { LineChart } from './line-chart';
   host: { '[attr.data-width]': 'width()' },
 })
 export class CardCharts {
-  readonly charts = input.required<Chart[]>();
+  /** The card's one chart, which merges the values it can or leaves the others to cards of their own. */
+  readonly chart = input<Chart>();
 
   protected readonly store = inject(HistoryStore);
   protected readonly i18n = inject(I18n);
   /** The card's place in its grid, which sets how wide it is; none outside a grid of cards. */
   protected readonly slot = inject(CardSlot, { optional: true });
-  /** How many cards wide the card shows, which sets how tall its charts are. */
+  /** How many cards wide the card shows, which sets how tall its chart is. */
   protected readonly width = computed(() => this.slot?.shown() ?? 1);
 }

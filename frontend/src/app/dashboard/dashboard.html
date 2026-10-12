@@ -263,7 +263,7 @@
                               }
                             </p>
                           }
-                          <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
+                          <app-card-charts [chart]="chartOf(card)" />
                         </div>
                       }
                       @case ('memory') {
@@ -329,7 +329,7 @@
                               }}
                             </p>
                           }
-                          <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
+                          <app-card-charts [chart]="chartOf(card)" />
                         </div>
                       }
                       @case ('disks') {
@@ -369,10 +369,30 @@
                                     })
                                   }}
                                 </p>
-                                @if (
-                                  d.readBytesPerSecond !== undefined &&
-                                  d.writeBytesPerSecond !== undefined
-                                ) {
+                              </div>
+                            } @empty {
+                              <p class="detail">{{ i18n.t('dashboard.noDisk') }}</p>
+                            }
+                          </app-scroll-rows>
+                          <app-card-charts [chart]="chartOf(card)" />
+                        </div>
+                      }
+                      @case ('diskActivity') {
+                        <div class="card" [appFitLabels]="s.disks">
+                          <h3>
+                            {{ cardTitle(card) }}
+                            <app-card-info [text]="i18n.t('dashboard.info.diskActivity')" />
+                          </h3>
+                          <app-scroll-rows>
+                            @for (d of s.disks; track d.path) {
+                              @if (
+                                d.readBytesPerSecond !== undefined &&
+                                d.writeBytesPerSecond !== undefined
+                              ) {
+                                <div class="disk">
+                                  <p class="sensor">
+                                    <span class="label" [title]="d.path">{{ d.path }}</span>
+                                  </p>
                                   <p class="detail speeds">
                                     <span>{{
                                       i18n.t('dashboard.diskRead', {
@@ -385,34 +405,34 @@
                                       })
                                     }}</span>
                                   </p>
-                                }
-                                @if (d.operationsPerSecond !== undefined) {
-                                  <p class="detail speeds">
-                                    <span>{{
-                                      i18n.t('dashboard.diskOperations', {
-                                        count: decimal(d.operationsPerSecond, '1.0-0'),
-                                      })
-                                    }}</span>
-                                    @if (d.busyPercent !== undefined && d.latencyMs !== undefined) {
+                                  @if (d.operationsPerSecond !== undefined) {
+                                    <p class="detail speeds">
                                       <span>{{
-                                        i18n.t('dashboard.diskBusy', {
-                                          percent: decimal(d.busyPercent, '1.0-0'),
+                                        i18n.t('dashboard.diskOperations', {
+                                          count: decimal(d.operationsPerSecond, '1.0-0'),
                                         })
                                       }}</span>
-                                      <span [title]="i18n.t('dashboard.diskLatencyHint')">{{
-                                        i18n.t('dashboard.diskLatency', {
-                                          ms: decimal(d.latencyMs, '1.1-1'),
-                                        })
-                                      }}</span>
-                                    }
-                                  </p>
-                                }
-                              </div>
-                            } @empty {
-                              <p class="detail">{{ i18n.t('dashboard.noDisk') }}</p>
+                                      @if (
+                                        d.busyPercent !== undefined && d.latencyMs !== undefined
+                                      ) {
+                                        <span>{{
+                                          i18n.t('dashboard.diskBusy', {
+                                            percent: decimal(d.busyPercent, '1.0-0'),
+                                          })
+                                        }}</span>
+                                        <span [title]="i18n.t('dashboard.diskLatencyHint')">{{
+                                          i18n.t('dashboard.diskLatency', {
+                                            ms: decimal(d.latencyMs, '1.1-1'),
+                                          })
+                                        }}</span>
+                                      }
+                                    </p>
+                                  }
+                                </div>
+                              }
                             }
                           </app-scroll-rows>
-                          <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
+                          <app-card-charts [chart]="chartOf(card)" />
                         </div>
                       }
                       @case ('network') {
@@ -463,7 +483,7 @@
                               }}
                             </p>
                           }
-                          <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
+                          <app-card-charts [chart]="chartOf(card)" />
                         </div>
                       }
                       @case ('gpus') {
@@ -507,7 +527,7 @@
                               </div>
                             }
                           </app-scroll-rows>
-                          <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
+                          <app-card-charts [chart]="chartOf(card)" />
                         </div>
                       }
                       @case ('temperatures') {
@@ -536,7 +556,7 @@
                               <p class="detail">{{ i18n.t('dashboard.noTemperature') }}</p>
                             }
                           </app-scroll-rows>
-                          <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
+                          <app-card-charts [chart]="chartOf(card)" />
                         </div>
                       }
                       @case ('fans') {
@@ -555,7 +575,7 @@
                               </p>
                             }
                           </app-scroll-rows>
-                          <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
+                          <app-card-charts [chart]="chartOf(card)" />
                         </div>
                       }
                       @case ('battery') {
@@ -601,7 +621,7 @@
                                 }}
                               </p>
                             }
-                            <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
+                            <app-card-charts [chart]="chartOf(card)" />
                           </div>
                         }
                       }
@@ -645,7 +665,7 @@
                               <p class="value">{{ i18n.t('dashboard.powerOk') }}</p>
                               <p class="detail">{{ i18n.t('dashboard.powerNoProblems') }}</p>
                             }
-                            <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
+                            <app-card-charts [chart]="chartOf(card)" />
                           </div>
                         }
                       }
@@ -662,7 +682,8 @@
                             @if (groupAlert; as level) {
                               <app-card-alert [level]="level" [text]="cardAlertText('smart')" />
                             }
-                            @if (group.description) {
+                            <!-- The cards split off a group take their title from it, and its description stays with its first card. -->
+                            @if (group.description && !card.split) {
                               <app-card-info
                                 [text]="extraText(group.description, group.descriptions)"
                               />
@@ -691,7 +712,7 @@
                               }
                             }
                           </app-scroll-rows>
-                          <app-card-charts [charts]="cardCharts().get(card.id) ?? []" />
+                          <app-card-charts [chart]="chartOf(card)" />
                         </div>
                       }
                       @case ('value') {
@@ -700,7 +721,7 @@
                           <p class="value" [title]="extraValue(card.item)">
                             {{ extraValue(card.item) }}
                           </p>
-                          <app-card-charts [charts]="valueCharts().get(card.id) ?? []" />
+                          <app-card-charts [chart]="chartOf(card)" />
                         </div>
                       }
                       @case ('time') {

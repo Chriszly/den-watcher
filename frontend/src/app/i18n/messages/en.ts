@@ -125,6 +125,7 @@ export const en = {
   'devicesDialog.title': 'Devices',
   'devicesDialog.intro':
     'This device can show the usage of other devices on the local network that run Den-Watcher.',
+  'devicesDialog.listTitle': 'Added devices',
   'devicesDialog.remove': 'Remove',
   'devicesDialog.fixed': 'Set in .env',
   'devicesDialog.router': 'Router',

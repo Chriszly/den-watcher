@@ -322,4 +322,56 @@ describe('DevicesDialog', () => {
 
     http.expectNone('/api/devices/pi/kind');
   });
+
+  /** Makes the dialog's content as tall as the dialog lets it be, or taller, and renders again. */
+  async function overflow(scrolls: boolean): Promise<void> {
+    const content = element().querySelector('mat-dialog-content')!;
+    Object.defineProperty(content, 'clientHeight', { configurable: true, value: 300 });
+    Object.defineProperty(content, 'scrollHeight', {
+      configurable: true,
+      value: scrolls ? 500 : 300,
+    });
+    const devices = TestBed.inject(DeviceService).devices;
+    devices.set([...devices()]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  function list(): HTMLUListElement {
+    return element().querySelector('ul')!;
+  }
+
+  it('shows the list while the dialog does not scroll', async () => {
+    await overflow(false);
+
+    expect(button('Added devices 2').getAttribute('aria-expanded')).toBe('true');
+    expect(list().hidden).toBe(false);
+  });
+
+  it('folds the list away when the dialog would scroll', async () => {
+    await overflow(true);
+
+    expect(button('Added devices 2').getAttribute('aria-expanded')).toBe('false');
+    expect(list().hidden).toBe(true);
+  });
+
+  it('keeps a list unfolded by hand open', async () => {
+    await overflow(true);
+    button('Added devices 2').click();
+    fixture.detectChanges();
+    await overflow(true);
+
+    expect(button('Added devices 2').getAttribute('aria-expanded')).toBe('true');
+    expect(list().hidden).toBe(false);
+  });
+
+  it('has no fold without other devices', async () => {
+    TestBed.inject(DeviceService).devices.set([{ id: 'local', name: '' }]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(element().querySelector('.fold')).toBeNull();
+    expect(list().textContent).toContain('No other devices yet.');
+  });
 });

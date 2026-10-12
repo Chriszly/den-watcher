@@ -3,7 +3,22 @@
 <mat-dialog-content>
   <p class="hint">{{ i18n.t('devicesDialog.intro') }}</p>
 
-  <ul>
+  @if (others().length) {
+    <h3>
+      <button
+        type="button"
+        class="fold"
+        aria-controls="devices-dialog-list"
+        [attr.aria-expanded]="listOpen()"
+        (click)="toggleList()"
+      >
+        <span class="chevron" aria-hidden="true"></span>{{ i18n.t('devicesDialog.listTitle') }}
+        <span class="count">{{ others().length }}</span>
+      </button>
+    </h3>
+  }
+
+  <ul id="devices-dialog-list" [hidden]="!listOpen()">
     @for (device of others(); track device.id) {
       <li>
         <span class="who">

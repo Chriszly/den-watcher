@@ -123,6 +123,7 @@ export const es: Messages = {
   'devicesDialog.title': 'Dispositivos',
   'devicesDialog.intro':
     'Este dispositivo puede mostrar el uso de otros dispositivos de la red local que ejecutan Den-Watcher.',
+  'devicesDialog.listTitle': 'Dispositivos añadidos',
   'devicesDialog.remove': 'Quitar',
   'devicesDialog.fixed': 'Definido en .env',
   'devicesDialog.router': 'Router',

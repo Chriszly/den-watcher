@@ -123,6 +123,7 @@ export const de: Messages = {
   'devicesDialog.title': 'Geräte',
   'devicesDialog.intro':
     'Dieses Gerät kann die Auslastung anderer Geräte im lokalen Netzwerk anzeigen, auf denen Den-Watcher läuft.',
+  'devicesDialog.listTitle': 'Hinzugefügte Geräte',
   'devicesDialog.remove': 'Entfernen',
   'devicesDialog.fixed': 'In .env festgelegt',
   'devicesDialog.router': 'Router',

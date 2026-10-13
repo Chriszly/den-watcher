@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { ThemeService } from './theme';
+import { THEME_COLORS, ThemeService } from './theme';
 
 /** A stand-in for the browser's prefers-color-scheme query that the test can flip. */
 function fakeSystemScheme(dark: boolean) {
@@ -56,5 +56,24 @@ describe('ThemeService', () => {
 
     expect(theme.scheme()).toBe('light');
     expect(document.documentElement.style.colorScheme).toBe('light');
+  });
+
+  it("colors the phone's bars in the scheme picked on the page", () => {
+    fakeSystemScheme(false);
+    const metas = (['light', 'dark'] as const).map((scheme) => {
+      const meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      meta.media = `(prefers-color-scheme: ${scheme})`;
+      meta.content = THEME_COLORS[scheme];
+      document.head.appendChild(meta);
+      return meta;
+    });
+    try {
+      TestBed.inject(ThemeService).toggle();
+
+      expect(metas.map((m) => m.content)).toEqual([THEME_COLORS.dark, THEME_COLORS.dark]);
+    } finally {
+      metas.forEach((m) => m.remove());
+    }
   });
 });

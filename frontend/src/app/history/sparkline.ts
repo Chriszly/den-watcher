@@ -12,15 +12,21 @@ import { ChartUnit, chartTop, lineSegments } from './line-chart';
 @Component({
   selector: 'app-sparkline',
   imports: [ChartCanvas],
-  template: `<canvas [appChartCanvas]="lines()" aria-hidden="true"></canvas>`,
+  // The area keeps the canvas inside the padding a page may give the sparkline.
+  template: `<div class="area">
+    <canvas [appChartCanvas]="lines()" aria-hidden="true"></canvas>
+  </div>`,
   styles: `
     :host {
-      position: relative;
       display: block;
       height: 3rem;
     }
+
+    .area {
+      position: relative;
+      height: 100%;
+    }
   `,
-  host: { '[class]': "'series-' + series()" },
 })
 export class Sparkline {
   readonly points = input.required<Point[]>();

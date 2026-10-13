@@ -32,51 +32,63 @@ describe('LiveHistory', () => {
 
   it('adds the new steps, replaces the newest one read again and drops the old ones', () => {
     const live = new LiveHistory(MINUTE, 60);
-    const history = live.add(
-      {
-        ...MINUTE,
-        from: 1055,
-        to: 1066,
-        series: [{ metric: 'cpu', points: [{ time: 1055, value: 99 }, ...points(1060, 1065)] }],
-        extras: { 'extra:fan/speed': FAN },
-      },
-      1006,
-      1066,
-    );
+    const history = live.add({
+      ...MINUTE,
+      from: 1055,
+      // Where the backend says the range ends, whatever the clock of the page says.
+      to: 1066,
+      series: [
+        { metric: 'cpu', points: [{ time: 1055, value: 99 }, ...points(1060, 1065)] },
+        { metric: 'extra:fan/speed', points: points(1065) },
+      ],
+      extras: { 'extra:fan/speed': FAN },
+    });
 
     expect(history).toEqual({
       from: 1006,
       to: 1066,
       stepSeconds: 5,
       retentionDays: 30,
-      // The step that started at 1000 is over before 1006; the one at 1005 is not.
+      // The steps that started at 1000 are over before 1006, the one at 1005 is not.
       series: [
         {
           metric: 'cpu',
           points: [...points(1005, 1050), { time: 1055, value: 99 }, ...points(1060, 1065)],
         },
+        { metric: 'extra:fan/speed', points: points(1065) },
       ],
       extras: { 'extra:fan/speed': FAN },
     });
     expect(live.since()).toBe(1065);
   });
 
-  it('holds no more steps than the range has', () => {
-    const live = new LiveHistory({ ...MINUTE, series: [] }, 20);
-    const history = live.add(
+  it('forgets an extra once its steps are older than the range', () => {
+    const live = new LiveHistory(
       {
         ...MINUTE,
-        series: [{ metric: 'cpu', points: points(1000, 1005, 1010, 1015, 1020, 1025, 1030) }],
+        series: [...MINUTE.series, { metric: 'extra:fan/speed', points: points(1000) }],
+        extras: { 'extra:fan/speed': FAN },
       },
-      0,
-      1035,
+      60,
     );
-    expect(history?.series[0].points.map((p) => p.time)).toEqual([1010, 1015, 1020, 1025, 1030]);
+    const history = live.add({ ...MINUTE, from: 1055, to: 1070, series: [] });
+    expect(history?.series.map((s) => s.metric)).toEqual(['cpu']);
+    expect(history?.extras).toBeUndefined();
+  });
+
+  it('keeps only the steps of the range, however many come in', () => {
+    const live = new LiveHistory({ ...MINUTE, series: [] }, 20);
+    const history = live.add({
+      ...MINUTE,
+      to: 1035,
+      series: [{ metric: 'cpu', points: points(1000, 1005, 1010, 1015, 1020, 1025, 1030) }],
+    });
+    expect(history?.series[0].points.map((p) => p.time)).toEqual([1015, 1020, 1025, 1030]);
   });
 
   it('does not take steps of another length, nor a range moved back to a last reading', () => {
     const live = new LiveHistory(MINUTE, 60);
-    expect(live.add({ ...MINUTE, stepSeconds: 60 }, 1000, 1060)).toBeNull();
-    expect(live.add({ ...MINUTE, lastReading: 1055 }, 1000, 1060)).toBeNull();
+    expect(live.add({ ...MINUTE, stepSeconds: 60 })).toBeNull();
+    expect(live.add({ ...MINUTE, lastReading: 1055 })).toBeNull();
   });
 });

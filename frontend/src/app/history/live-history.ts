@@ -56,15 +56,18 @@ export class LiveHistory {
   }
 
   /**
-   * Adds the steps of `update`, a read from `since()` on, and drops those that are older than
-   * `from`, the start of the range now. Returns the whole range from `from` to `to`, or null when
-   * the update does not fit, as when its steps are of another length; then the whole range is read
-   * again.
+   * Adds the steps of `update`, a read from `since()` on, and drops those that are now older than
+   * the range, which ends where the backend says the update ends. Returns the whole range, or null
+   * when the update does not fit, as when its steps are of another length; then the whole range is
+   * read again.
    */
-  add(update: History, from: number, to: number): History | null {
+  add(update: History): History | null {
     if (update.stepSeconds !== this.step || update.lastReading !== undefined) {
       return null;
     }
+    // The backend's end, not this computer's clock, so the range ends where a whole read would.
+    const to = update.to;
+    const from = to - this.span;
     for (const series of update.series) {
       const first = series.points[0];
       if (!first) {
@@ -85,6 +88,12 @@ export class LiveHistory {
     this.retentionDays = update.retentionDays;
 
     const metrics = [...this.buffers.keys()].sort();
+    // As in a whole read, only the extras that have a series are described.
+    for (const metric of Object.keys(this.extras)) {
+      if (!this.buffers.has(metric)) {
+        delete this.extras[metric];
+      }
+    }
     const history: History = {
       from,
       to,

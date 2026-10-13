@@ -24,6 +24,7 @@ class FakeResizeObserver {
 class FakeContext {
   readonly calls: string[] = [];
   strokeStyle = '';
+  fillStyle = '';
   lineWidth = 0;
   lineCap = '';
   lineJoin = '';
@@ -42,6 +43,12 @@ class FakeContext {
   }
   lineTo(x: number, y: number): void {
     this.calls.push(`L${x} ${y}`);
+  }
+  arc(x: number, y: number, radius: number): void {
+    this.calls.push(`arc ${x} ${y} ${radius}`);
+  }
+  fill(): void {
+    this.calls.push('fill');
   }
   stroke(): void {
     this.calls.push(`stroke ${this.strokeStyle} ${this.lineWidth}`);
@@ -112,12 +119,13 @@ describe('ChartCanvas', () => {
       'clear',
       'dash 6 5',
       'M4 54',
-      'L4 54',
       'L54 4',
       'M104 29',
-      // A lone point is drawn as a line of no length, which its round caps show as a dot.
-      'L104 29',
       expect.stringMatching(/^stroke .* 2$/),
+      // A lone point is drawn as a dot as wide as the line.
+      'M105 29',
+      'arc 104 29 1',
+      'fill',
     ]);
   });
 
@@ -157,5 +165,52 @@ describe('ChartCanvas', () => {
     fixture.detectChanges();
     expect(context.calls).toContain('M4 4');
     document.documentElement.style.colorScheme = '';
+  });
+  it('makes a new canvas only when its size changes, and reads the colors once per scheme', () => {
+    const fixture = render([{ segments: [[{ x: 0, y: 0 }]], series: 0, dashed: false }]);
+    const sizes = vi.spyOn(HTMLCanvasElement.prototype, 'width', 'set');
+    const styles = vi.spyOn(window, 'getComputedStyle');
+    FakeResizeObserver.last!.resize(108, 58);
+    expect(sizes).toHaveBeenCalledTimes(1);
+    expect(styles).toHaveBeenCalledTimes(3);
+
+    fixture.componentInstance.lines.set([
+      { segments: [[{ x: 1, y: 1 }]], series: 0, dashed: false },
+    ]);
+    fixture.detectChanges();
+    expect(sizes).toHaveBeenCalledTimes(1);
+    expect(styles).toHaveBeenCalledTimes(3);
+
+    TestBed.inject(ThemeService).toggle();
+    fixture.detectChanges();
+    expect(styles).toHaveBeenCalledTimes(6);
+    document.documentElement.style.colorScheme = '';
+  });
+
+  it('draws again on a screen of another pixel density', () => {
+    let changed: (() => void) | undefined;
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: (_: string, listener: () => void) => {
+        if (query.includes('resolution')) {
+          changed ??= listener;
+        }
+      },
+      removeEventListener: vi.fn(),
+    }));
+    render([{ segments: [[{ x: 0, y: 0 }]], series: 0, dashed: false }]);
+    FakeResizeObserver.last!.resize(108, 58);
+    context.calls.length = 0;
+
+    vi.stubGlobal('devicePixelRatio', 3);
+    changed!();
+    expect(context.calls[0]).toBe('scale 3');
+  });
+
+  it('takes no pointer, so the part past the plot does not act as the chart', () => {
+    const fixture = render([]);
+    const canvas = (fixture.nativeElement as HTMLElement).querySelector('canvas')!;
+    expect(canvas.style.pointerEvents).toBe('none');
   });
 });

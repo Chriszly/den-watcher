@@ -32,6 +32,8 @@
   cursor: crosshair;
   /* A sideways drag zooms in instead of scrolling the page. */
   touch-action: pan-y;
+  /* Keeps the band and cursor's order over the line inside the strip. */
+  isolation: isolate;
 }
 
 /* The stretch a drag across the rows marks, which every row shows. */
@@ -43,6 +45,8 @@
   width: var(--band-width);
   background: color-mix(in srgb, var(--mat-sys-primary) 18%, transparent);
   pointer-events: none;
+  /* Over the line, which its canvas draws in a positioned box of its own. */
+  z-index: 1;
 }
 
 .strip::after {
@@ -52,6 +56,7 @@
   display: var(--cursor-display, none);
   border-left: 1px solid var(--mat-sys-on-surface-variant);
   pointer-events: none;
+  z-index: 1;
 }
 
 @media (width < 40rem) {

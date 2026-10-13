@@ -179,7 +179,7 @@ export class HistoryStore {
               const until = Math.max(to, since + 1);
               return this.metrics.history(since, until, device).pipe(
                 switchMap((update) => {
-                  const history = kept.add(update, until - span, until);
+                  const history = kept.add(update);
                   return history ? of(history) : readAll(to);
                 }),
               );

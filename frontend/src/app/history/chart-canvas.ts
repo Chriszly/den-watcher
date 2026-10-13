@@ -39,9 +39,11 @@ const BLEED = 4;
 @Directive({
   selector: 'canvas[appChartCanvas]',
   host: {
-    // Over the whole of the plot, which is the nearest positioned box, and past it by BLEED.
+    // Over the whole of the plot, which is the nearest positioned box, and past it by BLEED. It
+    // takes no pointer, so the part past the plot does not act as the chart.
     style: `position: absolute; display: block; top: ${-BLEED}px; left: ${-BLEED}px;
-      width: calc(100% + ${2 * BLEED}px); height: calc(100% + ${2 * BLEED}px);`,
+      width: calc(100% + ${2 * BLEED}px); height: calc(100% + ${2 * BLEED}px);
+      pointer-events: none;`,
   },
 })
 export class ChartCanvas {
@@ -54,6 +56,14 @@ export class ChartCanvas {
 
   /** The canvas's size in CSS pixels, once it is laid out. */
   private size: { width: number; height: number } | null = null;
+
+  /**
+   * The colors read from the page's styles, by the class and value they were read with. Reading
+   * them makes the browser work out the styles, so they are read again only when the color
+   * scheme changes.
+   */
+  private readonly colors = new Map<string, string>();
+  private colorsScheme: string | null = null;
 
   constructor() {
     effect(() => {
@@ -74,7 +84,26 @@ export class ChartCanvas {
       });
       observer.observe(this.canvas);
       this.destroyRef.onDestroy(() => observer.disconnect());
+      this.watchPixelRatio();
     });
+  }
+
+  /**
+   * Draws again when the screen's pixel density changes, as when the window moves to another
+   * screen, which leaves the canvas's size in CSS pixels as it was.
+   */
+  private watchPixelRatio(): void {
+    const query = window.matchMedia?.(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    if (!query) {
+      return;
+    }
+    const changed = () => {
+      this.draw(this.lines(), this.grid());
+      this.watchPixelRatio();
+    };
+    query.addEventListener('change', changed, { once: true });
+    const stop = this.destroyRef.onDestroy(() => query.removeEventListener('change', changed));
+    query.addEventListener('change', stop, { once: true });
   }
 
   private draw(lines: CanvasLine[], grid: boolean): void {
@@ -84,8 +113,15 @@ export class ChartCanvas {
       return;
     }
     const ratio = window.devicePixelRatio || 1;
-    this.canvas.width = Math.round(size.width * ratio);
-    this.canvas.height = Math.round(size.height * ratio);
+    const pixels = {
+      width: Math.round(size.width * ratio),
+      height: Math.round(size.height * ratio),
+    };
+    // Setting the size clears the canvas but also makes a new one, so it is set only when it changes.
+    if (this.canvas.width !== pixels.width || this.canvas.height !== pixels.height) {
+      this.canvas.width = pixels.width;
+      this.canvas.height = pixels.height;
+    }
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.clearRect(0, 0, size.width, size.height);
 
@@ -94,7 +130,7 @@ export class ChartCanvas {
     if (width <= 0 || height <= 0) {
       return;
     }
-    const colors = readColors(this.canvas, [
+    const colors = this.readColors([
       ['', 'var(--mat-sys-outline-variant)'],
       ['', 'var(--mat-sys-outline)'],
       ...lines.map((line): [string, string] => [`series-${line.series}`, 'var(--color)']),
@@ -126,6 +162,7 @@ export class ChartCanvas {
     lines.forEach((line, index) => {
       context.setLineDash(line.dashed ? [6, 5] : []);
       context.strokeStyle = colors[index + 2];
+      context.fillStyle = colors[index + 2];
       context.beginPath();
       for (const segment of line.segments) {
         segment.forEach((point, i) => {
@@ -133,13 +170,41 @@ export class ChartCanvas {
           const y = BLEED + point.y * height;
           if (i === 0) {
             context.moveTo(x, y);
+          } else {
+            context.lineTo(x, y);
           }
-          // A lone point gets a line of no length, which the round line caps show as a dot.
-          context.lineTo(x, y);
         });
       }
       context.stroke();
+      // A lone point is a dot as wide as the line; a line of no length is not drawn at all.
+      context.beginPath();
+      for (const segment of line.segments) {
+        if (segment.length === 1) {
+          const x = BLEED + segment[0].x * width;
+          const y = BLEED + segment[0].y * height;
+          context.moveTo(x + 1, y);
+          context.arc(x, y, 1, 0, 2 * Math.PI);
+        }
+      }
+      context.fill();
     });
+  }
+
+  /** The colors asked for, from the ones read before while the color scheme is the same. */
+  private readColors(wanted: [className: string, value: string][]): string[] {
+    const scheme = this.theme.scheme();
+    if (scheme !== this.colorsScheme) {
+      this.colors.clear();
+      this.colorsScheme = scheme;
+    }
+    const key = ([className, value]: [string, string]) => `${className} ${value}`;
+    const missing = wanted.filter((color) => !this.colors.has(key(color)));
+    if (missing.length > 0) {
+      readColors(this.canvas, missing).forEach((color, i) =>
+        this.colors.set(key(missing[i]), color),
+      );
+    }
+    return wanted.map((color) => this.colors.get(key(color))!);
   }
 }
 

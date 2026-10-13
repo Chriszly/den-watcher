@@ -276,6 +276,28 @@ HUB_CHECKS=Printer=192.168.1.50:631,NAS=192.168.1.10,Camera=192.168.1.60:554
 
 Only addresses on the local network are checked; a name that resolves elsewhere is refused. On Windows, set it with `HUB_CHECKS` on the command line of the installer, with `WEBSITE=1`. A check shows the address it uses in the *Devices* dialog and is removed only where it is set. A wrong entry leaves out the checks, not this device's own monitoring, and the log says why.
 
+## 7. Show the usage in Grafana
+
+With `PROMETHEUS=true`, the hub, or a single device with its own page, also answers `GET /metrics` with the current usage of itself and of every device it collects from, in the Prometheus text format. Prometheus scrapes it and keeps the values as long as it is set to, and Grafana draws them; both run on your own network, without an account. Without the setting, `/metrics` is not found. A data-only device does not serve it: scrape the hub, which lists that device too.
+
+```bash
+PROMETHEUS=true
+```
+
+A scrape config for Prometheus, with the hub at `192.168.1.20`:
+
+```yaml
+scrape_configs:
+  - job_name: den-watcher
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["192.168.1.20:9393"]
+```
+
+`/metrics` answers only the local network, and only to the names the page does (see [Open the page by name](#open-the-page-by-name)): a target by IP address works, a name from the router's DNS needs `ALLOWED_HOSTS`. Prometheus in Docker on the same machine reaches it at the machine's LAN address, not at `localhost`. Every value has the labels `device`, the device's name (*Host Hub* for this device without `DEVICE_NAME`), and `id`, its id in `GET /api/devices`. A device that does not answer has `denwatcher_device_up` 0 and no other values but its alerts. The metrics are listed in [The usage for Prometheus](data.md#the-usage-for-prometheus).
+
+On Windows, the installer has no option for it; set it on a Linux hub.
+
 ## Run from source
 
 To run den-watcher on a computer without Docker or an installer, such as a Mac, build the website once and then the binary. You need Node.js (version in `frontend/.nvmrc`) and Go (version in `backend/go.mod`). In PowerShell on Windows:
@@ -315,6 +337,7 @@ Settings are environment variables. In Docker they go in `.env` next to `compose
 | `RESET_PASSWORD` | `false` | `true` deletes the password for changing devices at start; unset it again right after |
 | `UPDATE_CHECK` | `true` | `false` stops the daily check for a newer release. When set, it must be `true` or `false` on every device, data-only ones too, which never check: an invalid value stops the program |
 | `ALLOWED_HOSTS` | none | other names this device answers to, comma-separated, besides IP addresses, `localhost`, its hostname and `.local` names |
+| `PROMETHEUS` | `false` | `true` serves `GET /metrics`, the usage of this device and of every device it collects from for Prometheus; see [Show the usage in Grafana](#7-show-the-usage-in-grafana). Not with `DATA_ONLY`: both together stop the program |
 | `DOCKER_DIR` | `/var/lib/docker` | for the containers add-on: Docker's data folder, as `docker info` shows it under *Docker Root Dir*, from which it reads the containers' names. The Linux service cannot read folders below `/home`, so rootless Docker's names show only with the container. The inodes add-on leaves out the containers' layers mounted below it |
 | `ADDONS_DIR` | `/run/den-watcher-addons` for the Linux service; else none | the folder add-ons write their values to, which are shown as extras. Fixed for the Linux service, whose add-ons always write to `/run/den-watcher-addons`: leave it out of `/etc/den-watcher.env` |
 | `HOST_PROC`, `HOST_SYS` | set by `compose.yaml` | where the host's `/proc` and `/sys` are mounted in a container |

@@ -164,3 +164,28 @@ A device with the website (every hub) checks its own values and those of every d
 | SMART check of a disk (smart add-on) | | failed, or the disk cannot be read | |
 
 A value must stay at or above the threshold for the time in *Must last* before it is an alert, so a short peak is none. An alert ends once the value is below the warning threshold by a margin (2 points for disks, 5 for memory and temperatures, 10 for the CPU), so a value hovering around a threshold does not start and end alerts all the time. A warning that rises past the alert threshold becomes an alert; the log keeps the highest level and value each one reached. While a device's values cannot be read for a moment, its alerts last on. The alerts that last are taken up again after a restart, and end at the first check that finds their value back to normal. The log keeps alerts for `RETENTION_DAYS` after they ended.
+
+## The usage for Prometheus
+
+With `PROMETHEUS=true`, `GET /metrics` answers with the current usage of every device in the Prometheus text format (see [Show the usage in Grafana](setup.md#7-show-the-usage-in-grafana)). Every value has the labels `device`, the device's name, and `id`, its id. Values a device does not report, such as a battery or the swap space, are left out, as in [the snapshot](#the-snapshot).
+
+| Metric | Type | Labels | Value |
+| --- | --- | --- | --- |
+| `denwatcher_device_up` | gauge | | 1 when the device answered, 0 when it did not: not in time, or not recently for a device the hub collects from |
+| `denwatcher_alerts` | gauge | `level` (`warning` or `alert`) | the [alerts](#alerts) of the device that last now |
+| `denwatcher_uptime_seconds` | gauge | | time since the device started |
+| `denwatcher_cpu_usage_percent`, `denwatcher_cpu_cores`, `denwatcher_cpu_clock_mhz`, `denwatcher_cpu_iowait_percent`, `denwatcher_cpu_steal_percent` | gauge | | the processor |
+| `denwatcher_cpu_core_usage_percent` | gauge | `core` | usage of each core, counted from 0 |
+| `denwatcher_load1`, `denwatcher_load5`, `denwatcher_load15`, `denwatcher_processes`, `denwatcher_processes_running` | gauge | | load average and processes |
+| `denwatcher_memory_total_bytes`, `_used_bytes`, `_used_percent`, `_available_bytes`, `_cached_bytes` | gauge | | the main memory |
+| `denwatcher_swap_total_bytes`, `_used_bytes`, `_used_percent` | gauge | | the swap space |
+| `denwatcher_temperature_celsius` | gauge | `sensor` | each temperature sensor |
+| `denwatcher_disk_total_bytes`, `_used_bytes`, `_used_percent`, `_read_bytes_per_second`, `_write_bytes_per_second`, `_operations_per_second`, `_busy_percent`, `_latency_seconds` | gauge | `path` | each disk |
+| `denwatcher_network_received_bytes_total`, `_sent_bytes_total`, `_errors_total`, `_dropped_total` | counter | `interface` | each network card, since the device started |
+| `denwatcher_network_receive_bytes_per_second`, `_send_bytes_per_second`, `_link_mbps` | gauge | `interface` | each network card now |
+| `denwatcher_gpu_usage_percent`, `_memory_total_bytes`, `_memory_used_bytes`, `_temperature_celsius` | gauge | `gpu` | each GPU |
+| `denwatcher_battery_percent`, `_plugged_in`, `_watts`, `_health_percent` | gauge | | the batteries |
+| `denwatcher_fan_rpm` | gauge | `fan` | each fan |
+| `denwatcher_extra` | gauge | `group`, `item`, `unit`, `label`, `section` | each value of the [extras](#extras) that is a number, by the ids of its group and item, with its unit (such as `percent` or `bytesPerSecond`), its English label and, where it has one, its section; texts are left out |
+
+The values are read as for `GET /api/devices/metrics`: a device that does not answer within 3 seconds has `denwatcher_device_up` 0 for that scrape. The rates are measured by the device between its own readings; Prometheus' `rate()` over the counters gives the same over the scrape interval.

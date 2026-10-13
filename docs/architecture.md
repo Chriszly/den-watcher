@@ -70,11 +70,12 @@ What goes over the wire:
 | Hub | The visitor's device | `GET /api/metrics` on port 9393, and a reverse DNS lookup of its address, for its name | when the *Devices* dialog opens |
 | Hub | Each device | `GET /api/metrics`: the device's current usage as JSON, a few kilobytes. The `Usage-Control-Hub-Port` header tells the port of the hub's page; the device remembers it with the hub's address. The `Usage-Control-Hub-Id` header tells the hub's id ([while the hub is away](#while-the-hub-is-away)) | every 5 s |
 | Program on the device | The device | `GET /api/hub`: the hub's page as `{"url": "http://192.168.1.20:9393/"}`, empty until a hub asked; only answered to 127.0.0.1 and ::1 | when needed |
+| Prometheus | Hub | `GET /metrics`: the usage of every device in the Prometheus text format; only with `PROMETHEUS=true` | as often as Prometheus scrapes |
 | Hub | GitHub | `GET https://api.github.com/repos/Chriszly/den-watcher/releases/latest` | once a day, at start and every 24 h after, or an hour after a failed check; only on releases, never with `DATA_ONLY` |
 
 The usage, device, availability and chart polls pause while the tab is hidden and read again at once when it is shown. All traffic on the local network is plain HTTP. Nothing else leaves the network: no telemetry, no account, no cloud service. The daily version check only reads the newest release's tag; nothing is downloaded or installed.
 
-Devices never talk to each other or to the browser on their own. Every connection starts from a browser or from the hub.
+Devices never talk to each other or to the browser on their own. Every connection starts from a browser, from the hub or, with `PROMETHEUS=true`, from Prometheus.
 
 ## Inside one device
 
@@ -274,7 +275,7 @@ The hub applies the same address check to its outgoing connections. In Docker, t
 
 ## HTTP API
 
-All answers are JSON with `Cache-Control: no-store`. Times in the history are Unix seconds; other times are RFC 3339 in UTC. `?device=<id>` picks a device from `GET /api/devices`; without it the API answers for the device it runs on.
+All answers under `/api/` are JSON with `Cache-Control: no-store`. Times in the history are Unix seconds; other times are RFC 3339 in UTC. `?device=<id>` picks a device from `GET /api/devices`; without it the API answers for the device it runs on.
 
 | Method and path | Answers | Errors |
 | --- | --- | --- |
@@ -292,6 +293,7 @@ All answers are JSON with `Cache-Control: no-store`. Times in the history are Un
 | `PUT /api/layout` | body `{ folded, order, hidden, pinned, made, widths, ungrouped }`, each list at most 200 entries of 1 to 100 bytes, none named twice, `widths` at most 200 cards named the same way, each 2 or 4, in at most 128 KiB; `204`. It needs no password, as it changes only how the page looks | `400` an entry, or the request (`problem` `request`), `415` not JSON |
 | `GET /api/update` | `{ current, latest, url }`; `latest` and `url` only when a newer release exists | |
 | `GET /api/hub` | `{ url }`: the page of the hub that last asked this device for its usage, empty until one did | `403` from anywhere but this machine |
+| `GET /metrics` | with `PROMETHEUS=true` only: the current usage of every device in the Prometheus text format (`text/plain; version=0.0.4`), read as for `GET /api/devices/metrics`; see [The usage for Prometheus](data.md#the-usage-for-prometheus) | `404` without `PROMETHEUS` |
 | `GET /api/minutes?after=<s>[&values=<n>]` | `{ now, minutes: [{ time, values: { <metric>: <value> } }], more, extras? }`: the device's own minutes after `after`, at most 120 and `n` values in all (10,000 at most, one minute at least), on its clock; `extras` describes the extras among them by metric, up to 4 MiB; a request without a valid `Usage-Control-Hub-Id` gets 1,000 values at most; see [While the hub is away](#while-the-hub-is-away) | `400` when `after` is not Unix seconds or is later than the device's time, or `values` is not a whole number of at least 1 |
 
 A refused change answers with `{ problem, message }`: `problem` is a code the page translates (`name`, `nameTaken`, `addressTaken`, `address`, `addressOwn`, `kind`, `unreachable`, `hostUnknown`, `notFound`, `fixed`, `removing`, `passwordLength`, `wrongPassword`, `request`), and `message` explains it in English.

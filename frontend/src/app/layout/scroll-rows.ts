@@ -9,6 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { observeWidth } from '../browser';
 import { I18n } from '../i18n/i18n';
 
 /** The most entries a card shows at once; more scroll. */
@@ -86,19 +87,12 @@ export class ScrollRows {
 
   private readonly list = viewChild.required<ElementRef<HTMLElement>>('list');
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
-  private width = 0;
 
   constructor() {
     afterEveryRender(() => this.measure());
 
     const host = this.host;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry.contentRect.width !== this.width) {
-        this.width = entry.contentRect.width;
-        requestAnimationFrame(() => this.measure());
-      }
-    });
-    observer.observe(host);
+    observeWidth(host, () => requestAnimationFrame(() => this.measure()));
 
     // Over the list the browser scrolls it, and overscroll-behavior keeps the page still at its
     // ends; over the rest of the card, such as its heading, the wheel scrolls the list here.
@@ -117,10 +111,7 @@ export class ScrollRows {
       card = host.closest('.card') ?? host;
       card.addEventListener('wheel', wheel as EventListener, { passive: false });
     });
-    inject(DestroyRef).onDestroy(() => {
-      observer.disconnect();
-      card.removeEventListener('wheel', wheel as EventListener);
-    });
+    inject(DestroyRef).onDestroy(() => card.removeEventListener('wheel', wheel as EventListener));
   }
 
   protected update(): void {

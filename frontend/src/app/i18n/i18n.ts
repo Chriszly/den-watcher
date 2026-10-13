@@ -5,6 +5,7 @@ import localeEs from '@angular/common/locales/es';
 import localeFr from '@angular/common/locales/fr';
 import { Injectable, InjectionToken, effect, inject, signal } from '@angular/core';
 
+import { readStored, store } from '../browser';
 import { de } from './messages/de';
 import { MessageKey, Messages, en } from './messages/en';
 import { enUS } from './messages/en-us';
@@ -66,11 +67,7 @@ export class I18n {
   /** Shows the page in another language and remembers it for the next visit. */
   use(code: LanguageCode): void {
     this.language.set(code);
-    try {
-      this.document.defaultView?.localStorage.setItem(LANGUAGE_STORAGE_KEY, code);
-    } catch {
-      // Without storage (a private window, blocked site data) the choice lasts for this visit.
-    }
+    store(this.document.defaultView, LANGUAGE_STORAGE_KEY, code);
   }
 
   /** The text for key in the page's language, with each {name} in it replaced by params[name]. */
@@ -85,11 +82,7 @@ export class I18n {
   }
 
   private storedLanguage(): LanguageCode | null {
-    try {
-      return asLanguage(this.document.defaultView?.localStorage.getItem(LANGUAGE_STORAGE_KEY));
-    } catch {
-      return null;
-    }
+    return asLanguage(readStored(this.document.defaultView, LANGUAGE_STORAGE_KEY));
   }
 }
 

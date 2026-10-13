@@ -1,7 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import {
   Component,
-  DestroyRef,
   ElementRef,
   Injectable,
   computed,
@@ -12,6 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { mediaMatches, readStored, store } from '../browser';
 import { I18n } from '../i18n/i18n';
 
 /** Where the choice to collapse the sidebar is kept between visits, in the browser's localStorage. */
@@ -24,42 +24,19 @@ export const COLLAPSED_STORAGE_KEY = 'sidebarCollapsed';
 @Injectable({ providedIn: 'root' })
 export class SidebarState {
   private readonly document = inject(DOCUMENT);
-  private readonly wideQuery = this.document.defaultView?.matchMedia?.('(width >= 48rem)');
   /** Whether the screen is wide enough for the sidebar beside the page. */
-  private readonly wide = signal(this.wideQuery?.matches ?? true);
+  private readonly wide = mediaMatches('(width >= 48rem)', true);
 
-  readonly collapsed = signal(this.stored());
+  readonly collapsed = signal(
+    readStored(this.document.defaultView, COLLAPSED_STORAGE_KEY) === 'true',
+  );
   /** Collapsed counts only on wide screens; over the page on narrow ones it is always open wide. */
   readonly compact = computed(() => this.collapsed() && this.wide());
   readonly open = signal(false);
 
-  constructor() {
-    const query = this.wideQuery;
-    if (query) {
-      const update = (event: MediaQueryListEvent) => this.wide.set(event.matches);
-      query.addEventListener('change', update);
-      inject(DestroyRef).onDestroy(() => query.removeEventListener('change', update));
-    }
-  }
-
   toggleCollapsed(): void {
     this.collapsed.update((collapsed) => !collapsed);
-    try {
-      this.document.defaultView?.localStorage.setItem(
-        COLLAPSED_STORAGE_KEY,
-        String(this.collapsed()),
-      );
-    } catch {
-      // Without storage (a private window, blocked site data) the choice lasts for this visit.
-    }
-  }
-
-  private stored(): boolean {
-    try {
-      return this.document.defaultView?.localStorage.getItem(COLLAPSED_STORAGE_KEY) === 'true';
-    } catch {
-      return false;
-    }
+    store(this.document.defaultView, COLLAPSED_STORAGE_KEY, String(this.collapsed()));
   }
 }
 

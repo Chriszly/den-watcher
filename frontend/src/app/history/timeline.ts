@@ -2,6 +2,7 @@ import { DatePipe, formatDate } from '@angular/common';
 import { DOCUMENT, Component, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+import { readStored, store } from '../browser';
 import { I18n } from '../i18n/i18n';
 import { ChartEvents } from './chart-events';
 import { HistoryStore } from './history-store';
@@ -19,24 +20,12 @@ export const TIMELINE_STORAGE_KEY = 'timeline';
 /** Whether the page shows every value on one timeline instead of the cards; kept for the next visit. */
 @Injectable({ providedIn: 'root' })
 export class TimelineMode {
-  private readonly storage = inject(DOCUMENT).defaultView?.localStorage;
-  readonly on = signal(this.read());
+  private readonly window = inject(DOCUMENT).defaultView;
+  readonly on = signal(readStored(this.window, TIMELINE_STORAGE_KEY) === 'true');
 
   toggle(): void {
     this.on.update((on) => !on);
-    try {
-      this.storage?.setItem(TIMELINE_STORAGE_KEY, String(this.on()));
-    } catch {
-      // Without storage the choice lasts until the page is closed.
-    }
-  }
-
-  private read(): boolean {
-    try {
-      return this.storage?.getItem(TIMELINE_STORAGE_KEY) === 'true';
-    } catch {
-      return false;
-    }
+    store(this.window, TIMELINE_STORAGE_KEY, String(this.on()));
   }
 }
 

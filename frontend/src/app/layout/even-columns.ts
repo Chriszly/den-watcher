@@ -8,6 +8,8 @@ import {
   signal,
 } from '@angular/core';
 
+import { observeWidth } from '../browser';
+
 /** How many cards at least `minCard` pixels wide fit side by side in a grid `width` pixels wide. */
 export function cardsFit(width: number, minCard: number, gap: number): number {
   return Math.max(1, Math.floor((width + gap) / (minCard + gap)));
@@ -67,18 +69,14 @@ export class EvenColumns {
 
     // Only the width changes how many cards fit; the columns never change the grid's width. The
     // observer also reports the first width once the grid is laid out, which does the first count.
-    const size = new ResizeObserver(([entry]) => {
-      if (entry.contentRect.width !== this.width) {
-        this.width = entry.contentRect.width;
-        this.update();
-      }
+    observeWidth(this.host, (width) => {
+      this.width = width;
+      this.update();
     });
-    size.observe(this.host);
 
     inject(DestroyRef).onDestroy(() => {
       cards.disconnect();
       widths.disconnect();
-      size.disconnect();
     });
   }
 

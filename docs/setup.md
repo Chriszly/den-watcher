@@ -227,6 +227,8 @@ msiexec /i den-watcher-<version>-x64.msi REINSTALL=ALL REINSTALLMODE=m RESET_PAS
 msiexec /i den-watcher-<version>-x64.msi REINSTALL=ALL REINSTALLMODE=m
 ```
 
+**Download backup** at the bottom of the dialog saves a copy of the hub's database, with the history and the devices, after asking for the password; see [Backups](database.md#backups).
+
 Removing a device deletes its history, availability and kind too, unless *Keep its history* is ticked; adding a device with the same name within `RETENTION_DAYS` then continues them, and the *since* date of its availability moves on by the time it was removed. The history is kept under the device's name, so renaming a device (removing it and adding it under a new name) starts a new history.
 
 Instead of the dialog, devices can be listed on the hub in `HUB_DEVICES`, each as `name=address:port`, separated by commas. They show as *Set in .env* and are removed only there:

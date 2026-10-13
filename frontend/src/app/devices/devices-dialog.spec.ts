@@ -181,6 +181,55 @@ describe('DevicesDialog', () => {
     expect(button('Remove').disabled).toBe(false);
   });
 
+  it('downloads a backup with the password, under the name the hub gave it', async () => {
+    const createObjectURL = vi.fn(() => 'blob:backup');
+    const { createObjectURL: create, revokeObjectURL: revoke } = URL;
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = vi.fn();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    expect(element().textContent).toContain('Router passwords are not in it.');
+
+    button('Download backup').click();
+
+    const backup = http.expectOne('/api/backup');
+    expect(backup.request.method).toBe('POST');
+    expect(backup.request.body).toEqual({ password: 'correct horse' });
+    const file = new Blob(['SQLite format 3']);
+    backup.flush(file, {
+      headers: { 'Content-Disposition': 'attachment; filename="den-watcher-2026-10-13.db"' },
+    });
+    http
+      .expectOne((r) => r.method === 'GET' && r.url === '/api/devices')
+      .flush({ devices: [{ id: 'local', name: '' }], passwordSet: true });
+    await fixture.whenStable();
+
+    expect(createObjectURL).toHaveBeenCalledWith(file);
+    const link = click.mock.contexts[0] as HTMLAnchorElement;
+    expect(link.download).toBe('den-watcher-2026-10-13.db');
+    expect(link.href).toBe('blob:backup');
+    URL.createObjectURL = create;
+    URL.revokeObjectURL = revoke;
+    click.mockRestore();
+  });
+
+  it('says why a backup was refused, from the problem in its answer', async () => {
+    button('Download backup').click();
+
+    http.expectOne('/api/backup').flush(new Blob([JSON.stringify({ problem: 'wrongPassword' })]), {
+      status: 403,
+      statusText: 'Forbidden',
+    });
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(element().textContent).toContain('The password is wrong.');
+    });
+    http
+      .expectOne((r) => r.method === 'GET' && r.url === '/api/devices')
+      .flush({ devices: [{ id: 'local', name: '' }], passwordSet: true });
+  });
+
   it('says when the password is wrong', () => {
     button('Remove').click();
 

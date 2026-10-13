@@ -104,7 +104,13 @@ An older version refuses to start on a file a newer version has changed, instead
 
 ## Backups
 
-The file holds everything a device keeps: history, added devices, outages and the password hash. To back it up, copy it while den-watcher is stopped, or use SQLite's `.backup` command while it runs. With Docker:
+The file holds everything a device keeps: history, added devices with their addresses, outages, alerts and the password hash. It holds no router passwords: those are kept apart (see [Show the router](setup.md#5-show-the-router)). Still, keep a backup private, as it tells which devices are on the network and where.
+
+The easiest way is the hub's *Devices* dialog: **Download backup** asks for the password, like a change to the devices, and the browser saves the file as `den-watcher-<date>.db`. The hub makes a consistent copy with SQLite's `VACUUM INTO` while it keeps recording, into a temporary file next to the database (`.den-watcher-backup-*.db`), and deletes that once it is sent, or could not be; one left by a stop in between is deleted at the next start. The copy needs as much free space next to the database as the database takes without its free pages. Before a password is chosen, the first backup chooses it, as the first change does. A data-only device has no page and offers none; its file only holds the minutes the hub has not fetched yet.
+
+To restore, stop den-watcher, put the downloaded file in place of the database under its name (`usage-control.db`), delete the `-wal` and `-shm` files next to it, and start it again.
+
+By hand, copy the file while den-watcher is stopped, or use SQLite's `.backup` command while it runs. With Docker:
 
 ```bash
 docker compose stop

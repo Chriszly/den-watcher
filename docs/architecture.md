@@ -69,6 +69,7 @@ What goes over the wire:
 | Browser | Hub | `GET /api/update`: running version and newer release | every hour |
 | Browser | Hub | `GET /api/devices/suggestion`: the device the page is open on, to fill in the *Devices* dialog | when the dialog opens |
 | Browser | Hub | `POST /api/devices`, `DELETE /api/devices/<id>`, `PUT /api/devices/<id>/kind` | when a device is added, removed or its kind changed |
+| Browser | Hub | `POST /api/backup`: a copy of the database | when *Download backup* is clicked in the *Devices* dialog |
 | Hub | The visitor's device | `GET /api/metrics` on port 9393, and a reverse DNS lookup of its address, for its name | when the *Devices* dialog opens |
 | Hub | Each device | `GET /api/metrics`: the device's current usage as JSON, a few kilobytes. The `Usage-Control-Hub-Port` header tells the port of the hub's page; the device remembers it with the hub's address. The `Usage-Control-Hub-Id` header tells the hub's id ([while the hub is away](#while-the-hub-is-away)) | every 5 s |
 | Program on the device | The device | `GET /api/hub`: the hub's page as `{"url": "http://192.168.1.20:9393/"}`, empty until a hub asked; only answered to 127.0.0.1 and ::1 | when needed |
@@ -277,7 +278,7 @@ The hub applies the same address check to its outgoing connections. In Docker, t
 
 ## HTTP API
 
-All answers under `/api/` are JSON with `Cache-Control: no-store`. Times in the history are Unix seconds; other times are RFC 3339 in UTC. `?device=<id>` picks a device from `GET /api/devices`; without it the API answers for the device it runs on.
+All answers under `/api/` are JSON with `Cache-Control: no-store`, except the files of `GET /api/history.csv` and `POST /api/backup`. Times in the history are Unix seconds; other times are RFC 3339 in UTC. `?device=<id>` picks a device from `GET /api/devices`; without it the API answers for the device it runs on.
 
 | Method and path | Answers | Errors |
 | --- | --- | --- |
@@ -287,6 +288,7 @@ All answers under `/api/` are JSON with `Cache-Control: no-store`. Times in the 
 | `GET /api/alerts` | `[{ id, device, deviceName, kind, subject, level, value, started, ended }]`: up to 200 [alerts](data.md#alerts) of every device, the ones that last first, then the newest that ended, each newest first; `ended` is missing while one lasts | |
 | `GET /api/devices/suggestion` | `{ address, name, kind }`: the device the request came from, to offer adding it; see [Adding and removing devices](#adding-and-removing-devices) | `204` when there is none to offer |
 | `POST /api/devices` | body `{ name, address, kind, password }`, `kind` `server` (when left out) or `pc`; `201` with the new device | `400` name, address (also one of the hub itself), kind or password length, `403` wrong password, `409` name or address and port taken, or a device with the same name still being removed, `415` not JSON, `422` nothing answers at the address (why is only logged), `503` the hub is stopping |
+| `POST /api/backup` | body `{ password }`; `200` with a consistent copy of the database (`VACUUM INTO`), as `application/vnd.sqlite3`, an attachment named `den-watcher-<date>.db`, the hub's date. Without a password yet, it chooses it, like the first change. Not on a data-only device; see [Backups](database.md#backups) | `400` password length, `403` wrong password (answered one second late, as for changes), `415` not JSON, `500` the copy could not be made, such as with too little free space next to the database |
 | `DELETE /api/devices/<id>` | body `{ password, keepHistory }`; `204` | `403` wrong password, `404` unknown device, `409` set in `HUB_DEVICES`, `503` the hub is stopping |
 | `PUT /api/devices/<id>/kind` | body `{ kind, password }`; `204` | `400` kind, `403` wrong password, `404` unknown device |
 | `GET /api/history?from=<s>&to=<s>[&device=<id>]` | `{ from, to, stepSeconds, retentionDays, series: [{ metric, points: [{ time, value }] }], lastReading?, extras? }`, at most 360 points per metric. `extras` describes the series of [extras](data.md#extras) by metric. For an unreachable device, `lastReading` is the time of its newest reading, and a range ending later is moved back to end there, keeping its length | `400` when `from` and `to` are not Unix seconds with `from` before `to` |

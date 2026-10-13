@@ -153,6 +153,10 @@ export const en = {
     'When a server does not answer, that is an outage. A PC or laptop that is off is just not in use.',
   'devicesDialog.add': 'Add',
   'devicesDialog.close': 'Close',
+  'devicesDialog.backup': 'Download backup',
+  'devicesDialog.backupHint':
+    "A copy of the hub's database to keep: the history, the devices with their addresses, the alerts and the hash of the password. Router passwords are not in it.",
+  'devicesDialog.backupTitle': 'Backup',
   'devices.problem.wrongPassword': 'The password is wrong.',
   'devices.problem.passwordLength': 'The password needs at least {count} characters.',
   'devices.problem.name':
@@ -173,6 +177,7 @@ export const en = {
   'devices.problem.removing':
     'A device with this name is still being removed. Try again in a moment.',
   'devices.problem.demo': "This is a demo, so devices can't be added, removed or changed.",
+  'devices.problem.demoBackup': 'This is a demo, so it has no database to back up.',
   'devices.problem.other': 'The devices could not be changed. Try again.',
   'passwordDialog.enterTitle': 'Enter the password',
   'passwordDialog.chooseTitle': 'Choose a password',
@@ -190,6 +195,10 @@ export const en = {
   'passwordDialog.confirmRemove': 'Remove',
   'passwordDialog.kind': 'Change {device} to {kind}?',
   'passwordDialog.confirmKind': 'Change',
+  'passwordDialog.confirmBackup': 'Download',
+  'passwordDialog.backupHint':
+    'Keep the file private: it holds the addresses of your devices and the hash of the password.',
+  'passwordDialog.backup': "Download a backup of the hub's database?",
   'history.unit': 'Unit of the time shown',
   'history.range': 'Time shown',
   'history.unreachableStale': 'The history cannot be read. Showing the last values read.',

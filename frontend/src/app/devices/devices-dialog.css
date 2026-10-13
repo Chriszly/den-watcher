@@ -148,3 +148,8 @@ mat-form-field {
   margin-top: 0.75rem;
   color: var(--mat-sys-error);
 }
+
+/* The backup's button as wide as its label, at the start of its line. */
+.backup {
+  align-self: flex-start;
+}

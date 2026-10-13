@@ -355,6 +355,7 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		Minutes:      history.Reader{Store: store, Recent: recent, Device: history.LocalDevice},
 		Alerts:       watcher,
 		Layout:       pageLayout,
+		Backups:      store,
 	}
 	if checker := update.NewChecker(version.Version); checker != nil && checkUpdates {
 		site.Update = checker.Status

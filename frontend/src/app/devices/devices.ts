@@ -1,6 +1,16 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { EMPTY, Observable, catchError, exhaustMap, tap } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  catchError,
+  exhaustMap,
+  from,
+  map,
+  switchMap,
+  tap,
+  throwError,
+} from 'rxjs';
 
 import { Alert } from '../alerts/alert';
 import { I18n } from '../i18n/i18n';
@@ -213,12 +223,64 @@ export class DeviceService {
     return this.http.get<Availability>('/api/availability', { params: { device: id } });
   }
 
+  /**
+   * Asks for a copy of the hub's database, guarded by the password like a change; without a
+   * password yet, `password` becomes the password. Emits the file and the name the hub gave it.
+   */
+  backup(password: string): Observable<Backup> {
+    return this.http
+      .post('/api/backup', { password }, { observe: 'response', responseType: 'blob' })
+      .pipe(
+        map((response) => ({
+          file: response.body ?? new Blob(),
+          name: backupName(response.headers.get('Content-Disposition')),
+        })),
+        // A refusal comes as a blob too; problemMessage reads the problem from its JSON.
+        catchError((error: unknown) =>
+          error instanceof HttpErrorResponse && error.error instanceof Blob
+            ? from(error.error.text()).pipe(
+                switchMap((text) => throwError(() => withJSONBody(error, text))),
+              )
+            : throwError(() => error),
+        ),
+      );
+  }
+
   /** Removes a device added on the page, and its history unless `keepHistory` is set. */
   remove(id: string, password: string, keepHistory: boolean): Observable<void> {
     return this.http.delete<void>(`/api/devices/${encodeURIComponent(id)}`, {
       body: { password, keepHistory },
     });
   }
+}
+
+/** A copy of the hub's database, as POST /api/backup sends it. */
+export interface Backup {
+  file: Blob;
+  /** The name to save it under, such as den-watcher-2026-10-13.db. */
+  name: string;
+}
+
+/** The file name in a Content-Disposition header, or a name of its own when there is none. */
+export function backupName(disposition: string | null): string {
+  return /filename="([^"/\\]+)"/.exec(disposition ?? '')?.[1] ?? 'den-watcher.db';
+}
+
+/** The error with its body read as JSON, or as the text it is when it is no JSON. */
+function withJSONBody(error: HttpErrorResponse, text: string): HttpErrorResponse {
+  let body: unknown = text;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    // Not every answer is JSON, such as a 500 in plain text.
+  }
+  return new HttpErrorResponse({
+    error: body,
+    headers: error.headers,
+    status: error.status,
+    statusText: error.statusText,
+    url: error.url ?? undefined,
+  });
 }
 
 /** The problems the backend names that have a message of their own, besides passwordLength. */
@@ -235,8 +297,9 @@ const KNOWN_PROBLEMS = [
   'fixed',
   'notFound',
   'removing',
-  // Only the demo on GitHub Pages refuses every change with this.
+  // Only the demo on GitHub Pages refuses every change with this, and a backup with demoBackup.
   'demo',
+  'demoBackup',
 ] as const;
 
 /** Explains why adding or removing a device was refused, from the problem the backend names. */

@@ -66,6 +66,43 @@ func TestAgentMeasuresHowLongTheDeviceTookToAnswer(t *testing.T) {
 	}
 }
 
+func TestAgentMeasuresTheResponseWithoutReadingTheOwnAddresses(t *testing.T) {
+	device := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"cpu":{"usagePercent":12.5,"cores":4}}`))
+	}))
+	defer device.Close()
+	agent := newAgent(strings.TrimPrefix(device.URL, "http://"), func(string, string, syscall.RawConn) error { return nil })
+	// A slow hub takes a while to read its own usage before the request;
+	// the reads while connecting are of what it read then.
+	var reads atomic.Int32
+	agent.checkOwnGeneration(func() uint64 {
+		if reads.Add(1) == 1 {
+			time.Sleep(300 * time.Millisecond)
+		}
+		return 0
+	})
+
+	got, err := agent.Collect(context.Background())
+	if err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+	if got.ResponseMilliseconds == nil || *got.ResponseMilliseconds >= 300 {
+		t.Errorf("ResponseMilliseconds = %v, want only the time the device took, not the 300 ms the hub read its own addresses", got.ResponseMilliseconds)
+	}
+}
+
+func TestAgentCutsTheVersion(t *testing.T) {
+	device := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"version":"` + strings.Repeat("1", 10_000) + `"}`))
+	}))
+	defer device.Close()
+
+	got, err := NewAgent(strings.TrimPrefix(device.URL, "http://")).Collect(context.Background())
+	if err != nil || len(got.Version) != metrics.MaxTextLength {
+		t.Errorf("Collect() = version of %d characters, %v; want it cut to %d", len(got.Version), err, metrics.MaxTextLength)
+	}
+}
+
 func TestAgentMeasuresNoResponseOfWhatTheHubReadsItself(t *testing.T) {
 	got, err := newReaderAgent(usageFunc(func(context.Context) (metrics.Snapshot, error) {
 		return metrics.Snapshot{Time: time.Now()}, nil

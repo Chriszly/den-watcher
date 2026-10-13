@@ -593,7 +593,8 @@ func TestAConnectionInUseWhenTheOwnAddressesChangeIsNotUsedAgain(t *testing.T) {
 		done := make(chan error, 1)
 		go func() {
 			var answer any
-			done <- agent.get(ctx, agent.minutesURL, 1<<10, &answer)
+			_, err := agent.get(ctx, agent.minutesURL, 1<<10, &answer)
+			done <- err
 		}()
 		return done
 	}
@@ -700,6 +701,13 @@ func TestRemoveForgetsTheDeviceAndItsHistory(t *testing.T) {
 		}
 	}
 
+	// Its alerts and events are deleted with its history.
+	var forgotten []string
+	h.AlsoForget(func(_ context.Context, id string) error {
+		forgotten = append(forgotten, id)
+		return nil
+	})
+
 	if err := h.Remove(ctx, "office-pc", false); err != nil {
 		t.Fatalf("Remove() error = %v", err)
 	}
@@ -710,6 +718,9 @@ func TestRemoveForgetsTheDeviceAndItsHistory(t *testing.T) {
 		if err := h.waitRemoved(ctx, id, time.Minute); err != nil {
 			t.Fatalf("waitRemoved(%q) error = %v", id, err)
 		}
+	}
+	if len(forgotten) != 1 || forgotten[0] != "office-pc" {
+		t.Errorf("forgotten = %q, want only [office-pc], whose history was not kept", forgotten)
 	}
 
 	if got := ids(h.Remotes()); len(got) != 1 || got[0] != "pi" {

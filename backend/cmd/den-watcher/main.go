@@ -333,6 +333,9 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 	if err != nil {
 		return server.Site{}, nil, err
 	}
+	// A device removed without its history loses its alerts and events too.
+	others.AlsoForget(watcher.Forget)
+	others.AlsoForget(happenings.Forget)
 
 	pageLayout, err := layout.Open(ctx, store.DB())
 	if err != nil {

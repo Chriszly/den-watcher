@@ -237,8 +237,7 @@ func (w *Watcher) Check(ctx context.Context, now time.Time) {
 		w.start(ctx, c)
 	}
 	for key, a := range w.active {
-		if _, ok := seen[key]; !ok {
-			w.end(ctx, a, now)
+		if _, ok := seen[key]; !ok && w.end(ctx, a, now) {
 			delete(w.active, key)
 		}
 	}
@@ -294,11 +293,15 @@ func (w *Watcher) raise(ctx context.Context, a *Alert, now Alert) {
 	}
 }
 
-// end keeps when an alert ended. The caller holds mu.
-func (w *Watcher) end(ctx context.Context, a *Alert, now time.Time) {
+// end keeps when an alert ended, and reports whether it did. One whose end
+// could not be written stays active, so the next check ends it again rather
+// than leaving it open in the database for good. The caller holds mu.
+func (w *Watcher) end(ctx context.Context, a *Alert, now time.Time) bool {
 	if _, err := w.db.ExecContext(ctx, `UPDATE alerts SET ended = ? WHERE id = ?`, now.UnixMilli(), a.ID); err != nil {
 		slog.Error("end an alert", "device", a.DeviceName, "kind", a.Kind, "error", err)
+		return false
 	}
+	return true
 }
 
 // Active returns the alerts of a device that last, most serious first.
@@ -338,10 +341,33 @@ func (w *Watcher) Log(ctx context.Context) ([]Alert, error) {
 const BetweenLimit = 500
 
 // Between returns the alerts of device that lasted at some time from from to
-// to, oldest first, at most BetweenLimit of them.
+// to, oldest first: the newest BetweenLimit of them.
 func (w *Watcher) Between(ctx context.Context, device string, from, to time.Time) ([]Alert, error) {
-	return w.query(ctx, selectAlerts+` WHERE device = ? AND started <= ? AND (ended IS NULL OR ended >= ?) ORDER BY started, id LIMIT ?`,
+	list, err := w.query(ctx, selectAlerts+` WHERE device = ? AND started <= ? AND (ended IS NULL OR ended >= ?) ORDER BY started DESC, id DESC LIMIT ?`,
 		device, to.UnixMilli(), from.UnixMilli(), BetweenLimit)
+	slices.Reverse(list)
+	return list, err
+}
+
+// Forget deletes the alerts of a device that was removed without its
+// history, so a device added later under the same name starts without them.
+func (w *Watcher) Forget(ctx context.Context, device string) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for key, a := range w.active {
+		if a.Device == device {
+			delete(w.active, key)
+		}
+	}
+	for key := range w.pending {
+		if deviceOf(key) == device {
+			delete(w.pending, key)
+		}
+	}
+	if _, err := w.db.ExecContext(ctx, `DELETE FROM alerts WHERE device = ?`, device); err != nil {
+		return fmt.Errorf("delete the alerts of a removed device: %w", err)
+	}
+	return nil
 }
 
 // selectAlerts starts every query that query reads.

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"sync"
 	"time"
 
@@ -197,10 +198,14 @@ func (l *Log) note(ctx context.Context, device string, uptime uint64, version st
 	l.seen[device] = s
 }
 
-// Between returns the events of device from from to to, oldest first.
+// BetweenLimit is how many events Between returns at most.
+const BetweenLimit = 500
+
+// Between returns the events of device from from to to, oldest first: the
+// newest BetweenLimit of them.
 func (l *Log) Between(ctx context.Context, device string, from, to time.Time) ([]Event, error) {
-	rows, err := l.db.QueryContext(ctx, `SELECT time, kind, detail FROM events WHERE device = ? AND time >= ? AND time <= ? ORDER BY time`,
-		device, from.UnixMilli(), to.UnixMilli())
+	rows, err := l.db.QueryContext(ctx, `SELECT time, kind, detail FROM events WHERE device = ? AND time >= ? AND time <= ? ORDER BY time DESC, kind DESC LIMIT ?`,
+		device, from.UnixMilli(), to.UnixMilli(), BetweenLimit)
 	if err != nil {
 		return nil, fmt.Errorf("read the events: %w", err)
 	}
@@ -215,7 +220,26 @@ func (l *Log) Between(ctx context.Context, device string, from, to time.Time) ([
 		e.Time = time.UnixMilli(t)
 		list = append(list, e)
 	}
+	slices.Reverse(list)
 	return list, rows.Err()
+}
+
+// Forget deletes the events of a device that was removed without its
+// history, and how it was last seen, so a device added later under the same
+// name starts anew.
+func (l *Log) Forget(ctx context.Context, device string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.seen, device)
+	for _, query := range []string{
+		`DELETE FROM events WHERE device = ?`,
+		`DELETE FROM events_seen WHERE device = ?`,
+	} {
+		if _, err := l.db.ExecContext(ctx, query, device); err != nil {
+			return fmt.Errorf("delete the events of a removed device: %w", err)
+		}
+	}
+	return nil
 }
 
 // prune deletes the events older than the retention.

@@ -346,3 +346,25 @@ func TestReadOutagesKeepsToTheRange(t *testing.T) {
 		t.Fatalf("another device: %+v, %v", got, err)
 	}
 }
+
+func TestReadOutagesKeepsTheNewest(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t)
+	openTestHub(t, store, nil) // creates the tables
+	start := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	for i := range outagesLimit + 10 {
+		at := start.Add(time.Duration(i) * time.Minute)
+		if _, err := store.DB().ExecContext(ctx, `INSERT INTO hub_outages (device, started, ended) VALUES ('pi', ?, ?)`,
+			at.UnixMilli(), at.Add(30*time.Second).UnixMilli()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := readOutages(ctx, store.DB(), "pi", start, start.Add(24*time.Hour))
+	if err != nil || len(got) != outagesLimit {
+		t.Fatalf("readOutages() = %d outages, %v; want %d", len(got), err, outagesLimit)
+	}
+	// The oldest are left out, so the newest are marked; still oldest first.
+	if first, last := got[0].Start, got[len(got)-1].Start; !first.Equal(start.Add(10*time.Minute)) || !last.Equal(start.Add((outagesLimit+9)*time.Minute)) {
+		t.Errorf("outages from %v to %v, want the newest %d", first, last, outagesLimit)
+	}
+}

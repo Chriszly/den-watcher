@@ -182,28 +182,32 @@ func (a *Agent) ask(ctx context.Context) (metrics.Snapshot, error) {
 		snapshot.Network = nonNil(snapshot.Network)
 		snapshot.GPUs = nonNil(snapshot.GPUs)
 	} else {
-		start := time.Now()
-		if err := a.get(ctx, a.url, maxResponseBytes, &snapshot); err != nil {
+		took, err := a.get(ctx, a.url, maxResponseBytes, &snapshot)
+		if err != nil {
 			return metrics.Snapshot{}, err
 		}
 		// How long the device took to answer, which the hub measures itself
 		// over whatever the device sent.
-		ms := float64(time.Since(start).Microseconds()) / 1000
+		ms := float64(took.Microseconds()) / 1000
 		snapshot.ResponseMilliseconds = &ms
 	}
 	// The extras are shown and stored as the device describes them, so they
-	// are cut down to what is safe for that first.
+	// are cut down to what is safe for that first; its version too, which
+	// the events log keeps.
 	snapshot.Extras = metrics.CleanExtras(snapshot.Extras, a.maxEntries)
 	snapshot.System = metrics.CleanSystem(snapshot.System)
+	snapshot.Version = metrics.CleanText(snapshot.Version)
 	return snapshot, nil
 }
 
 // get asks the device at url and reads its JSON answer, of at most limit
-// bytes, into answer. An answer other than 200 OK is a *statusError.
-func (a *Agent) get(ctx context.Context, url string, limit int64, answer any) error {
+// bytes, into answer, and returns how long that took from sending the
+// request on, without reading the hub's own addresses before. An answer
+// other than 200 OK is a *statusError.
+func (a *Agent) get(ctx context.Context, url string, limit int64, answer any) (time.Duration, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if a.pagePort != "" {
 		request.Header.Set(PagePortHeader, a.pagePort)
@@ -233,25 +237,26 @@ func (a *Agent) get(ctx context.Context, url string, limit int64, answer any) er
 			},
 		}))
 	}
+	start := time.Now()
 	response, err := a.client.Do(request)
 	if err != nil {
-		return fmt.Errorf("ask %s: %w", url, err)
+		return 0, fmt.Errorf("ask %s: %w", url, err)
 	}
 	defer func() {
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, drainBytes))
 		_ = response.Body.Close()
 	}()
 	if response.StatusCode != http.StatusOK {
-		return &statusError{URL: url, Status: response.Status, Code: response.StatusCode}
+		return 0, &statusError{URL: url, Status: response.Status, Code: response.StatusCode}
 	}
 	body := &io.LimitedReader{R: response.Body, N: limit}
 	if err := json.NewDecoder(body).Decode(answer); err != nil {
 		if body.N == 0 {
-			return fmt.Errorf("read the answer of %s: it is larger than the %d KiB that are read", url, limit>>10)
+			return 0, fmt.Errorf("read the answer of %s: it is larger than the %d KiB that are read", url, limit>>10)
 		}
-		return fmt.Errorf("read the answer of %s: %w", url, err)
+		return 0, fmt.Errorf("read the answer of %s: %w", url, err)
 	}
-	return nil
+	return time.Since(start), nil
 }
 
 // closeKeptBefore closes the connections kept idle from before generation

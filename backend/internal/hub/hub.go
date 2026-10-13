@@ -89,12 +89,15 @@ type Hub struct {
 	owned         bool
 	ownGeneration uint64
 
-	// mu guards remotes and removing.
+	// mu guards remotes, removing and forgetters.
 	mu      sync.Mutex
 	remotes []*Remote
 	// removing has a channel for each removed device whose recorder may still
 	// run or whose data is still being deleted, closed once that is done.
 	removing map[string]chan struct{}
+	// forgetters delete what is kept elsewhere about a removed device; see
+	// AlsoForget.
+	forgetters []func(ctx context.Context, id string) error
 }
 
 // Remote is another device the hub collects from.
@@ -644,14 +647,31 @@ func (h *Hub) keptHistory(ctx context.Context) ([]string, error) {
 	return kept, rows.Err()
 }
 
-// deleteData deletes the availability, kind and history of a removed device.
-// When the program stops meanwhile, what is left of its history ages out
-// with the retention.
+// AlsoForget has forget delete what it keeps about a device, such as its
+// alerts and events, when the device is removed without its history, so a
+// device added later under the same name does not take it over.
+func (h *Hub) AlsoForget(forget func(ctx context.Context, id string) error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.forgetters = append(h.forgetters, forget)
+}
+
+// deleteData deletes the availability, kind and history of a removed device,
+// and what the forgetters keep about it. When the program stops meanwhile,
+// what is left of its history ages out with the retention.
 func (h *Hub) deleteData(remote *Remote) {
 	if h.beforeDelete != nil {
 		h.beforeDelete(remote.ID)
 	}
+	h.mu.Lock()
+	forgetters := h.forgetters
+	h.mu.Unlock()
 	err := forget(h.ctx, h.store.DB(), remote.ID)
+	for _, forgetter := range forgetters {
+		if err == nil {
+			err = forgetter(h.ctx, remote.ID)
+		}
+	}
 	if err == nil {
 		err = h.store.DeleteDevice(h.ctx, remote.ID)
 	}

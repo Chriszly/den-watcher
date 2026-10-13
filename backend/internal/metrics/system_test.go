@@ -34,3 +34,12 @@ func TestCleanSystem(t *testing.T) {
 		t.Errorf("CleanSystem cut the texts to %+v", got)
 	}
 }
+
+func TestCleanText(t *testing.T) {
+	if got := CleanText(strings.Repeat("1", MaxTextLength+10)); len([]rune(got)) != MaxTextLength {
+		t.Errorf("CleanText of a long text = %q, want it cut to %d characters", got, MaxTextLength)
+	}
+	if got := CleanText("2.4.0\xff"); got != "2.4.0\uFFFD" {
+		t.Errorf("CleanText of invalid UTF-8 = %q, want it replaced", got)
+	}
+}

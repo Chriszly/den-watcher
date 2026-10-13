@@ -53,6 +53,11 @@ type Snapshot struct {
 	// System is what the machine is, read once at start. Devices running a
 	// version from before it was reported leave it out.
 	System *System `json:"system,omitempty"`
+	// ResponseMilliseconds is how long the device took to answer the hub's
+	// last reading of it, which the hub measures and sets itself: a device
+	// leaves it out of its own snapshot, and so does a hub for itself and
+	// for the routers and checks it reads.
+	ResponseMilliseconds *float64 `json:"responseMilliseconds,omitempty"`
 }
 
 // CPU is the processor usage across all cores and of each core. The clock,

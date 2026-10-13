@@ -229,6 +229,21 @@ func (r *Recorder) read(ctx context.Context) {
 	r.Recent.Add(snapshot.Time, v)
 }
 
+// hubMeasuredOf returns the values among averages that the hub measures
+// itself, or nil when there are none.
+func hubMeasuredOf(averages map[string]float64) map[string]float64 {
+	var own map[string]float64
+	for _, metric := range hubMeasured {
+		if value, ok := averages[metric]; ok {
+			if own == nil {
+				own = map[string]float64{}
+			}
+			own[metric] = value
+		}
+	}
+	return own
+}
+
 // failed logs a failed reading, unless the previous one failed too.
 func (r *Recorder) failed(err error) {
 	if !r.failing {
@@ -260,11 +275,13 @@ func (r *Recorder) storeLast(ctx context.Context, from, last, now time.Time) {
 // the minutes it fetches from a device, so a minute both store is stored
 // once.
 func (r *Recorder) store(ctx context.Context, from, to, minute time.Time) {
-	if r.Fetch != nil && r.Fetch(ctx, minute) {
-		return
-	}
 	averages := r.Recent.Average(from, to)
-	if averages == nil {
+	if r.Fetch != nil && r.Fetch(ctx, minute) {
+		// The device's minute lacks what only the hub measures, such as how
+		// long the device took to answer, which is added from the readings.
+		averages = hubMeasuredOf(averages)
+	}
+	if len(averages) == 0 {
 		return
 	}
 	if err := r.Store.Add(ctx, r.Device, minute, averages); err != nil {

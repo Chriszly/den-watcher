@@ -22,10 +22,18 @@ const (
 	MetricNetworkSend    = "network.send"
 	MetricGPU            = "gpu"
 	MetricGPUMemory      = "gpu.memory"
+	// MetricResponse is how long another device took to answer the hub, in
+	// milliseconds, which the hub measures itself; see hubMeasured.
+	MetricResponse = "response"
 	// MetricExtra is followed by the group and the value, such as
 	// "extra:pressure/cpu"; see metrics.Extra.
 	MetricExtra = "extra"
 )
+
+// hubMeasured are the metrics a hub measures itself of another device, which
+// the minutes it fetches from the device do not have: it stores them from its
+// own readings, and leaves them out of the device's minutes (see Keep).
+var hubMeasured = []string{MetricResponse}
 
 // DefaultMaxEntries is how many disks, temperature sensors, network cards and
 // GPUs each the history keeps per device unless HISTORY_MAX_ENTRIES says
@@ -54,7 +62,8 @@ const MaxMetricLength = 256
 
 // values returns the values of a snapshot that are kept in the history:
 // usage in percent (also of swap and GPU memory), battery charge in percent,
-// temperatures in °C, disk and network speeds in bytes per second, and the
+// temperatures in °C, disk and network speeds in bytes per second, the time
+// another device took to answer the hub in milliseconds, and the
 // extras that ask for it in their own unit. The load average, clock, each
 // core's usage and throttling are only shown live. Of the disks, sensors,
 // network cards and GPUs whose names fit in MaxMetricLength, the first
@@ -72,6 +81,9 @@ func values(s metrics.Snapshot, maxEntries int) (v map[string]float64, dropped, 
 	}
 	if s.Battery != nil {
 		v[MetricBattery] = s.Battery.Percent
+	}
+	if s.ResponseMilliseconds != nil {
+		v[MetricResponse] = *s.ResponseMilliseconds
 	}
 	temperatures := named(s.Temperatures, MetricTemperature, func(t metrics.Temperature) string { return t.Sensor }, &tooLong)
 	for _, t := range first(temperatures, func(t metrics.Temperature) string { return t.Sensor }, maxEntries, &dropped) {

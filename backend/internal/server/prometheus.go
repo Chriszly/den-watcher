@@ -135,6 +135,9 @@ func writePrometheus(out *bytes.Buffer, list []Device, usage map[string]metrics.
 // addSnapshot adds the values of one device's usage.
 func addSnapshot(e *exposition, s metrics.Snapshot) {
 	e.gauge("denwatcher_uptime_seconds", "Time since the device started.", float64(s.UptimeSeconds))
+	if r := s.ResponseMilliseconds; r != nil {
+		e.gauge("denwatcher_response_seconds", "How long the device took to answer the hub's last reading of it.", *r/1000)
+	}
 
 	e.gauge("denwatcher_cpu_usage_percent", "Processor usage across all cores.", s.CPU.UsagePercent)
 	e.gauge("denwatcher_cpu_cores", "Number of processor cores.", float64(s.CPU.Cores))

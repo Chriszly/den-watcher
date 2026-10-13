@@ -181,8 +181,15 @@ func (a *Agent) ask(ctx context.Context) (metrics.Snapshot, error) {
 		snapshot.Disks = nonNil(snapshot.Disks)
 		snapshot.Network = nonNil(snapshot.Network)
 		snapshot.GPUs = nonNil(snapshot.GPUs)
-	} else if err := a.get(ctx, a.url, maxResponseBytes, &snapshot); err != nil {
-		return metrics.Snapshot{}, err
+	} else {
+		start := time.Now()
+		if err := a.get(ctx, a.url, maxResponseBytes, &snapshot); err != nil {
+			return metrics.Snapshot{}, err
+		}
+		// How long the device took to answer, which the hub measures itself
+		// over whatever the device sent.
+		ms := float64(time.Since(start).Microseconds()) / 1000
+		snapshot.ResponseMilliseconds = &ms
 	}
 	// The extras are shown and stored as the device describes them, so they
 	// are cut down to what is safe for that first.

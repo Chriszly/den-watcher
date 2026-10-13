@@ -41,6 +41,8 @@ export const de: Messages = {
   'dashboard.diskFull.one': 'Voll in etwa {count} Tag',
   'dashboard.diskFull.other': 'Voll in etwa {count} Tagen',
   'dashboard.network': 'Netzwerk',
+  'dashboard.connection': 'Verbindung',
+  'dashboard.responseTime': 'Antwortzeit an den Hub',
   'dashboard.noNetwork': 'Keine Netzwerkkarte gefunden',
   'dashboard.idleHidden.one': '{count} Schnittstelle ohne Datenverkehr ausgeblendet',
   'dashboard.idleHidden.other': '{count} Schnittstellen ohne Datenverkehr ausgeblendet',
@@ -238,6 +240,7 @@ export const de: Messages = {
   'history.gpuMemory': 'Speicher {name}',
   'history.temperature': 'Temperatur',
   'history.network': 'Netzwerk',
+  'history.responseTime': 'Antwortzeit',
   'history.received': 'Empfangen',
   'history.sent': 'Gesendet',
   'history.interfaceReceived': '{name} empfangen',
@@ -287,6 +290,8 @@ export const de: Messages = {
     'Wie schnell jedes Laufwerk oder jede Partition gerade gelesen und geschrieben wird und, wo das System es angibt, wie oft und wie lange es beschäftigt ist.',
   'dashboard.info.network':
     'Wie schnell jede Netzwerkschnittstelle gerade empfängt und sendet, die meistgenutzte zuerst, mit ihren Adressen und ihrer Verbindungsgeschwindigkeit.',
+  'dashboard.info.connection':
+    'Wie lange das Gerät brauchte, um dem Hub zu antworten, der es alle 5 Sekunden über das Netzwerk nach seinen Werten fragt. Eine steigende Zeit kann ein ausgelastetes Gerät oder eine schwache Verbindung bedeuten, etwa schlechtes WLAN.',
   'dashboard.info.gpu':
     'Wie ausgelastet jede Grafikkarte ist, mit ihrem Speicher und ihrer Temperatur.',
   'dashboard.info.temperature':

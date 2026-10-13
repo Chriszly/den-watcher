@@ -2057,15 +2057,41 @@ const printer: DemoMachine = {
   }),
 };
 
+/**
+ * A device the hub asks over the network, which answers in about ms milliseconds: a little slower
+ * while it is busy, and over Wi-Fi now and then much slower. Its values get "response", as the hub
+ * measures it; the hub itself, routers and checks have none.
+ */
+function answersIn(machine: DemoMachine, ms: number, wifi = false): DemoMachine {
+  const seed = machine.device.id.length * 13;
+  const swings: [number, number][] = wifi
+    ? [
+        [ms * 0.6, 600],
+        [ms * 1.2, 40],
+      ]
+    : [
+        [ms * 0.3, 900],
+        [ms * 0.2, 60],
+      ];
+  return {
+    ...machine,
+    values: (t, step) => {
+      const values = machine.values(t, step);
+      const busy = (values['cpu'] ?? 0) / 100;
+      return { ...values, response: vary(t, step, seed, ms * (1 + busy), swings, ms / 3, 2000) };
+    },
+  };
+}
+
 export const FLEET: readonly DemoMachine[] = [
   piHub,
-  windowsPc,
-  windowsLaptop,
-  windowsServer,
-  linuxDesktop,
-  linuxNas,
-  linuxServer,
-  linuxLaptop,
+  answersIn(windowsPc, 4),
+  answersIn(windowsLaptop, 18, true),
+  answersIn(windowsServer, 3),
+  answersIn(linuxDesktop, 5),
+  answersIn(linuxNas, 7),
+  answersIn(linuxServer, 2.5),
+  answersIn(linuxLaptop, 22, true),
   homeRouter,
   printer,
 ];
@@ -2193,6 +2219,7 @@ export function snapshotOf(machine: DemoMachine, t: number, version: string): Sn
     timeZone: timeZone(machine, t),
     uptimeSeconds,
     system: machine.system,
+    responseMilliseconds: v['response'],
     cpu: {
       usagePercent: v['cpu'],
       cores: machine.cores,

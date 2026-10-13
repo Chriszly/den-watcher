@@ -54,7 +54,9 @@ type entry struct{ kind, name string }
 // at most maxEntries of them or kinds of them, maxEntries of each kind, and
 // MaxExtras in all. Where there are more, the first by name are kept, so
 // every minute keeps the same ones; dropped tells whether any were left out
-// for those limits, and tooLong whether any were for their names.
+// for those limits, and tooLong whether any were for their names. What the
+// hub measures of the device itself, such as MetricResponse, is left out:
+// the hub stores its own.
 func Keep(values map[string]float64, maxEntries int) (kept map[string]float64, dropped, tooLong bool) {
 	entries := map[string][]entry{}
 	names := map[string]map[string]bool{}
@@ -115,6 +117,11 @@ func Keep(values map[string]float64, maxEntries int) (kept map[string]float64, d
 // entriesOf returns what a metric belongs to, and false for one the history
 // does not keep; tooLong tells that is for its name.
 func entriesOf(metric string) (of []entry, ok, tooLong bool) {
+	// The hub measures these of the device itself; what a device keeps under
+	// their names, as a hub of its own devices, is not the hub's measurement.
+	if slices.Contains(hubMeasured, metric) {
+		return nil, false, false
+	}
 	if single[metric] {
 		return nil, true, false
 	}

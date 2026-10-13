@@ -23,6 +23,7 @@ func TestPrometheusIsOffWithoutTheSetting(t *testing.T) {
 func TestPrometheusListsEveryDevice(t *testing.T) {
 	ioWait := 1.5
 	value := 42.0
+	response := 12.5
 	devices := DeviceList{
 		{ID: "local", Metrics: fakeCollector{snapshot: metrics.Snapshot{
 			UptimeSeconds: 3600,
@@ -37,7 +38,7 @@ func TestPrometheusListsEveryDevice(t *testing.T) {
 		}}},
 		{
 			ID: "pi", Name: "Pi", Alerts: []alerts.Alert{{Level: alerts.Critical}, {Level: alerts.Warning}, {Level: alerts.Critical}},
-			Metrics: fakeCollector{snapshot: metrics.Snapshot{Disks: []metrics.Disk{{Path: "/", TotalBytes: 64, UsedPercent: 50}}}},
+			Metrics: fakeCollector{snapshot: metrics.Snapshot{Disks: []metrics.Disk{{Path: "/", TotalBytes: 64, UsedPercent: 50}}, ResponseMilliseconds: &response}},
 		},
 		{ID: "nas", Name: "NAS", Unreachable: true, Metrics: fakeCollector{}},
 		{ID: "broken", Name: "Broken", Metrics: fakeCollector{err: errors.New("no /proc")}},
@@ -73,6 +74,7 @@ func TestPrometheusListsEveryDevice(t *testing.T) {
 			`denwatcher_network_received_bytes_total{device="Host Hub",id="local",interface="eth0"} 12345678901234`,
 		`denwatcher_network_send_bytes_per_second{device="Host Hub",id="local",interface="eth0"} 512`,
 		`denwatcher_disk_used_percent{device="Pi",id="pi",path="/"} 50`,
+		`denwatcher_response_seconds{device="Pi",id="pi"} 0.0125`,
 		`denwatcher_extra{device="Host Hub",id="local",group="wifi",item="signal",unit="percent",label="Signal"} 42`,
 	} {
 		if !strings.Contains(body, want) {

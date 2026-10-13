@@ -47,7 +47,8 @@
 //	                are shown as extras (default none: no add-ons)
 //	ALLOWED_HOSTS   comma-separated names this device answers to besides its
 //	                IP addresses, localhost, its hostname and .local names,
-//	                such as a name from the router's DNS (default none)
+//	                such as a name from the router's DNS, without http://
+//	                (default none)
 //	PROMETHEUS      true to serve GET /metrics, the usage of this device and
 //	                of every device it collects from in the Prometheus text
 //	                format, for Prometheus and Grafana (default false)
@@ -65,6 +66,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -184,6 +186,9 @@ func run(ctx context.Context) error {
 	checkUpdates, err := boolSettingOr("UPDATE_CHECK", true)
 	if err != nil {
 		return err
+	}
+	if err := server.CheckAllowedHosts(listSetting("ALLOWED_HOSTS")); err != nil {
+		return fmt.Errorf("check ALLOWED_HOSTS: %w", err)
 	}
 
 	// Listening comes before the rest of the setup: while another program
@@ -607,10 +612,15 @@ func diskPathsHint(goos string, container bool) string {
 	}
 }
 
-// diskPaths returns the paths from DISK_PATHS, or the system disk when it is
-// not set.
+// diskPaths returns the paths from DISK_PATHS, each once, or the system disk
+// when it is not set.
 func diskPaths() []string {
-	paths := listSetting("DISK_PATHS")
+	var paths []string
+	for _, path := range listSetting("DISK_PATHS") {
+		if !slices.Contains(paths, path) {
+			paths = append(paths, path)
+		}
+	}
 	if len(paths) == 0 {
 		return []string{systemDisk()}
 	}

@@ -132,15 +132,21 @@ func writePrometheus(out *bytes.Buffer, list []Device, usage map[string]metrics.
 	}
 }
 
-// addSnapshot adds the values of one device's usage.
+// addSnapshot adds the values of one device's usage. Uptime, CPU and memory
+// are left out where they are 0, as a router read over UPnP or a check does
+// not report them; the page leaves out their cards the same way.
 func addSnapshot(e *exposition, s metrics.Snapshot) {
-	e.gauge("denwatcher_uptime_seconds", "Time since the device started.", float64(s.UptimeSeconds))
+	if s.UptimeSeconds > 0 {
+		e.gauge("denwatcher_uptime_seconds", "Time since the device started.", float64(s.UptimeSeconds))
+	}
 	if r := s.ResponseMilliseconds; r != nil {
 		e.gauge("denwatcher_response_seconds", "How long the device took to answer the hub's last reading of it.", *r/1000)
 	}
 
-	e.gauge("denwatcher_cpu_usage_percent", "Processor usage across all cores.", s.CPU.UsagePercent)
-	e.gauge("denwatcher_cpu_cores", "Number of processor cores.", float64(s.CPU.Cores))
+	if s.CPU.Cores > 0 {
+		e.gauge("denwatcher_cpu_usage_percent", "Processor usage across all cores.", s.CPU.UsagePercent)
+		e.gauge("denwatcher_cpu_cores", "Number of processor cores.", float64(s.CPU.Cores))
+	}
 	for i, usage := range s.CPU.CoreUsagePercent {
 		e.gauge("denwatcher_cpu_core_usage_percent", "Usage of one processor core.", usage, label{"core", strconv.Itoa(i)})
 	}
@@ -160,9 +166,11 @@ func addSnapshot(e *exposition, s metrics.Snapshot) {
 	}
 
 	m := s.Memory
-	e.gauge("denwatcher_memory_total_bytes", "Size of the main memory.", float64(m.TotalBytes))
-	e.gauge("denwatcher_memory_used_bytes", "Main memory in use.", float64(m.UsedBytes))
-	e.gauge("denwatcher_memory_used_percent", "Share of the main memory in use.", m.UsedPercent)
+	if m.TotalBytes > 0 {
+		e.gauge("denwatcher_memory_total_bytes", "Size of the main memory.", float64(m.TotalBytes))
+		e.gauge("denwatcher_memory_used_bytes", "Main memory in use.", float64(m.UsedBytes))
+		e.gauge("denwatcher_memory_used_percent", "Share of the main memory in use.", m.UsedPercent)
+	}
 	if m.AvailableBytes > 0 {
 		e.gauge("denwatcher_memory_available_bytes", "Main memory programs can still get, the cache included.", float64(m.AvailableBytes))
 	}

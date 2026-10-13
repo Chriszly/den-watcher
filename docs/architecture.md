@@ -271,7 +271,7 @@ A poll that is still waiting for its answer skips the next tick instead of pilin
 
 The website and the API answer only the local network. Every request passes three checks before any handler runs:
 
-1. **The client's address**, from the TCP connection (not a header a client could fake), must be loopback, private (RFC 1918, IPv6 unique local), link-local, or a global IPv6 address in one of the machine's own subnets (home networks with IPv6 from the provider use those). Otherwise: `403 Forbidden`.
+1. **The client's address**, from the TCP connection (not a header a client could fake), must be loopback, private (RFC 1918, IPv6 unique local), link-local, or a global IPv6 address in one of the machine's own subnets (home networks with IPv6 from the provider use those); an own address with a prefix longer than /64, such as the /128 that DHCPv6 hands out, counts as its /64. Otherwise: `403 Forbidden`.
 2. **The Host header** must be a name the device knows: an IP address, `localhost`, its hostname, any `.local` name, or a name in `ALLOWED_HOSTS`. Otherwise: `421 Misdirected Request`. This stops DNS rebinding, where a web page from the internet points its own domain at the device's LAN address to read the API through a browser on the LAN.
 3. Responses carry `X-Content-Type-Options: nosniff`, and `Content-Security-Policy: frame-ancestors 'none'` with `X-Frame-Options: DENY`, so no other site can show the page in a frame (dashboards that embed pages in a frame, such as a Home Assistant iframe card, show it empty; open it in its own tab instead), and the website is served without directory listings.
 

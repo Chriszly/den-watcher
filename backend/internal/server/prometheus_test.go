@@ -81,7 +81,12 @@ func TestPrometheusListsEveryDevice(t *testing.T) {
 			t.Errorf("GET /metrics is missing\n%s\nin\n%s", want, body)
 		}
 	}
-	for _, unwanted := range []string{`item="ssid"`, `id="nas"} 0` + "\ndenwatcher_uptime", `denwatcher_uptime_seconds{device="NAS"`, "denwatcher_battery", "denwatcher_disk_latency"} {
+	for _, unwanted := range []string{
+		`item="ssid"`, `id="nas"} 0` + "\ndenwatcher_uptime", `denwatcher_uptime_seconds{device="NAS"`, "denwatcher_battery", "denwatcher_disk_latency",
+		// The Pi reports no uptime, CPU or memory, as a router or check.
+		`denwatcher_uptime_seconds{device="Pi"`, `denwatcher_cpu_usage_percent{device="Pi"`, `denwatcher_cpu_cores{device="Pi"`,
+		`denwatcher_memory_total_bytes{device="Pi"`, `denwatcher_memory_used_percent{device="Pi"`,
+	} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("GET /metrics has %q, which it should leave out:\n%s", unwanted, body)
 		}

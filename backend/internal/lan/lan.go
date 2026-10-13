@@ -17,8 +17,9 @@ const prefixesRefresh = time.Minute
 // Checker decides whether an address is on the local network. Loopback,
 // private (RFC 1918 and IPv6 unique local) and link-local addresses always
 // are. A global IPv6 address is too when it lies in the subnet of one of the
-// machine's own addresses: devices on a home network with IPv6 from the
-// provider carry such global addresses, not private ones.
+// machine's own addresses, or its /64 for one with a longer prefix: devices
+// on a home network with IPv6 from the provider carry such global addresses,
+// not private ones.
 type Checker struct {
 	// Interfaces lists the machine's addresses; net.InterfaceAddrs when nil.
 	Interfaces func() ([]net.Addr, error)
@@ -97,6 +98,11 @@ func globalPrefixes(addrs []net.Addr) []netip.Prefix {
 		if !addr.Is6() || !addr.IsGlobalUnicast() || bits == 0 {
 			continue
 		}
+		// An address from DHCPv6 usually comes as a /128, and the router
+		// announces its /64 apart from it, so a longer prefix counts as its
+		// /64: an IPv6 LAN is a /64. Otherwise only the machine itself
+		// would be local.
+		bits = min(bits, 64)
 		prefixes = append(prefixes, netip.PrefixFrom(addr, bits).Masked())
 	}
 	return prefixes

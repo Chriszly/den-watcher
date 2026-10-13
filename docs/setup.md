@@ -75,7 +75,7 @@ The page answers when opened by an IP address, `localhost`, the machine's hostna
 ALLOWED_HOSTS=raspberrypi,pi.fritz.box
 ```
 
-Other names are refused with `421 Misdirected Request` ([why](architecture.md#local-network-only)).
+Other names are refused with `421 Misdirected Request` ([why](architecture.md#local-network-only)). List the names alone, with a port at most: den-watcher refuses to start with an entry such as `http://pi.lan`, and says which one.
 
 ### Add the page to a phone's home screen
 

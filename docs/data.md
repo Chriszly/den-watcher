@@ -176,7 +176,7 @@ A value must stay at or above the threshold for the time in *Must last* before i
 
 ## The usage for Prometheus
 
-With `PROMETHEUS=true`, `GET /metrics` answers with the current usage of every device in the Prometheus text format (see [Show the usage in Grafana](setup.md#7-show-the-usage-in-grafana)). Every value has the labels `device`, the device's name, and `id`, its id. Values a device does not report, such as a battery or the swap space, are left out, as in [the snapshot](#the-snapshot).
+With `PROMETHEUS=true`, `GET /metrics` answers with the current usage of every device in the Prometheus text format (see [Show the usage in Grafana](setup.md#7-show-the-usage-in-grafana)). Every value has the labels `device`, the device's name, and `id`, its id. Values a device does not report, such as a battery or the swap space, or the uptime, CPU and memory of a router read over UPnP or a check, are left out, as in [the snapshot](#the-snapshot).
 
 | Metric | Type | Labels | Value |
 | --- | --- | --- | --- |

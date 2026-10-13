@@ -23,6 +23,7 @@ func TestDiskPaths(t *testing.T) {
 		{"", []string{systemDisk()}},
 		{"/", []string{"/"}},
 		{" /, /mnt/usb ,", []string{"/", "/mnt/usb"}},
+		{"/,/mnt/usb, /", []string{"/", "/mnt/usb"}},
 	}
 	for _, tt := range tests {
 		t.Setenv("DISK_PATHS", tt.value)
@@ -274,6 +275,18 @@ func TestRunStopsBeforeTheSetupWhenUpdateCheckIsInvalid(t *testing.T) {
 	}
 	if _, statErr := os.Stat(database); !errors.Is(statErr, os.ErrNotExist) {
 		t.Errorf("run() with UPDATE_CHECK=no opened the database (%v); it should stop before the setup", statErr)
+	}
+}
+
+func TestRunStopsBeforeTheSetupWhenAllowedHostsHasAURL(t *testing.T) {
+	database := setUpRun(t, "127.0.0.1:0")
+	t.Setenv("ALLOWED_HOSTS", "pi.fritz.box,http://pi.lan")
+
+	if err := run(context.Background()); err == nil || !strings.Contains(err.Error(), `ALLOWED_HOSTS: "http://pi.lan"`) {
+		t.Errorf("run() with a URL in ALLOWED_HOSTS error = %v, want one naming ALLOWED_HOSTS and the URL", err)
+	}
+	if _, statErr := os.Stat(database); !errors.Is(statErr, os.ErrNotExist) {
+		t.Errorf("run() with a URL in ALLOWED_HOSTS opened the database (%v); it should stop before the setup", statErr)
 	}
 }
 

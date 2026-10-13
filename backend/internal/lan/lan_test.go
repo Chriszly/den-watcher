@@ -64,6 +64,40 @@ func TestLocal(t *testing.T) {
 	}
 }
 
+func TestAPrefixLongerThan64CountsAsIts64(t *testing.T) {
+	checker := &Checker{Interfaces: func() ([]net.Addr, error) {
+		var addrs []net.Addr
+		// A /128 from DHCPv6, a /80 and a /56, which is kept as it is.
+		for _, cidr := range []string{"2001:db8:1:2::9/128", "2001:db8:5:6:7::9/80", "2001:db8:7:100::9/56"} {
+			ip, ipNet, err := net.ParseCIDR(cidr)
+			if err != nil {
+				return nil, err
+			}
+			addrs = append(addrs, &net.IPNet{IP: ip, Mask: ipNet.Mask})
+		}
+		return addrs, nil
+	}}
+	tests := []struct {
+		addr string
+		want bool
+	}{
+		{"2001:db8:1:2::9", true},
+		{"2001:db8:1:2::20", true},
+		{"2001:db8:1:2:ffff:ffff:ffff:ffff", true},
+		{"2001:db8:1:3::20", false},
+		{"2001:db8:1:1:ffff:ffff:ffff:ffff", false},
+		{"2001:db8:5:6:8::1", true},
+		{"2001:db8:5:7::1", false},
+		{"2001:db8:7:1ff::1", true},
+		{"2001:db8:7:200::1", false},
+	}
+	for _, tt := range tests {
+		if got := checker.Local(netip.MustParseAddr(tt.addr)); got != tt.want {
+			t.Errorf("Local(%s) = %v, want %v", tt.addr, got, tt.want)
+		}
+	}
+}
+
 func TestLocalAddrPort(t *testing.T) {
 	checker := &Checker{Interfaces: ownAddresses}
 	tests := []struct {

@@ -53,6 +53,8 @@ services:
       # Names the page may be opened by besides the IP address and .local
       # names, such as one from the router's DNS; see .env.example.
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      # true serves GET /metrics for Prometheus; see .env.example.
+      PROMETHEUS: ${PROMETHEUS:-}
       # Where the add-ons below write what they read.
       ADDONS_DIR: /addons
     volumes:

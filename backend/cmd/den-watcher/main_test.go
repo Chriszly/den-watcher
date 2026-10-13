@@ -240,7 +240,7 @@ func setUpRun(t *testing.T, addr string) string {
 	t.Setenv("LISTEN_ADDR", addr)
 	t.Setenv("DATABASE_PATH", database)
 	t.Setenv("DISK_PATHS", t.TempDir())
-	for _, name := range []string{"PUBLIC_PORT", "RETENTION_DAYS", "HISTORY_MAX_ENTRIES", "HUB_DEVICES", "DATA_ONLY", "BUFFER_HOURS", "RESET_PASSWORD", "UPDATE_CHECK", "ADDONS_DIR", "ALLOWED_HOSTS"} {
+	for _, name := range []string{"PUBLIC_PORT", "RETENTION_DAYS", "HISTORY_MAX_ENTRIES", "HUB_DEVICES", "DATA_ONLY", "BUFFER_HOURS", "RESET_PASSWORD", "UPDATE_CHECK", "ADDONS_DIR", "ALLOWED_HOSTS", "PROMETHEUS"} {
 		t.Setenv(name, "")
 	}
 	return database
@@ -274,6 +274,19 @@ func TestRunStopsBeforeTheSetupWhenUpdateCheckIsInvalid(t *testing.T) {
 	}
 	if _, statErr := os.Stat(database); !errors.Is(statErr, os.ErrNotExist) {
 		t.Errorf("run() with UPDATE_CHECK=no opened the database (%v); it should stop before the setup", statErr)
+	}
+}
+
+func TestRunRefusesPrometheusWithDataOnly(t *testing.T) {
+	database := setUpRun(t, "127.0.0.1:0")
+	t.Setenv("DATA_ONLY", "true")
+	t.Setenv("PROMETHEUS", "true")
+
+	if err := run(context.Background()); err == nil || !strings.Contains(err.Error(), "PROMETHEUS") {
+		t.Errorf("run() with DATA_ONLY and PROMETHEUS error = %v, want one naming PROMETHEUS", err)
+	}
+	if _, statErr := os.Stat(database); !errors.Is(statErr, os.ErrNotExist) {
+		t.Errorf("run() with DATA_ONLY and PROMETHEUS opened the database (%v); it should stop before the setup", statErr)
 	}
 }
 

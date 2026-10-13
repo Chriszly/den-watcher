@@ -48,6 +48,9 @@
 //	ALLOWED_HOSTS   comma-separated names this device answers to besides its
 //	                IP addresses, localhost, its hostname and .local names,
 //	                such as a name from the router's DNS (default none)
+//	PROMETHEUS      true to serve GET /metrics, the usage of this device and
+//	                of every device it collects from in the Prometheus text
+//	                format, for Prometheus and Grafana (default false)
 package main
 
 import (
@@ -163,6 +166,13 @@ func run(ctx context.Context) error {
 	if dataOnly && len(remotes) > 0 {
 		return errors.New("HUB_DEVICES, HUB_ROUTERS or HUB_CHECKS is set, but DATA_ONLY turns off the website that would show them; unset one of the two")
 	}
+	prometheus, err := boolSettingOr("PROMETHEUS", false)
+	if err != nil {
+		return err
+	}
+	if dataOnly && prometheus {
+		return errors.New("PROMETHEUS is set, but DATA_ONLY serves only the usage for a hub; let Prometheus scrape the hub, which lists this device too, or unset one of the two")
+	}
 
 	bufferSpan, err := bufferHours()
 	if err != nil {
@@ -229,6 +239,10 @@ func run(ctx context.Context) error {
 			return err
 		}
 		waitForRecorders = wait
+		site.Prometheus = prometheus
+		if prometheus {
+			slog.Info("serving the usage for Prometheus at /metrics")
+		}
 		handler = server.New(site)
 	}
 	// The recorders stop before the database is closed.

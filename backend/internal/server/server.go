@@ -103,6 +103,9 @@ type Site struct {
 	// Layout keeps how the page is arranged; nil leaves out GET and PUT
 	// /api/layout.
 	Layout LayoutStore
+	// Prometheus adds GET /metrics, the usage of every device for
+	// Prometheus, from PROMETHEUS.
+	Prometheus bool
 }
 
 // LayoutStore keeps how the page is arranged, for every browser that opens it.
@@ -152,6 +155,9 @@ func New(site Site) http.Handler {
 		mux.HandleFunc("GET /api/update", func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(w, http.StatusOK, site.Update())
 		})
+	}
+	if site.Prometheus {
+		mux.HandleFunc("GET /metrics", prometheusHandler(site.Devices))
 	}
 	mux.Handle("GET /", websiteHandler(site.Files))
 	return withHeaders(localNetworkOnly(knownHostsOnly(newKnownHosts(site.AllowedHosts), mux)))
@@ -209,30 +215,37 @@ var fleetTimeout = 3 * time.Second
 // within fleetTimeout is left out, so it holds back none of the others.
 func fleetMetricsHandler(devices Devices) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), fleetTimeout)
-		defer cancel()
-		var (
-			mu    sync.Mutex
-			wait  sync.WaitGroup
-			usage = map[string]metrics.Snapshot{}
-		)
-		for _, d := range devices.List() {
-			if d.Unreachable || d.Metrics == nil {
-				continue
-			}
-			wait.Go(func() {
-				snapshot, err := d.Metrics.Collect(ctx)
-				if err != nil {
-					return
-				}
-				mu.Lock()
-				usage[d.ID] = snapshot
-				mu.Unlock()
-			})
-		}
-		wait.Wait()
-		writeJSON(w, http.StatusOK, usage)
+		writeJSON(w, http.StatusOK, readAll(r.Context(), devices.List()))
 	}
+}
+
+// readAll reads the usage of every device in list that answers, side by side,
+// by its id. A device that is unreachable, or whose usage cannot be read
+// within fleetTimeout, is left out.
+func readAll(ctx context.Context, list []Device) map[string]metrics.Snapshot {
+	ctx, cancel := context.WithTimeout(ctx, fleetTimeout)
+	defer cancel()
+	var (
+		mu    sync.Mutex
+		wait  sync.WaitGroup
+		usage = map[string]metrics.Snapshot{}
+	)
+	for _, d := range list {
+		if d.Unreachable || d.Metrics == nil {
+			continue
+		}
+		wait.Go(func() {
+			snapshot, err := d.Metrics.Collect(ctx)
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			usage[d.ID] = snapshot
+			mu.Unlock()
+		})
+	}
+	wait.Wait()
+	return usage
 }
 
 // forDevice passes a request on to the handler for the device in its

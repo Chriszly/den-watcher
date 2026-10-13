@@ -25,9 +25,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # gitleaks reads the commits of the pull request or push.
+          fetch-depth: 0
 
+      # The newest gitleaks release, checked against its published checksums.
+      - name: Install gitleaks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$(gh release view --repo gitleaks/gitleaks --json tagName --jq .tagName)"
+          file="gitleaks_${tag#v}_linux_x64.tar.gz"
+          cd "$RUNNER_TEMP"
+          gh release download "$tag" --repo gitleaks/gitleaks --pattern "$file" --pattern "gitleaks_${tag#v}_checksums.txt"
+          grep " $file\$" "gitleaks_${tag#v}_checksums.txt" | sha256sum -c -
+          tar -xzf "$file" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      # Scans the commits of the pull request or push (all of them on a manual
+      # run) with .gitleaks.toml and .gitleaksignore.
       - name: No settings, keys or passwords committed
-        run: bash ci/check-no-secrets.sh
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          case "$GITHUB_EVENT_NAME" in
+            pull_request) range="$BASE..$HEAD" ;;
+            push) [[ "$BEFORE" =~ ^0+$ ]] && range="$GITHUB_SHA" || range="$BEFORE..$GITHUB_SHA" ;;
+            *) range='' ;;
+          esac
+          gitleaks git --no-banner --redact -v ${range:+--log-opts="$range"}
 
       - name: No links to AI sites
         run: bash ci/check-no-ai-links.sh

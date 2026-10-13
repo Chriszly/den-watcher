@@ -34,7 +34,7 @@ Temperature is not available on every platform; where the OS does not expose it,
 
 ## Security Guidelines
 
-- Never hardcode or commit secrets, passwords, tokens or private keys; local settings live in a git-ignored `.env` (only `.env.example` with empty values is committed). `ci/check-no-secrets.sh` enforces this
+- Never hardcode or commit secrets, passwords, tokens or private keys; local settings live in a git-ignored `.env` (only `.env.example` with empty values is committed). gitleaks enforces this with `.gitleaks.toml`
 - Validate all user input
 - Read hardware data read-only; the website never changes the machine it monitors
 - When the site runs in a container, drop unnecessary capabilities and don't run it privileged
@@ -43,7 +43,7 @@ Temperature is not available on every platform; where the OS does not expose it,
 ## Testing Requirements
 
 Before submitting changes:
-- Run `bash ci/check-no-secrets.sh`
+- Run `gitleaks git` (the secret check, with `.gitleaks.toml`)
 - Run `bash ci/check-no-ai-links.sh`
 - Run `bash ci/check-demo-covers-addons.sh`: a new add-on needs a `<name>AddOn()` in `frontend/src/demo/fleet.ts` used by a demo device. Any other change the page shows (a new card, value or field) gets mock data in the demo in the same pull request too
 - Run `bash -n` and `shellcheck` on every changed shell script

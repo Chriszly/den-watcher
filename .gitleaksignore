@@ -1,0 +1,4 @@
+# Findings gitleaks may skip: made-up Wi-Fi adapter keys in a test, not secrets.
+996720abc8675a7ff7cb9c3b6910e8ba51aa8f00:backend/internal/addons/wifi/wifi_test.go:generic-api-key:87
+996720abc8675a7ff7cb9c3b6910e8ba51aa8f00:backend/internal/addons/wifi/wifi_test.go:generic-api-key:124
+996720abc8675a7ff7cb9c3b6910e8ba51aa8f00:backend/internal/addons/wifi/wifi_test.go:generic-api-key:125

@@ -20,31 +20,11 @@
   }
 }
 
+/* As tall as their label, which may wrap on a phone. */
 button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  height: auto;
   min-height: 2.5rem;
-  padding: 0 1rem;
-  border: 1px solid var(--mat-sys-outline);
-  border-radius: var(--mat-sys-corner-full);
-  background: none;
   color: inherit;
-  font: var(--mat-sys-label-large);
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    background: color-mix(in srgb, currentColor 8%, transparent);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--mat-sys-primary);
-  }
-
-  &:disabled {
-    opacity: 0.38;
-    cursor: default;
-  }
 }
 
 .start {

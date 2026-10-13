@@ -7,7 +7,13 @@ import { ThemeService } from './theme';
 @Component({
   selector: 'app-theme-toggle',
   template: `
-    <button type="button" [attr.aria-label]="label()" [title]="label()" (click)="theme.toggle()">
+    <button
+      type="button"
+      class="icon-button"
+      [attr.aria-label]="label()"
+      [title]="label()"
+      (click)="theme.toggle()"
+    >
       <svg viewBox="0 0 24 24" aria-hidden="true">
         @if (theme.scheme() === 'dark') {
           <circle cx="12" cy="12" r="4.5" />
@@ -23,22 +29,7 @@ import { ThemeService } from './theme';
   `,
   styles: `
     button {
-      display: flex;
       padding: 0.375rem;
-      border: none;
-      border-radius: 50%;
-      background: none;
-      color: var(--mat-sys-on-surface-variant);
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: var(--mat-sys-surface-container-high);
-      color: var(--mat-sys-on-surface);
-    }
-
-    button:focus-visible {
-      outline: 2px solid var(--mat-sys-primary);
     }
 
     svg {

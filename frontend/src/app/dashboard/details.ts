@@ -55,7 +55,7 @@ import { valueCard } from './categories';
                   <td class="arrange">
                     <button
                       type="button"
-                      class="make"
+                      class="icon-button make"
                       [attr.data-card]="card"
                       [attr.aria-label]="
                         i18n.t('arrange.make', { value: text(item.label, item.labels) })

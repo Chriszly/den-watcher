@@ -5,6 +5,7 @@ import { I18n } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
 import { ExtraUnit, formatExtra } from '../metrics/extras';
 import { Point } from '../metrics/metrics';
+import { CanvasLine, ChartCanvas, PlotPoint } from './chart-canvas';
 import { ChartMarker, POINTER_SLACK, markersIn } from './chart-events';
 import { ChartMarkers } from './chart-markers';
 
@@ -17,10 +18,6 @@ export interface ChartLine {
   points: Point[];
 }
 
-/** The size of the drawing in SVG units; it is stretched to the chart's size. */
-const WIDTH = 1000;
-const HEIGHT = 100;
-
 /** How many colors the lines take in turn; lines after them are dashed. */
 export const COLORS = 8;
 
@@ -32,7 +29,7 @@ export const COLORS = 8;
  */
 @Component({
   selector: 'app-line-chart',
-  imports: [ChartMarkers, DatePipe, NgTemplateOutlet],
+  imports: [ChartCanvas, ChartMarkers, DatePipe, NgTemplateOutlet],
   templateUrl: './line-chart.html',
   styleUrl: './line-chart.css',
 })
@@ -51,15 +48,14 @@ export class LineChart {
   /** What happened to the device, marked on the chart and told in the readout. */
   readonly markers = input<ChartMarker[]>([]);
 
-  protected readonly width = WIDTH;
-  protected readonly height = HEIGHT;
-
   protected readonly top = computed(() => chartTop(this.lines(), this.unit(), this.max()));
 
-  protected readonly paths = computed(() =>
-    this.lines().map((line) =>
-      linePath(line.points, this.from(), this.to(), this.step(), this.top()),
-    ),
+  protected readonly canvasLines = computed(() =>
+    this.lines().map((line, index): CanvasLine => ({
+      segments: lineSegments(line.points, this.from(), this.to(), this.step(), this.top()),
+      series: index % COLORS,
+      dashed: index >= COLORS,
+    })),
   );
 
   /** Whether the chart's dates need their year, so dates a year apart are told apart. */
@@ -167,28 +163,29 @@ export function stepCenter(time: number, from: number, to: number, step: number)
 }
 
 /**
- * The SVG path of a line from `from` to `to` (Unix seconds) with one point per `step` seconds,
- * drawn 1000 × 100 with `top` at the top, starting a new segment after a gap.
+ * The points of a line from `from` to `to` (Unix seconds) with one point per `step` seconds, as
+ * fractions of the plot with `top` at the top, in runs that a gap in the values splits.
  */
-export function linePath(
+export function lineSegments(
   points: Point[],
   from: number,
   to: number,
   step: number,
   top: number,
-): string {
-  let path = '';
+): PlotPoint[][] {
+  const segments: PlotPoint[][] = [];
   let previous: number | null = null;
   for (const point of points) {
     // Each point is the average of its step, so it is drawn in the step's middle.
-    const x = ((point.time + step / 2 - from) / (to - from)) * WIDTH;
-    const y = HEIGHT - (Math.min(point.value, top) / top) * HEIGHT;
-    const gap = previous === null || point.time - previous > 2 * step;
-    // A lone point gets a line of no length, which the round line caps show as a dot.
-    path += gap ? `M${x.toFixed(1)} ${y.toFixed(1)}h0` : `L${x.toFixed(1)} ${y.toFixed(1)}`;
+    const x = (point.time + step / 2 - from) / (to - from);
+    const y = 1 - Math.min(point.value, top) / top;
+    if (previous === null || point.time - previous > 2 * step) {
+      segments.push([]);
+    }
+    segments[segments.length - 1].push({ x, y });
     previous = point.time;
   }
-  return path;
+  return segments;
 }
 
 /**

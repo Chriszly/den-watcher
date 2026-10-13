@@ -1,0 +1,161 @@
+import { Component, signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+
+import { ThemeService } from '../theme/theme';
+import { CanvasLine, ChartCanvas } from './chart-canvas';
+
+/** Stands in for the browser's ResizeObserver, which jsdom lacks; tests report sizes by hand. */
+class FakeResizeObserver {
+  static last: FakeResizeObserver | undefined;
+  constructor(readonly report: ResizeObserverCallback) {
+    FakeResizeObserver.last = this;
+  }
+  observe = vi.fn();
+  disconnect = vi.fn();
+  resize(width: number, height: number): void {
+    this.report(
+      [{ contentRect: { width, height } } as ResizeObserverEntry],
+      this as unknown as ResizeObserver,
+    );
+  }
+}
+
+/** Stands in for a canvas's 2D context, which jsdom lacks, and writes down what is drawn. */
+class FakeContext {
+  readonly calls: string[] = [];
+  strokeStyle = '';
+  lineWidth = 0;
+  lineCap = '';
+  lineJoin = '';
+  setTransform(a: number): void {
+    this.calls.push(`scale ${a}`);
+  }
+  clearRect(): void {
+    this.calls.push('clear');
+  }
+  setLineDash(dash: number[]): void {
+    this.calls.push(`dash ${dash.join(' ')}`);
+  }
+  beginPath = vi.fn();
+  moveTo(x: number, y: number): void {
+    this.calls.push(`M${x} ${y}`);
+  }
+  lineTo(x: number, y: number): void {
+    this.calls.push(`L${x} ${y}`);
+  }
+  stroke(): void {
+    this.calls.push(`stroke ${this.strokeStyle} ${this.lineWidth}`);
+  }
+}
+
+@Component({
+  imports: [ChartCanvas],
+  template: `<div style="position: relative">
+    <canvas [appChartCanvas]="lines()" [grid]="grid()"></canvas>
+  </div>`,
+})
+class Host {
+  readonly lines = signal<CanvasLine[]>([]);
+  readonly grid = signal(false);
+}
+
+describe('ChartCanvas', () => {
+  let context: FakeContext;
+
+  beforeEach(() => {
+    context = new FakeContext();
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    vi.stubGlobal('devicePixelRatio', 2);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      context as unknown as CanvasRenderingContext2D,
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function render(lines: CanvasLine[], grid = false) {
+    const fixture = TestBed.createComponent(Host);
+    fixture.componentInstance.lines.set(lines);
+    fixture.componentInstance.grid.set(grid);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('draws nothing until it knows its size', () => {
+    render([{ segments: [[{ x: 0, y: 0 }]], series: 0, dashed: false }]);
+    expect(context.calls).toEqual([]);
+  });
+
+  it('draws the lines in device pixels, past the plot by a few pixels on every side', () => {
+    const fixture = render([
+      {
+        segments: [
+          [
+            { x: 0, y: 1 },
+            { x: 0.5, y: 0 },
+          ],
+          [{ x: 1, y: 0.5 }],
+        ],
+        series: 2,
+        dashed: true,
+      },
+    ]);
+    FakeResizeObserver.last!.resize(108, 58);
+
+    const canvas = (fixture.nativeElement as HTMLElement).querySelector('canvas')!;
+    expect([canvas.width, canvas.height]).toEqual([216, 116]);
+    expect(context.calls).toEqual([
+      'scale 2',
+      'clear',
+      'dash 6 5',
+      'M4 54',
+      'L4 54',
+      'L54 4',
+      'M104 29',
+      // A lone point is drawn as a line of no length, which its round caps show as a dot.
+      'L104 29',
+      expect.stringMatching(/^stroke .* 2$/),
+    ]);
+  });
+
+  it('draws the grid in thin lines that stay sharp', () => {
+    render([], true);
+    FakeResizeObserver.last!.resize(108, 58);
+
+    expect(context.calls).toEqual([
+      'scale 2',
+      'clear',
+      'dash 2 4',
+      'M4 4.25',
+      'L104 4.25',
+      'M4 29.25',
+      'L104 29.25',
+      expect.stringMatching(/^stroke .* 0.5$/),
+      'dash ',
+      'M4 53.75',
+      'L104 53.75',
+      expect.stringMatching(/^stroke .* 0.5$/),
+    ]);
+  });
+
+  it('draws again when the lines or the color scheme change', () => {
+    const fixture = render([]);
+    FakeResizeObserver.last!.resize(108, 58);
+    context.calls.length = 0;
+
+    fixture.componentInstance.lines.set([
+      { segments: [[{ x: 0, y: 0 }]], series: 0, dashed: false },
+    ]);
+    fixture.detectChanges();
+    expect(context.calls).toContain('M4 4');
+
+    context.calls.length = 0;
+    TestBed.inject(ThemeService).toggle();
+    fixture.detectChanges();
+    expect(context.calls).toContain('M4 4');
+    document.documentElement.style.colorScheme = '';
+  });
+});

@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
+import { ChartCanvas } from './chart-canvas';
 import { ChartLine, LineChart, needsYear, niceCeiling } from './line-chart';
 
 describe('LineChart', () => {
@@ -22,8 +24,13 @@ describe('LineChart', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('draws one path per line and leaves a gap where values are missing', () => {
-    const element = render([
+  /** The lines the chart hands its canvas to draw. */
+  function drawn() {
+    return fixture.debugElement.query(By.directive(ChartCanvas)).injector.get(ChartCanvas).lines();
+  }
+
+  it('draws each line and leaves a gap where values are missing', () => {
+    render([
       {
         label: 'CPU',
         points: [
@@ -34,10 +41,16 @@ describe('LineChart', () => {
       },
     ]);
 
-    const paths = element.querySelectorAll('path');
-    expect(paths.length).toBe(1);
+    const lines = drawn();
+    expect(lines.length).toBe(1);
     // The first two points are joined; the third starts a new segment after the gap.
-    expect(paths[0].getAttribute('d')).toBe('M50.0 100.0h0L150.0 50.0M550.0 0.0h0');
+    expect(lines[0].segments).toEqual([
+      [
+        { x: 0.05, y: 1 },
+        { x: 0.15, y: 0.5 },
+      ],
+      [{ x: 0.55, y: 0 }],
+    ]);
   });
 
   it('shows a legend only when there are several lines', () => {
@@ -119,8 +132,8 @@ describe('LineChart', () => {
       { label: 'Memory', points: [] },
     ]);
 
-    const label = element.querySelector('svg')?.getAttribute('aria-label') ?? '';
-    expect(element.querySelector('svg')?.getAttribute('role')).toBe('img');
+    const label = element.querySelector('canvas')?.getAttribute('aria-label') ?? '';
+    expect(element.querySelector('canvas')?.getAttribute('role')).toBe('img');
     expect(label).toMatch(
       /^Chart of “CPU and memory” from .+ to .+: CPU \(latest 12\.5 %\) and Memory \(no data\)$/,
     );
@@ -145,7 +158,7 @@ describe('LineChart', () => {
     expect(axis).toContain('Jan 10, 2025');
     expect(axis).toContain('2026');
     expect(element.querySelector('.tooltip .time')?.textContent).toContain(', 2025,');
-    expect(element.querySelector('svg')?.getAttribute('aria-label')).toMatch(
+    expect(element.querySelector('canvas')?.getAttribute('aria-label')).toMatch(
       /from Fri, Jan 10, 2025, .+ to .+, 2026, /,
     );
   });
@@ -156,7 +169,7 @@ describe('LineChart', () => {
 
     expect(element.querySelector('.x-axis')?.textContent).toContain('May 1');
     expect(element.querySelector('.x-axis')?.textContent).not.toContain('2026');
-    expect(element.querySelector('svg')?.getAttribute('aria-label')).not.toContain('2026');
+    expect(element.querySelector('canvas')?.getAttribute('aria-label')).not.toContain('2026');
   });
 
   it('dashes the lines after the eighth and keeps lines of the same name apart', () => {
@@ -172,7 +185,8 @@ describe('LineChart', () => {
     expect(swatches.length).toBe(9);
     expect(swatches[0].classList.contains('dashed')).toBe(false);
     expect([...swatches[8].classList].sort()).toEqual(['dashed', 'series-0', 'swatch']);
-    expect(element.querySelectorAll('path.dashed').length).toBe(1);
+    expect(drawn().map((line) => line.dashed)).toEqual([...Array(8).fill(false), true]);
+    expect(drawn()[8].series).toBe(0);
   });
 });
 

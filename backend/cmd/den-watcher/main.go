@@ -47,8 +47,8 @@
 //	                are shown as extras (default none: no add-ons)
 //	ALLOWED_HOSTS   comma-separated names this device answers to besides its
 //	                IP addresses, localhost, its hostname and .local names,
-//	                such as a name from the router's DNS, without http://
-//	                (default none)
+//	                such as a name from the router's DNS, without http://;
+//	                another entry is left out with a warning (default none)
 //	PROMETHEUS      true to serve GET /metrics, the usage of this device and
 //	                of every device it collects from in the Prometheus text
 //	                format, for Prometheus and Grafana (default false)
@@ -187,9 +187,6 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := server.CheckAllowedHosts(listSetting("ALLOWED_HOSTS")); err != nil {
-		return fmt.Errorf("check ALLOWED_HOSTS: %w", err)
-	}
 
 	// Listening comes before the rest of the setup: while another program
 	// holds the port, the Windows service tries again after 10 seconds, then
@@ -200,6 +197,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 	defer func() { _ = listener.Close() }()
+	hosts := allowedHosts()
 
 	collector, err := metrics.NewCollector(context.Background(), diskPaths())
 	if err != nil {
@@ -232,7 +230,7 @@ func run(ctx context.Context) error {
 	if dataOnly {
 		minutes, wait := withBuffer(ctx, sampler, databasePath, bufferSpan, historyEntries)
 		waitForRecorders = wait
-		handler = server.NewDataOnly(sampler, minutes, listSetting("ALLOWED_HOSTS"))
+		handler = server.NewDataOnly(sampler, minutes, hosts)
 		slog.Info("serving only the usage data, for a hub; the website is turned off", "bufferHours", int(bufferSpan/time.Hour))
 	} else {
 		store, err := history.Open(context.Background(), databasePath)
@@ -245,6 +243,7 @@ func run(ctx context.Context) error {
 			return err
 		}
 		waitForRecorders = wait
+		site.AllowedHosts = hosts
 		site.Prometheus = prometheus
 		if prometheus {
 			slog.Info("serving the usage for Prometheus at /metrics")
@@ -314,11 +313,10 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		slog.Warn("RESET_PASSWORD deleted the password for changing devices; the next change chooses a new one. Unset RESET_PASSWORD again.")
 	}
 
-	others, err := hub.New(ctx, store, fixed, historyEntries, retention, pagePort, sampler.Reusing(reuseFor))
-	if err != nil {
-		return server.Site{}, nil, err
-	}
-
+	// The alerts and events are opened before the hub, which deletes them for
+	// every device it forgets, also while it starts. They look at the hub's
+	// devices only once they run.
+	var others *hub.Hub
 	localName := strings.TrimSpace(os.Getenv("DEVICE_NAME"))
 	watcher, err := alerts.Open(ctx, store.DB(), func() []alerts.Target {
 		return alertTargets(localName, sampler.Reusing(reuseFor), others)
@@ -333,9 +331,11 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 	if err != nil {
 		return server.Site{}, nil, err
 	}
-	// A device removed without its history loses its alerts and events too.
-	others.AlsoForget(watcher.Forget)
-	others.AlsoForget(happenings.Forget)
+
+	others, err = hub.New(ctx, store, fixed, historyEntries, retention, pagePort, sampler.Reusing(reuseFor), watcher.Forget, happenings.Forget)
+	if err != nil {
+		return server.Site{}, nil, err
+	}
 
 	pageLayout, err := layout.Open(ctx, store.DB())
 	if err != nil {
@@ -368,12 +368,11 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		Files:     web.Files(),
 		Update:    func() update.Status { return update.Status{Current: version.Version} },
 
-		AllowedHosts: listSetting("ALLOWED_HOSTS"),
-		Minutes:      history.Reader{Store: store, Recent: recent, Device: history.LocalDevice},
-		Alerts:       watcher,
-		Layout:       pageLayout,
-		Backups:      store,
-		Events:       happenings,
+		Minutes: history.Reader{Store: store, Recent: recent, Device: history.LocalDevice},
+		Alerts:  watcher,
+		Layout:  pageLayout,
+		Backups: store,
+		Events:  happenings,
 	}
 	if checker := update.NewChecker(version.Version); checker != nil && checkUpdates {
 		site.Update = checker.Status
@@ -613,6 +612,19 @@ func diskPathsHint(goos string, container bool) string {
 	default:
 		return "list folders that exist, such as /,/mnt/usb"
 	}
+}
+
+// allowedHosts returns the entries of ALLOWED_HOSTS that are names or IP
+// addresses. Each other one, such as http://pi.lan, is left out with a
+// warning instead of stopping the start, so an install that has one keeps
+// running after an update rather than restarting over and over in Docker or
+// failing to start as a Windows service.
+func allowedHosts() []string {
+	valid, invalid := server.SplitAllowedHosts(listSetting("ALLOWED_HOSTS"))
+	for _, entry := range invalid {
+		slog.Warn("an entry of ALLOWED_HOSTS is not a name or IP address and is left out; give the name alone, such as pi.lan, without http:// or a path", "entry", entry)
+	}
+	return valid
 }
 
 // diskPaths returns the paths from DISK_PATHS, each once, or the system disk

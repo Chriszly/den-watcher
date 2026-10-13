@@ -82,11 +82,11 @@ func forget(ctx context.Context, db *sql.DB, device string) error {
 	return nil
 }
 
-// forgetOthers deletes the availability and kind of every device but the kept ones:
-// the devices dropped from HUB_DEVICES without being added on the page, and
-// the ones removed on the page without keeping their history.
-func forgetOthers(ctx context.Context, db *sql.DB, kept []string) error {
-	rows, err := db.QueryContext(ctx, `SELECT device FROM hub_watched UNION SELECT device FROM hub_outages UNION SELECT device FROM hub_device_kinds`)
+// forgetOthers forgets every device but the kept ones: the devices dropped
+// from HUB_DEVICES without being added on the page, and the ones removed on
+// the page without keeping their history whose forgetting did not finish.
+func (h *Hub) forgetOthers(ctx context.Context, kept []string) error {
+	rows, err := h.store.DB().QueryContext(ctx, `SELECT device FROM hub_watched UNION SELECT device FROM hub_outages UNION SELECT device FROM hub_device_kinds`)
 	if err != nil {
 		return err
 	}
@@ -105,10 +105,10 @@ func forgetOthers(ctx context.Context, db *sql.DB, kept []string) error {
 		return err
 	}
 	for _, device := range gone {
-		if err := forget(ctx, db, device); err != nil {
+		if err := h.forgetDevice(ctx, device); err != nil {
 			return err
 		}
-		slog.Info("forgot the availability of a device no longer collected from", "device", device)
+		slog.Info("forgot a device no longer collected from", "device", device)
 	}
 	return nil
 }

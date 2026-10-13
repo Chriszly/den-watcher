@@ -33,10 +33,10 @@ func startDevice(t *testing.T) string {
 	return strings.TrimPrefix(device.URL, "http://")
 }
 
-func openTestHub(t *testing.T, store *history.Store, fixed []Device) *Hub {
+func openTestHub(t *testing.T, store *history.Store, fixed []Device, forgetters ...Forgetter) *Hub {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
-	h, err := newHub(ctx, store, fixed, history.DefaultMaxEntries, 30*24*time.Hour, "9393", nil, true)
+	h, err := newHub(ctx, store, fixed, history.DefaultMaxEntries, 30*24*time.Hour, "9393", nil, true, forgetters...)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -55,6 +55,31 @@ func openTestStore(t *testing.T) *history.Store {
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	return store
+}
+
+// forgotten records the devices its forget was called for, as the alerts
+// and events do.
+type forgotten struct {
+	mu  sync.Mutex
+	ids []string
+	// fail, when set, is returned instead.
+	fail error
+}
+
+func (f *forgotten) forget(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.fail != nil {
+		return f.fail
+	}
+	f.ids = append(f.ids, id)
+	return nil
+}
+
+func (f *forgotten) list() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.ids)
 }
 
 func ids(remotes []*Remote) []string {
@@ -688,7 +713,9 @@ func TestDevicesAddedOnThePageAreNotCollectedFromAtTheHubsOwnAddress(t *testing.
 func TestRemoveForgetsTheDeviceAndItsHistory(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t)
-	h := openTestHub(t, store, []Device{{ID: "pi", Name: "Pi", Address: startDevice(t)}})
+	// Its alerts and events are deleted with its history.
+	alerts := &forgotten{}
+	h := openTestHub(t, store, []Device{{ID: "pi", Name: "Pi", Address: startDevice(t)}}, alerts.forget)
 	for _, name := range []string{"Office PC", "Laptop"} {
 		if _, err := h.Add(ctx, name, startDevice(t), KindServer); err != nil {
 			t.Fatalf("Add(%q) error = %v", name, err)
@@ -701,13 +728,6 @@ func TestRemoveForgetsTheDeviceAndItsHistory(t *testing.T) {
 		}
 	}
 
-	// Its alerts and events are deleted with its history.
-	var forgotten []string
-	h.AlsoForget(func(_ context.Context, id string) error {
-		forgotten = append(forgotten, id)
-		return nil
-	})
-
 	if err := h.Remove(ctx, "office-pc", false); err != nil {
 		t.Fatalf("Remove() error = %v", err)
 	}
@@ -719,8 +739,8 @@ func TestRemoveForgetsTheDeviceAndItsHistory(t *testing.T) {
 			t.Fatalf("waitRemoved(%q) error = %v", id, err)
 		}
 	}
-	if len(forgotten) != 1 || forgotten[0] != "office-pc" {
-		t.Errorf("forgotten = %q, want only [office-pc], whose history was not kept", forgotten)
+	if got := alerts.list(); !slices.Equal(got, []string{"office-pc"}) {
+		t.Errorf("forgotten = %q, want only [office-pc], whose history was not kept", got)
 	}
 
 	if got := ids(h.Remotes()); len(got) != 1 || got[0] != "pi" {
@@ -884,7 +904,11 @@ func TestNewForgetsTheAvailabilityOfDevicesNoLongerCollectedFrom(t *testing.T) {
 	h.Wait()
 
 	// The NAS is no longer in HUB_DEVICES; the laptop is still saved.
-	openTestHub(t, store, []Device{pi})
+	alerts := &forgotten{}
+	openTestHub(t, store, []Device{pi}, alerts.forget)
+	if got := alerts.list(); !slices.Equal(got, []string{"nas"}) {
+		t.Errorf("forgotten = %q, want only [nas], with its alerts and events", got)
+	}
 
 	for id, want := range map[string]int{"pi": 1, "laptop": 1, "nas": 0} {
 		var watched, outages int
@@ -1057,7 +1081,8 @@ func TestAKeptDeviceInHubDevicesIsCollectedFromAgain(t *testing.T) {
 func TestKeptDevicesAreForgottenAfterTheRetention(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t)
-	h := openTestHub(t, store, nil)
+	alerts := &forgotten{}
+	h := openTestHub(t, store, nil, alerts.forget)
 	for _, name := range []string{"Laptop", "Tablet"} {
 		if _, err := h.Add(ctx, name, startDevice(t), KindPC); err != nil {
 			t.Fatalf("Add(%q) error = %v", name, err)
@@ -1085,6 +1110,38 @@ func TestKeptDevicesAreForgottenAfterTheRetention(t *testing.T) {
 		if kept != want || watched != want || kinds != want {
 			t.Errorf("rows of %s = %d kept, %d watched, %d kinds; want %d each", id, kept, watched, kinds, want)
 		}
+	}
+	if got := alerts.list(); !slices.Equal(got, []string{"laptop"}) {
+		t.Errorf("forgotten = %q, want only [laptop], with its alerts and events", got)
+	}
+}
+
+func TestARemovalThatStopsHalfwayIsFinishedAtTheNextStart(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t)
+	// Deleting its alerts fails, as when the program stops meanwhile.
+	alerts := &forgotten{fail: errors.New("stopping")}
+	h := openTestHub(t, store, nil, alerts.forget)
+	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC); err != nil {
+		t.Fatalf("Add() error = %v", err)
+	}
+	if err := h.Remove(ctx, "laptop", false); err != nil {
+		t.Fatalf("Remove() error = %v", err)
+	}
+	if err := h.waitRemoved(ctx, "laptop", time.Minute); err != nil {
+		t.Fatalf("waitRemoved() error = %v", err)
+	}
+	if kind, err := readKind(ctx, store.DB(), "laptop"); err != nil || kind != KindPC {
+		t.Fatalf("kind after the removal stopped = %q, %v; want it kept until the alerts are gone", kind, err)
+	}
+
+	again := &forgotten{}
+	openTestHub(t, store, nil, again.forget)
+	if got := again.list(); !slices.Equal(got, []string{"laptop"}) {
+		t.Errorf("forgotten at the next start = %q, want [laptop]", got)
+	}
+	if kind, err := readKind(ctx, store.DB(), "laptop"); err != nil || kind != KindServer {
+		t.Errorf("kind after the next start = %q, %v; want none stored", kind, err)
 	}
 }
 

@@ -61,27 +61,29 @@ func (k knownHosts) allows(hostHeader string) bool {
 // hostName matches a host name as normalizeHost returns it.
 var hostName = regexp.MustCompile(`^[a-z0-9_-]+(\.[a-z0-9_-]+)*$`)
 
-// CheckAllowedHosts returns an error for the first entry of ALLOWED_HOSTS
-// that is not a host name or IP address with an optional port, such as a URL:
-// http://pi.lan would otherwise allow the name http, and the 421 would ask
-// for a name that is already listed.
-func CheckAllowedHosts(names []string) error {
+// SplitAllowedHosts splits the entries of ALLOWED_HOSTS into the valid
+// ones, host names and IP addresses with an optional port, and the others,
+// such as a URL: http://pi.lan would otherwise allow the name http, and the
+// 421 would ask for a name that is already listed.
+func SplitAllowedHosts(names []string) (valid, invalid []string) {
 	for _, name := range names {
 		host := normalizeHost(name)
-		valid := hostName.MatchString(host)
+		ok := hostName.MatchString(host)
 		if _, err := netip.ParseAddr(host); err == nil {
-			valid = true
+			ok = true
 		}
 		if _, port, err := net.SplitHostPort(strings.TrimSpace(name)); err == nil {
 			if _, err := strconv.ParseUint(port, 10, 16); err != nil {
-				valid = false
+				ok = false
 			}
 		}
-		if !valid {
-			return fmt.Errorf("%q is not a name or IP address; give the name alone, such as pi.lan, without http:// or a path", name)
+		if ok {
+			valid = append(valid, name)
+		} else {
+			invalid = append(invalid, name)
 		}
 	}
-	return nil
+	return valid, invalid
 }
 
 // normalizeHost returns the name or address in a Host header or an

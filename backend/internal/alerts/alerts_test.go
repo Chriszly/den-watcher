@@ -432,3 +432,40 @@ func TestForgetDeletesTheAlertsOfADevice(t *testing.T) {
 		t.Errorf("log = %+v, %v; want only the Pi's alert", log, err)
 	}
 }
+
+// removedWhileRead is a device that is removed while its usage is read, so
+// its alerts are forgotten before the check ends.
+type removedWhileRead struct {
+	usage
+	w *Watcher
+}
+
+func (r *removedWhileRead) Collect(ctx context.Context) (metrics.Snapshot, error) {
+	if err := r.w.Forget(ctx, "nas"); err != nil {
+		return metrics.Snapshot{}, err
+	}
+	return r.usage.Collect(ctx)
+}
+
+func TestACheckDoesNotBringBackADeviceForgottenMeanwhile(t *testing.T) {
+	ctx := context.Background()
+	targets := []Target{{ID: "nas", Name: "NAS"}}
+	w, _ := openTest(t, &targets)
+	targets[0].Usage = &removedWhileRead{usage: usage{snapshot: disk(99)}, w: w}
+	now := time.Unix(1_800_000_000, 0)
+
+	w.Check(ctx, now)
+	if got := w.Active("nas"); len(got) != 0 {
+		t.Fatalf("active = %+v, want none of the forgotten device", got)
+	}
+	if log, err := w.Log(ctx); err != nil || len(log) != 0 {
+		t.Fatalf("log = %+v, %v; want none", log, err)
+	}
+
+	// Added again under the same name, the device has alerts again.
+	targets[0].Usage = &usage{snapshot: disk(99)}
+	w.Check(ctx, now.Add(Interval))
+	if got := w.Active("nas"); len(got) != 1 {
+		t.Errorf("active of the device added again = %+v, want its disk", got)
+	}
+}

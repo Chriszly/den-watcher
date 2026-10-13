@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -278,15 +280,18 @@ func TestRunStopsBeforeTheSetupWhenUpdateCheckIsInvalid(t *testing.T) {
 	}
 }
 
-func TestRunStopsBeforeTheSetupWhenAllowedHostsHasAURL(t *testing.T) {
-	database := setUpRun(t, "127.0.0.1:0")
-	t.Setenv("ALLOWED_HOSTS", "pi.fritz.box,http://pi.lan")
+func TestAllowedHostsLeavesOutAndNamesWrongEntries(t *testing.T) {
+	var logged bytes.Buffer
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Setenv("ALLOWED_HOSTS", "pi.fritz.box,http://pi.lan, pi.lan/ ,192.168.1.9")
 
-	if err := run(context.Background()); err == nil || !strings.Contains(err.Error(), `ALLOWED_HOSTS: "http://pi.lan"`) {
-		t.Errorf("run() with a URL in ALLOWED_HOSTS error = %v, want one naming ALLOWED_HOSTS and the URL", err)
+	if got, want := allowedHosts(), []string{"pi.fritz.box", "192.168.1.9"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("allowedHosts() = %q, want %q", got, want)
 	}
-	if _, statErr := os.Stat(database); !errors.Is(statErr, os.ErrNotExist) {
-		t.Errorf("run() with a URL in ALLOWED_HOSTS opened the database (%v); it should stop before the setup", statErr)
+	text := logged.String()
+	if strings.Count(text, "level=WARN") != 2 || !strings.Contains(text, "entry=http://pi.lan") || !strings.Contains(text, "entry=pi.lan/") {
+		t.Errorf("log = %q, want a warning naming each wrong entry", text)
 	}
 }
 
@@ -329,6 +334,8 @@ func TestRunServesUntilStopped(t *testing.T) {
 	addr := free.Addr().String()
 	_ = free.Close()
 	setUpRun(t, addr)
+	// A wrong entry in ALLOWED_HOSTS is left out; the device still starts.
+	t.Setenv("ALLOWED_HOSTS", "http://pi.lan")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	stopped := make(chan error, 1)

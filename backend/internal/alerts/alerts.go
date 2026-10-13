@@ -136,6 +136,10 @@ type Watcher struct {
 	// pending is when a condition that must last a while before it is an
 	// alert was first seen, by key.
 	pending map[string]time.Time
+	// forgotten has, for each device Forget deleted, what forgets was then.
+	// forgets counts the calls to Forget.
+	forgotten map[string]uint64
+	forgets   uint64
 }
 
 // Open prepares the alerts table in db and takes up the alerts that were
@@ -145,7 +149,7 @@ func Open(ctx context.Context, db *sql.DB, devices func() []Target, retention ti
 	if _, err := db.ExecContext(ctx, schema); err != nil {
 		return nil, fmt.Errorf("create the alerts table: %w", err)
 	}
-	w := &Watcher{db: db, devices: devices, retention: retention, active: map[string]*Alert{}, pending: map[string]time.Time{}}
+	w := &Watcher{db: db, devices: devices, retention: retention, active: map[string]*Alert{}, pending: map[string]time.Time{}, forgotten: map[string]uint64{}}
 	open, err := w.query(ctx, selectAlerts+` WHERE ended IS NULL`)
 	if err != nil {
 		return nil, err
@@ -183,6 +187,7 @@ func (w *Watcher) Check(ctx context.Context, now time.Time) {
 	for key, a := range w.active {
 		levels[key] = a.Level
 	}
+	forgets := w.forgets
 	w.mu.Unlock()
 	seen := map[string]Alert{}
 	unknown := map[string]bool{}
@@ -201,6 +206,20 @@ func (w *Watcher) Check(ctx context.Context, now time.Time) {
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	// A device forgotten since the devices were listed was listed before it
+	// was removed: no alert of it starts again. One forgotten before was
+	// added again.
+	for device, at := range w.forgotten {
+		if at > forgets {
+			for key := range seen {
+				if deviceOf(key) == device {
+					delete(seen, key)
+				}
+			}
+		} else if _, listed := unread[device]; listed {
+			delete(w.forgotten, device)
+		}
+	}
 	// The alerts of a device whose usage could not be read for a moment, or
 	// of a server that does not answer, last on. Only a device that answers
 	// keeps the conditions it was waiting on: a hold counts only while it
@@ -349,11 +368,14 @@ func (w *Watcher) Between(ctx context.Context, device string, from, to time.Time
 	return list, err
 }
 
-// Forget deletes the alerts of a device that was removed without its
-// history, so a device added later under the same name starts without them.
+// Forget deletes the alerts of a device the hub forgot, such as one removed
+// without its history, so a device added later under the same name starts
+// without them. A check that listed the devices before brings none back.
 func (w *Watcher) Forget(ctx context.Context, device string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	w.forgets++
+	w.forgotten[device] = w.forgets
 	for key, a := range w.active {
 		if a.Device == device {
 			delete(w.active, key)

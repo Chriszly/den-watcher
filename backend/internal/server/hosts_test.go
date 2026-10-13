@@ -3,8 +3,7 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
-	"strconv"
-	"strings"
+	"slices"
 	"testing"
 )
 
@@ -58,16 +57,12 @@ func TestNewKnownHostsCleansTheAllowedNames(t *testing.T) {
 	}
 }
 
-func TestCheckAllowedHosts(t *testing.T) {
+func TestSplitAllowedHosts(t *testing.T) {
 	valid := []string{"pi.fritz.box", " Pi.Fritz.Box:9393 ", "home.lan.", "raspberrypi", "my_pc", "192.168.1.9", "[fd00::9]:9393", "fd00::9"}
-	if err := CheckAllowedHosts(valid); err != nil {
-		t.Errorf("CheckAllowedHosts(%q) error = %v, want none", valid, err)
-	}
-	for _, entry := range []string{"http://pi.lan", "https://pi.lan:9393/", "pi.lan/", "pi.lan:", "pi.lan:web", "pi lan", "user@pi.lan", "pi..lan", ".", "[]"} {
-		err := CheckAllowedHosts([]string{"pi.fritz.box", entry})
-		if err == nil || !strings.Contains(err.Error(), strconv.Quote(entry)) {
-			t.Errorf("CheckAllowedHosts(%q) error = %v, want one naming the entry", entry, err)
-		}
+	invalid := []string{"http://pi.lan", "https://pi.lan:9393/", "pi.lan/", "pi.lan:", "pi.lan:web", "pi lan", "user@pi.lan", "pi..lan", ".", "[]"}
+	gotValid, gotInvalid := SplitAllowedHosts(slices.Concat(valid, invalid))
+	if !slices.Equal(gotValid, valid) || !slices.Equal(gotInvalid, invalid) {
+		t.Errorf("SplitAllowedHosts() = %q, %q; want %q, %q", gotValid, gotInvalid, valid, invalid)
 	}
 }
 

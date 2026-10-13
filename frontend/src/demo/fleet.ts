@@ -2,7 +2,7 @@ import { Device, LOCAL_DEVICE } from '../app/devices/devices';
 import { Extra, ExtraInfo, ExtraUnit } from '../app/metrics/extras';
 import { Snapshot, Throttling, TimeZone } from '../app/metrics/metrics';
 import { System } from '../app/metrics/system';
-import { descriptions } from './descriptions';
+import { descriptions, pingReachability } from './descriptions';
 
 /**
  * The made-up devices of the demo: a Raspberry Pi as the hub, and Windows and
@@ -2057,6 +2057,72 @@ const printer: DemoMachine = {
   }),
 };
 
+/** A thing checked by ping, which also tells the share of pings lost and the jitter. */
+const camera: DemoMachine = {
+  device: {
+    id: 'ip-camera',
+    kind: 'server',
+    name: 'IP camera',
+    address: '192.168.1.60',
+    checked: true,
+  },
+  os: 'linux',
+  checked: true,
+  cores: 0,
+  maxClockMHz: 0,
+  memoryBytes: 0,
+  disks: [],
+  network: [],
+  extras: [
+    {
+      id: 'reachability',
+      title: 'Reachability',
+      titles: { de: 'Erreichbarkeit', fr: 'Accessibilité', es: 'Accesibilidad' },
+      ...pingReachability,
+      items: [
+        {
+          id: 'response-time',
+          label: 'Response time',
+          labels: { de: 'Antwortzeit', fr: 'Temps de réponse', es: 'Tiempo de respuesta' },
+          unit: 'milliseconds',
+          history: true,
+        },
+        {
+          id: 'packet-loss',
+          label: 'Packet loss',
+          labels: { de: 'Paketverlust', fr: 'Perte de paquets', es: 'Pérdida de paquetes' },
+          unit: 'percent',
+          history: true,
+        },
+        {
+          id: 'jitter',
+          label: 'Jitter',
+          labels: { de: 'Jitter', fr: 'Gigue', es: 'Fluctuación' },
+          unit: 'milliseconds',
+          history: true,
+        },
+        {
+          id: 'method',
+          label: 'Checked with',
+          labels: { de: 'Geprüft mit', fr: 'Vérifié par', es: 'Comprobado con' },
+          unit: 'text',
+          text: 'Ping',
+        },
+      ],
+    },
+  ],
+  bootedDaysAgo: 0,
+  values: (t, step) => {
+    // A camera on Wi-Fi now and then loses one of the 5 pings of a check, 20 % of them.
+    const loss = vary(t, step, 167, -6, [[22, 900]], 0, 40);
+    return {
+      'extra:reachability/response-time': vary(t, step, 163, 4.2, [[2.1, 120]], 1.1, 60),
+      'extra:reachability/packet-loss': step <= 60 ? Math.round(loss / 20) * 20 : loss,
+      'extra:reachability/jitter': vary(t, step, 165, 1.3, [[0.9, 120]], 0.1, 20),
+    };
+  },
+};
+
 /**
  * A device the hub asks over the network, which answers in about ms milliseconds: a little slower
  * while it is busy, and over Wi-Fi now and then much slower. Its values get "response", as the hub
@@ -2094,6 +2160,7 @@ export const FLEET: readonly DemoMachine[] = [
   answersIn(linuxLaptop, 22, true),
   homeRouter,
   printer,
+  camera,
 ];
 
 /** The values whose names start with kind and a colon, by what follows the colon. */

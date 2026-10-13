@@ -241,3 +241,14 @@ export const descriptions: Record<
     },
   },
 };
+
+/** What a check by ping tells about its reachability, which says more than one over TCP. */
+export const pingReachability = {
+  description:
+    'How long it took to answer the hub, which pings it 5 times every 15 seconds, how many of the pings got no answer, and how much the answers varied. It runs no den-watcher, so this is all the hub knows of it.',
+  descriptions: {
+    de: 'Wie lange die Antwort an den Hub dauerte, der alle 15 Sekunden 5 Pings sendet, wie viele davon keine Antwort bekamen und wie stark die Antworten schwankten. Hier läuft kein den-watcher, daher weiß der Hub nur das.',
+    fr: "Le temps de réponse au hub, qui envoie 5 pings toutes les 15 secondes, combien sont restés sans réponse et à quel point les réponses ont varié. Aucun den-watcher n'y tourne, le hub ne sait donc que cela.",
+    es: 'El tiempo que tardó en responder al hub, que envía 5 pings cada 15 segundos, cuántos quedaron sin respuesta y la variación de las respuestas. No ejecuta den-watcher, así que es todo lo que el hub sabe.',
+  },
+};

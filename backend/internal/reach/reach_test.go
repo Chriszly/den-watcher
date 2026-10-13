@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/netip"
+	"sync"
 	"testing"
 	"time"
 )
@@ -110,8 +111,14 @@ func TestCollectFailsWhenNothingAnswers(t *testing.T) {
 func TestCollectPingsWithoutAPort(t *testing.T) {
 	reader := New(Config{Name: "NAS", Host: "192.168.1.10"})
 	reader.local = func(netip.Addr) bool { return true }
-	var pinged netip.Addr
+	reader.spacing = time.Millisecond
+	var (
+		mu     sync.Mutex
+		pinged netip.Addr
+	)
 	reader.ping = func(_ context.Context, addr netip.Addr) (time.Duration, error) {
+		mu.Lock()
+		defer mu.Unlock()
 		pinged = addr
 		return 1500 * time.Microsecond, nil
 	}
@@ -123,8 +130,73 @@ func TestCollectPingsWithoutAPort(t *testing.T) {
 		t.Errorf("pinged %v", pinged)
 	}
 	items := snapshot.Extras[0].Items
-	if *items[0].Value != 1.5 || items[1].Text != "Ping" {
-		t.Errorf("got %+v", items)
+	if len(items) != 4 || *items[0].Value != 1.5 || items[3].Text != "Ping" {
+		t.Fatalf("got %+v", items)
+	}
+	if items[1].ID != "packet-loss" || *items[1].Value != 0 || !items[1].History {
+		t.Errorf("packet loss: %+v", items[1])
+	}
+	if items[2].ID != "jitter" || *items[2].Value != 0 || !items[2].History {
+		t.Errorf("jitter: %+v", items[2])
+	}
+}
+
+func TestCollectSendsABurstOfPings(t *testing.T) {
+	reader := New(Config{Name: "NAS", Host: "192.168.1.10"})
+	reader.local = func(netip.Addr) bool { return true }
+	// Far enough apart that the pings are sent in order.
+	reader.spacing = 20 * time.Millisecond
+	var (
+		mu   sync.Mutex
+		sent int
+	)
+	// The 2nd and 4th pings get no answer; the others take 1, 3 and 2 ms in
+	// the order they were sent.
+	reader.ping = func(context.Context, netip.Addr) (time.Duration, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		sent++
+		return []time.Duration{time.Millisecond, 0, 3 * time.Millisecond, 0, 2 * time.Millisecond}[sent-1],
+			[]error{nil, errLost, nil, errLost, nil}[sent-1]
+	}
+
+	snapshot, err := reader.Collect(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if sent != pings {
+		t.Errorf("sent %d pings, want %d", sent, pings)
+	}
+	items := snapshot.Extras[0].Items
+	if *items[0].Value != 2 || *items[1].Value != 40 || *items[2].Value != 1.5 {
+		t.Errorf("response time %v, loss %v, jitter %v; want 2 ms, 40 %%, 1.5 ms", *items[0].Value, *items[1].Value, *items[2].Value)
+	}
+}
+
+var errLost = errors.New("no answer to the ping")
+
+func TestBurstResult(t *testing.T) {
+	ms := time.Millisecond
+	found, err := burstResult([]time.Duration{4 * ms, 0, 0, 0, 0}, []error{nil, errLost, errLost, errLost, errLost})
+	if err != nil || found.took != 4*ms || *found.lossPercent != 80 || found.jitter != nil {
+		t.Errorf("one answer of five: %+v, %v; want 4 ms, 80 %% lost and no jitter", found, err)
+	}
+	found, err = burstResult([]time.Duration{ms, 5 * ms, 2 * ms}, []error{nil, nil, nil})
+	if err != nil || *found.lossPercent != 0 || *found.jitter != 3500*time.Microsecond {
+		t.Errorf("1, 5 and 2 ms: %+v, %v; want no loss and a jitter of 3.5 ms", found, err)
+	}
+	if _, err := burstResult([]time.Duration{0, 0}, []error{errLost, errLost}); !errors.Is(err, errLost) {
+		t.Errorf("no answers: error %v, want the pings' error", err)
+	}
+}
+
+func TestATCPCheckHasNoLossOrJitter(t *testing.T) {
+	snapshot := snapshot(Config{Name: "Printer", Host: "192.168.1.50", Port: 631}, result{took: time.Millisecond})
+	for _, item := range snapshot.Extras[0].Items {
+		if item.ID == "packet-loss" || item.ID == "jitter" {
+			t.Errorf("a TCP check has %s", item.ID)
+		}
 	}
 }
 

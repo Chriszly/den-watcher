@@ -75,27 +75,31 @@
   </div>
 </ng-template>
 
-@if (problem() === 'backend' && !connection.lost()) {
-  <p class="notice warning" role="alert">{{ i18n.t('dashboard.unreachable') }}</p>
-} @else if (problem() === 'device' && refused()) {
-  <p class="notice warning" role="alert">
-    {{ i18n.t('dashboard.deviceRefused', { device: deviceName() }) }}
-  </p>
-} @else if (problem() === 'device' && isPC()) {
-  <p class="notice quiet" role="status">
-    {{ i18n.t('dashboard.deviceNotInUse', { device: deviceName() }) }}
-  </p>
-} @else if (problem() === 'device' && isRouter()) {
-  <p class="notice warning" role="alert">
-    {{ i18n.t('dashboard.routerUnreachable', { device: deviceName() }) }}
-  </p>
-} @else if (problem() === 'device' && isChecked()) {
-  <p class="notice warning" role="alert">
-    {{ i18n.t('dashboard.checkUnreachable', { device: deviceName() }) }}
-  </p>
-} @else if (problem() === 'device') {
-  <p class="notice warning" role="alert">
-    {{ i18n.t('dashboard.deviceUnreachable', { device: deviceName() }) }}
+<!--
+  The title of a card, with the sign of the alert of its kind (alert) when there is one, and its (i)
+  with the text of a message key (info) or a text of its own (infoText).
+-->
+<ng-template #cardHeading let-card let-alert="alert" let-info="info" let-infoText="infoText">
+  <h3>
+    {{ cardTitle(card) }}
+    @if (alert ? alertOn(alert) : null; as level) {
+      <app-card-alert [level]="level" [text]="cardAlertText(alert)" />
+    }
+    @if (info || infoText) {
+      <app-card-info [text]="info ? i18n.t(info) : infoText" />
+    }
+  </h3>
+</ng-template>
+
+<!-- A PC or laptop that does not answer is just not in use, so that is told without the warning's color. -->
+@if (problemNotice(); as notice) {
+  <p
+    class="notice"
+    [class.warning]="!notice.quiet"
+    [class.quiet]="notice.quiet"
+    [attr.role]="notice.quiet ? 'status' : 'alert'"
+  >
+    {{ i18n.t(notice.key, { device: deviceName() }) }}
   </p>
 }
 
@@ -180,13 +184,12 @@
                     @switch (card.kind) {
                       @case ('cpu') {
                         <div class="card" [class.alerting]="alertOn('cpu')">
-                          <h3>
-                            {{ cardTitle(card) }}
-                            @if (alertOn('cpu'); as level) {
-                              <app-card-alert [level]="level" [text]="cardAlertText('cpu')" />
-                            }
-                            <app-card-info [text]="i18n.t('dashboard.info.cpu')" />
-                          </h3>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cardHeading;
+                              context: { $implicit: card, alert: 'cpu', info: 'dashboard.info.cpu' }
+                            "
+                          />
                           <p class="value">
                             {{ s.cpu.usagePercent | number: '1.0-1' : i18n.language() }} %
                           </p>
@@ -217,26 +220,11 @@
                             </div>
                           }
                           <p class="detail">
-                            {{
-                              i18n.plural(
-                                s.cpu.cores,
-                                'dashboard.cores.one',
-                                'dashboard.cores.other'
-                              )
-                            }}
-                            @if (s.cpu.clockMHz) {
-                              · {{ s.cpu.clockMHz / 1000 | number: '1.1-1' : i18n.language() }} GHz
-                            }
+                            {{ cpuDetail(s.cpu) }}
                           </p>
                           @if (s.cpu.loadAverage; as load) {
                             <p class="detail" [title]="i18n.t('dashboard.loadAverageHint')">
-                              {{
-                                i18n.t('dashboard.loadAverage', {
-                                  one: decimal(load.one, '1.2-2'),
-                                  five: decimal(load.five, '1.2-2'),
-                                  fifteen: decimal(load.fifteen, '1.2-2'),
-                                })
-                              }}
+                              {{ loadAverageText(load) }}
                             </p>
                           }
                           @if (s.cpu.processes; as p) {
@@ -271,13 +259,16 @@
                       }
                       @case ('memory') {
                         <div class="card" [class.alerting]="alertOn('memory')">
-                          <h3>
-                            {{ cardTitle(card) }}
-                            @if (alertOn('memory'); as level) {
-                              <app-card-alert [level]="level" [text]="cardAlertText('memory')" />
-                            }
-                            <app-card-info [text]="i18n.t('dashboard.info.memory')" />
-                          </h3>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cardHeading;
+                              context: {
+                                $implicit: card,
+                                alert: 'memory',
+                                info: 'dashboard.info.memory',
+                              }
+                            "
+                          />
                           <p class="value">
                             {{ s.memory.usedPercent | number: '1.0-1' : i18n.language() }} %
                           </p>
@@ -287,12 +278,7 @@
                             [attr.aria-label]="i18n.t('dashboard.memoryUsage')"
                           ></progress>
                           <p class="detail">
-                            {{
-                              i18n.t('dashboard.usedOfTotal', {
-                                used: (s.memory.usedBytes | bytes: i18n.language()),
-                                total: (s.memory.totalBytes | bytes: i18n.language()),
-                              })
-                            }}
+                            {{ usedOfTotal(s.memory.usedBytes, s.memory.totalBytes) }}
                           </p>
                           @if (s.memory.availableBytes) {
                             <p class="detail">
@@ -324,12 +310,7 @@
                               [attr.aria-label]="i18n.t('dashboard.swapUsage')"
                             ></progress>
                             <p class="detail">
-                              {{
-                                i18n.t('dashboard.usedOfTotal', {
-                                  used: (swap.usedBytes | bytes: i18n.language()),
-                                  total: (swap.totalBytes | bytes: i18n.language()),
-                                })
-                              }}
+                              {{ usedOfTotal(swap.usedBytes, swap.totalBytes) }}
                             </p>
                           }
                           <app-card-charts [chart]="chartOf(card)" />
@@ -341,13 +322,16 @@
                           [class.alerting]="alertOn('disk')"
                           [appFitLabels]="s.disks"
                         >
-                          <h3>
-                            {{ cardTitle(card) }}
-                            @if (alertOn('disk'); as level) {
-                              <app-card-alert [level]="level" [text]="cardAlertText('disk')" />
-                            }
-                            <app-card-info [text]="i18n.t('dashboard.info.disks')" />
-                          </h3>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cardHeading;
+                              context: {
+                                $implicit: card,
+                                alert: 'disk',
+                                info: 'dashboard.info.disks',
+                              }
+                            "
+                          />
                           <app-scroll-rows>
                             @for (d of s.disks; track d.path) {
                               <div class="disk">
@@ -365,12 +349,7 @@
                                   "
                                 ></progress>
                                 <p class="detail">
-                                  {{
-                                    i18n.t('dashboard.usedOfTotal', {
-                                      used: (d.usedBytes | bytes: i18n.language()),
-                                      total: (d.totalBytes | bytes: i18n.language()),
-                                    })
-                                  }}
+                                  {{ usedOfTotal(d.usedBytes, d.totalBytes) }}
                                 </p>
                                 <app-disk-forecast [path]="d.path" [percent]="d.usedPercent" />
                               </div>
@@ -383,10 +362,12 @@
                       }
                       @case ('diskActivity') {
                         <div class="card" [appFitLabels]="s.disks">
-                          <h3>
-                            {{ cardTitle(card) }}
-                            <app-card-info [text]="i18n.t('dashboard.info.diskActivity')" />
-                          </h3>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cardHeading;
+                              context: { $implicit: card, info: 'dashboard.info.diskActivity' }
+                            "
+                          />
                           <app-scroll-rows>
                             @for (d of s.disks; track d.path) {
                               @if (
@@ -442,10 +423,12 @@
                       @case ('network') {
                         @let network = activeInterfaces(s);
                         <div class="card" [appFitLabels]="network.shown">
-                          <h3>
-                            {{ cardTitle(card) }}
-                            <app-card-info [text]="i18n.t('dashboard.info.network')" />
-                          </h3>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cardHeading;
+                              context: { $implicit: card, info: 'dashboard.info.network' }
+                            "
+                          />
                           <app-scroll-rows>
                             @for (n of network.shown; track n.name) {
                               <div class="interface">
@@ -492,10 +475,12 @@
                       }
                       @case ('gpus') {
                         <div class="card" [appFitLabels]="s.gpus">
-                          <h3>
-                            {{ cardTitle(card) }}
-                            <app-card-info [text]="i18n.t('dashboard.info.gpu')" />
-                          </h3>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cardHeading;
+                              context: { $implicit: card, info: 'dashboard.info.gpu' }
+                            "
+                          />
                           <app-scroll-rows>
                             @for (g of s.gpus; track g.name) {
                               <div class="gpu">
@@ -540,16 +525,16 @@
                           [class.alerting]="alertOn('temperature')"
                           [appFitLabels]="s.temperatures"
                         >
-                          <h3>
-                            {{ cardTitle(card) }}
-                            @if (alertOn('temperature'); as level) {
-                              <app-card-alert
-                                [level]="level"
-                                [text]="cardAlertText('temperature')"
-                              />
-                            }
-                            <app-card-info [text]="i18n.t('dashboard.info.temperature')" />
-                          </h3>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cardHeading;
+                              context: {
+                                $implicit: card,
+                                alert: 'temperature',
+                                info: 'dashboard.info.temperature',
+                              }
+                            "
+                          />
                           <app-scroll-rows>
                             @for (t of hottestFirst(s.temperatures); track t.sensor) {
                               <p class="sensor">
@@ -565,10 +550,12 @@
                       }
                       @case ('fans') {
                         <div class="card" [appFitLabels]="s.fans">
-                          <h3>
-                            {{ cardTitle(card) }}
-                            <app-card-info [text]="i18n.t('dashboard.info.fans')" />
-                          </h3>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cardHeading;
+                              context: { $implicit: card, info: 'dashboard.info.fans' }
+                            "
+                          />
                           <app-scroll-rows>
                             @for (f of s.fans; track f.name) {
                               <p class="sensor">
@@ -585,10 +572,12 @@
                       @case ('battery') {
                         @if (s.battery; as b) {
                           <div class="card">
-                            <h3>
-                              {{ cardTitle(card) }}
-                              <app-card-info [text]="i18n.t('dashboard.info.battery')" />
-                            </h3>
+                            <ng-container
+                              *ngTemplateOutlet="
+                                cardHeading;
+                                context: { $implicit: card, info: 'dashboard.info.battery' }
+                              "
+                            />
                             <p class="value">
                               {{ b.percent | number: '1.0-0' : i18n.language() }} %
                             </p>
@@ -632,16 +621,16 @@
                       @case ('throttling') {
                         @if (s.throttling; as t) {
                           <div class="card" [class.alerting]="alertOn('throttling')">
-                            <h3>
-                              {{ cardTitle(card) }}
-                              @if (alertOn('throttling'); as level) {
-                                <app-card-alert
-                                  [level]="level"
-                                  [text]="cardAlertText('throttling')"
-                                />
-                              }
-                              <app-card-info [text]="i18n.t('dashboard.info.power')" />
-                            </h3>
+                            <ng-container
+                              *ngTemplateOutlet="
+                                cardHeading;
+                                context: {
+                                  $implicit: card,
+                                  alert: 'throttling',
+                                  info: 'dashboard.info.power',
+                                }
+                              "
+                            />
                             @let earlier = earlierConditions(t);
                             @if (t.now.length > 0 || earlier.length > 0) {
                               <p class="value" [class.problem]="t.now.length > 0">
@@ -675,24 +664,25 @@
                       }
                       @case ('extra') {
                         @let group = card.group;
-                        @let groupAlert = card.id === smartCard ? alertOn('smart') : null;
                         <div
                           class="card"
-                          [class.alerting]="groupAlert"
+                          [class.alerting]="card.id === smartCard && alertOn('smart')"
                           [appFitLabels]="group.items"
                         >
-                          <h3>
-                            {{ cardTitle(card) }}
-                            @if (groupAlert; as level) {
-                              <app-card-alert [level]="level" [text]="cardAlertText('smart')" />
-                            }
-                            <!-- The cards split off a group take their title from it, and its description stays with its first card. -->
-                            @if (group.description && !card.split) {
-                              <app-card-info
-                                [text]="extraText(group.description, group.descriptions)"
-                              />
-                            }
-                          </h3>
+                          <!-- The cards split off a group take their title from it, and its description stays with its first card. -->
+                          <ng-container
+                            *ngTemplateOutlet="
+                              cardHeading;
+                              context: {
+                                $implicit: card,
+                                alert: card.id === smartCard ? 'smart' : null,
+                                infoText:
+                                  group.description && !card.split
+                                    ? extraText(group.description, group.descriptions)
+                                    : null,
+                              }
+                            "
+                          />
                           <!-- Texts, such as the addresses of a port, can be long, so they fit like the names. -->
                           <app-scroll-rows>
                             @for (part of extraSections(group); track part.section) {
@@ -731,10 +721,12 @@
                       @case ('time') {
                         @if (s.timeZone; as zone) {
                           <div class="card">
-                            <h3>
-                              {{ cardTitle(card) }}
-                              <app-card-info [text]="i18n.t('dashboard.info.time')" />
-                            </h3>
+                            <ng-container
+                              *ngTemplateOutlet="
+                                cardHeading;
+                                context: { $implicit: card, info: 'dashboard.info.time' }
+                              "
+                            />
                             <p class="value">{{ deviceTime(s.time, zone, 'shortTime') }}</p>
                             <p class="detail">
                               {{ deviceTime(s.time, zone, 'fullDate') }} · {{ zoneLabel(zone) }}
@@ -745,10 +737,12 @@
                       @case ('facts') {
                         @if (s.system; as system) {
                           <div class="card">
-                            <h3>
-                              {{ cardTitle(card) }}
-                              <app-card-info [text]="i18n.t('dashboard.info.system')" />
-                            </h3>
+                            <ng-container
+                              *ngTemplateOutlet="
+                                cardHeading;
+                                context: { $implicit: card, info: 'dashboard.info.system' }
+                              "
+                            />
                             @for (fact of systemFacts(system, s.version); track fact.label) {
                               <p class="fact">
                                 <span>{{ i18n.t(fact.label) }}</span
@@ -761,10 +755,12 @@
                       @case ('connection') {
                         @if (s.responseMilliseconds !== undefined) {
                           <div class="card">
-                            <h3>
-                              {{ cardTitle(card) }}
-                              <app-card-info [text]="i18n.t('dashboard.info.connection')" />
-                            </h3>
+                            <ng-container
+                              *ngTemplateOutlet="
+                                cardHeading;
+                                context: { $implicit: card, info: 'dashboard.info.connection' }
+                              "
+                            />
                             <p class="value">
                               {{ formatMilliseconds(s.responseMilliseconds) }}
                             </p>

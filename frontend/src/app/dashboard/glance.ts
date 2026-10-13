@@ -10,7 +10,8 @@ import { isWan, linesOf, pointsOf, sum } from '../history/history';
 import { ChartUnit } from '../history/line-chart';
 import { Sparkline } from '../history/sparkline';
 import { I18n } from '../i18n/i18n';
-import { BytesPipe } from '../metrics/bytes.pipe';
+import { formatBytes } from '../metrics/bytes.pipe';
+import { cpuDetail, loadAverageText, usedOfTotal } from '../metrics/format';
 import { Point, Snapshot } from '../metrics/metrics';
 import { GlanceTile } from './glance-tile';
 
@@ -86,7 +87,6 @@ export class Glance {
   protected readonly store = inject(HistoryStore);
   private readonly devices = inject(DeviceService);
   private readonly i18n = inject(I18n);
-  private readonly bytes = new BytesPipe();
 
   protected readonly tiles = computed((): Tile[] => {
     const s = this.snapshot();
@@ -96,26 +96,17 @@ export class Glance {
     const t = this.i18n.t.bind(this.i18n);
     const language = this.i18n.language();
     const number = (value: number, digits = '1.0-1') => formatNumber(value, language, digits);
-    const bytes = (value: number) => this.bytes.transform(value, language);
+    const bytes = (value: number) => formatBytes(value, language);
     const tiles: Tile[] = [];
 
     if (s.cpu.cores > 0) {
-      const clock = s.cpu.clockMHz ? ` · ${number(s.cpu.clockMHz / 1000, '1.1-1')} GHz` : '';
-      const load = s.cpu.loadAverage;
       tiles.push({
         id: 'cpu',
         label: t('dashboard.cpu'),
         value: number(s.cpu.usagePercent),
         unit: '%',
-        detail:
-          this.i18n.plural(s.cpu.cores, 'dashboard.cores.one', 'dashboard.cores.other') + clock,
-        sub: load
-          ? t('dashboard.loadAverage', {
-              one: number(load.one, '1.2-2'),
-              five: number(load.five, '1.2-2'),
-              fifteen: number(load.fifteen, '1.2-2'),
-            })
-          : '',
+        detail: cpuDetail(s.cpu, this.i18n),
+        sub: s.cpu.loadAverage ? loadAverageText(s.cpu.loadAverage, this.i18n) : '',
         alert: this.alertOn('cpu'),
         points: pointsOf(series, 'cpu'),
         chartUnit: 'percent',
@@ -132,10 +123,7 @@ export class Glance {
         detail: s.memory.swap
           ? `${t('dashboard.swap')} ${number(s.memory.swap.usedPercent)} %`
           : '',
-        sub: t('dashboard.usedOfTotal', {
-          used: bytes(s.memory.usedBytes),
-          total: bytes(s.memory.totalBytes),
-        }),
+        sub: usedOfTotal(s.memory.usedBytes, s.memory.totalBytes, this.i18n),
         alert: this.alertOn('memory'),
         points: pointsOf(series, 'memory'),
         chartUnit: 'percent',
@@ -151,10 +139,7 @@ export class Glance {
         value: number(disk.usedPercent),
         unit: '%',
         detail: disk.path,
-        sub: t('dashboard.usedOfTotal', {
-          used: bytes(disk.usedBytes),
-          total: bytes(disk.totalBytes),
-        }),
+        sub: usedOfTotal(disk.usedBytes, disk.totalBytes, this.i18n),
         alert: this.alertOn('disk', disk.path),
         points: pointsOf(series, `disk:${disk.path}`),
         chartUnit: 'percent',

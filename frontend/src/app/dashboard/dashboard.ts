@@ -25,12 +25,14 @@ import { RangePicker } from '../history/range-picker';
 import { Timeline, TimelineMode } from '../history/timeline';
 import { Availability, DeviceService, LOCAL_DEVICE, deviceName } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
+import { MessageKey } from '../i18n/messages/en';
 import { KioskMode } from '../kiosk/kiosk';
 import { EvenColumns } from '../layout/even-columns';
 import { ScrollRows } from '../layout/scroll-rows';
 import { BytesPipe } from '../metrics/bytes.pipe';
 import { Extra, ExtraItem, ExtraUnit, formatExtra, localized } from '../metrics/extras';
 import {
+  LoadAverage,
   MetricsService,
   NetworkInterface,
   Snapshot,
@@ -39,6 +41,13 @@ import {
   ThrottlingCondition,
   TimeZone,
 } from '../metrics/metrics';
+import {
+  cpuDetail,
+  formatDuration,
+  formatUptime,
+  loadAverageText,
+  usedOfTotal,
+} from '../metrics/format';
 import { systemFacts } from '../metrics/system';
 import { PageVisibility } from '../page-visibility';
 import { ArrangeBar } from './arrange-bar';
@@ -327,6 +336,31 @@ export class Dashboard {
   protected readonly isChecked = computed(() => !!this.devices.selected().checked);
   /** Whether the picked device runs no Den-Watcher, so it tells only some of what a device does. */
   protected readonly readsLess = computed(() => this.isRouter() || this.isChecked());
+  /**
+   * The message above the page while the backend or the picked device does not answer; none while
+   * the banner across the page tells that the hub does not answer.
+   */
+  protected readonly problemNotice = computed((): { key: MessageKey; quiet?: boolean } | null => {
+    switch (this.problem()) {
+      case 'backend':
+        return this.connection.lost() ? null : { key: 'dashboard.unreachable' };
+      case 'device':
+        if (this.refused()) {
+          return { key: 'dashboard.deviceRefused' };
+        }
+        if (this.isPC()) {
+          return { key: 'dashboard.deviceNotInUse', quiet: true };
+        }
+        if (this.isRouter()) {
+          return { key: 'dashboard.routerUnreachable' };
+        }
+        return {
+          key: this.isChecked() ? 'dashboard.checkUnreachable' : 'dashboard.deviceUnreachable',
+        };
+      default:
+        return null;
+    }
+  });
   /** The values of the picked device that need attention now, most serious first. */
   protected readonly deviceAlerts = computed(() => this.devices.selected().alerts ?? []);
   /** Whether the backend does not connect to the picked device, as its address is the hub's own. */
@@ -733,13 +767,23 @@ export class Dashboard {
   }
 
   protected formatDuration(seconds: number): string {
-    if (seconds < 60) {
-      return this.i18n.t('dashboard.seconds', { seconds: Math.round(seconds) });
-    }
-    if (seconds < 3600) {
-      return this.i18n.t('dashboard.minutes', { minutes: Math.floor(seconds / 60) });
-    }
-    return this.formatUptime(seconds);
+    return formatDuration(seconds, this.i18n);
+  }
+
+  protected formatUptime(seconds: number): string {
+    return formatUptime(seconds, this.i18n);
+  }
+
+  protected usedOfTotal(usedBytes: number, totalBytes: number): string {
+    return usedOfTotal(usedBytes, totalBytes, this.i18n);
+  }
+
+  protected cpuDetail(cpu: Snapshot['cpu']): string {
+    return cpuDetail(cpu, this.i18n);
+  }
+
+  protected loadAverageText(load: LoadAverage): string {
+    return loadAverageText(load, this.i18n);
   }
 
   /**
@@ -836,21 +880,7 @@ export class Dashboard {
     return /^[+-]/.test(zone.name) ? offset : `${zone.name} (${offset})`;
   }
 
-  protected formatUptime(seconds: number): string {
-    return formatUptime(seconds, this.i18n);
-  }
-
   protected readonly systemFacts = systemFacts;
-}
-
-/** An uptime as the page shows it: days and hours, or hours and minutes below a day. */
-export function formatUptime(seconds: number, i18n: I18n): string {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return days > 0
-    ? i18n.t('dashboard.uptimeDays', { days, hours })
-    : i18n.t('dashboard.uptimeHours', { hours, minutes });
 }
 
 /** The sign, hours and minutes of an offset from UTC, such as ["+", "02", "00"]. */

@@ -51,10 +51,11 @@ func device(collector Collector, reader HistoryReader) []Device {
 }
 
 var site = fstest.MapFS{
-	"index.html":       {Data: []byte("page")},
-	"main.js":          {Data: []byte("script")},
-	"main-7EIQR62F.js": {Data: []byte("hashed script")},
-	"flags/de.svg":     {Data: []byte("flag")},
+	"index.html":           {Data: []byte("page")},
+	"main.js":              {Data: []byte("script")},
+	"main-7EIQR62F.js":     {Data: []byte("hashed script")},
+	"flags/de.svg":         {Data: []byte("flag")},
+	"manifest.webmanifest": {Data: []byte(`{"name":"Den-Watcher"}`)},
 }
 
 func get(handler http.Handler, path, remoteAddr string) *httptest.ResponseRecorder {
@@ -317,6 +318,34 @@ func TestServesWebsite(t *testing.T) {
 		if got := rec.Header().Get("X-Frame-Options"); got != "DENY" {
 			t.Errorf("%s: X-Frame-Options = %q, want DENY", tt.path, got)
 		}
+	}
+}
+
+func TestServesTheManifestWithItsType(t *testing.T) {
+	handler := newHandler(device(fakeCollector{}, nil), 0, site)
+
+	rec := get(handler, "/manifest.webmanifest", "10.0.0.5:5000")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "application/manifest+json" {
+		t.Errorf("Content-Type = %q, want application/manifest+json", got)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=3600" {
+		t.Errorf("Cache-Control = %q, want an hour", got)
+	}
+
+	if rec := get(handler, "/manifest.webmanifest", "8.8.8.8:5000"); rec.Code != http.StatusForbidden {
+		t.Errorf("from outside the local network: status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/manifest.webmanifest", nil)
+	req.RemoteAddr = "192.168.1.20:5000"
+	req.Host = "evil.example:9393"
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusMisdirectedRequest {
+		t.Errorf("for an unknown host: status = %d, want %d", rec.Code, http.StatusMisdirectedRequest)
 	}
 }
 

@@ -77,6 +77,10 @@ ALLOWED_HOSTS=raspberrypi,pi.fritz.box
 
 Other names are refused with `421 Misdirected Request` ([why](architecture.md#local-network-only)).
 
+### Add the page to a phone's home screen
+
+The page can be put on the home screen of a phone or tablet, with its name and the bear as the icon: *Add to Home screen* in Chrome's menu on Android, *Share › Add to Home Screen* in Safari on iOS. It then opens in a window of its own, without the browser's address bar. This works over plain http on the local network; a full *Install* prompt and working offline would need https, which den-watcher does not offer, so the page has no service worker. Open it by a name or address that stays the same, as the icon keeps the address it was added with.
+
 ## Or: set up a Linux machine without Docker
 
 Every [release](https://github.com/Chriszly/den-watcher/releases) after 0.1.0 has an archive for Linux: `den-watcher-<version>-linux-arm64.tar.gz` for a Raspberry Pi with a 64-bit system, `-linux-amd64.tar.gz` for a PC. It holds the program, a systemd service and an install script:

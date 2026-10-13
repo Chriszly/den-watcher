@@ -340,7 +340,9 @@ var hashedName = regexp.MustCompile(`^[a-z0-9]+-[A-Z0-9]{8}\.(js|css)$`)
 // switches between them in the browser. Only files are served, no directory
 // listings, and each answer says how long a browser may keep it: the hashed
 // scripts and styles a year, index.html not at all, so a new build shows at
-// once, and the rest, such as the flags and the mascot, an hour.
+// once, and the rest, such as the flags and the mascot, an hour. The web app
+// manifest is named by its type, which Go's own list of types lacks and the
+// system's may lack too, as in the Docker image.
 func websiteHandler(site fs.FS) http.Handler {
 	if _, err := fs.Stat(site, "index.html"); err != nil {
 		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -365,6 +367,9 @@ func websiteHandler(site fs.FS) http.Handler {
 			w.Header().Set("Cache-Control", "no-cache")
 		default:
 			w.Header().Set("Cache-Control", "public, max-age=3600")
+		}
+		if path.Ext(name) == ".webmanifest" {
+			w.Header().Set("Content-Type", "application/manifest+json")
 		}
 		files.ServeHTTP(w, r)
 	})

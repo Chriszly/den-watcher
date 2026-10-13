@@ -4,6 +4,12 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 export type ColorScheme = 'light' | 'dark';
 
 /**
+ * The page's background in each scheme, which phones and installed apps color their bars with;
+ * index.html and manifest.webmanifest name the same colors.
+ */
+export const THEME_COLORS: Record<ColorScheme, string> = { light: '#fff8f5', dark: '#181210' };
+
+/**
  * Follows the color scheme of the operating system until the user picks one.
  * The choice is not stored, so every page load starts from the system again.
  */
@@ -35,5 +41,9 @@ export class ThemeService {
     const next: ColorScheme = this.scheme() === 'dark' ? 'light' : 'dark';
     this.chosen.set(next);
     this.document.documentElement.style.colorScheme = next;
+    // The bars follow the scheme picked on the page rather than the system's.
+    this.document
+      .querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
+      .forEach((meta) => (meta.content = THEME_COLORS[next]));
   }
 }

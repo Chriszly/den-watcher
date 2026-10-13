@@ -1,7 +1,7 @@
 import { formatNumber } from '@angular/common';
 
 import { LanguageCode } from '../i18n/i18n';
-import { BytesPipe } from './bytes.pipe';
+import { formatBytes } from './bytes.pipe';
 
 /**
  * How a value of an extra is shown. A device running a newer version may
@@ -73,8 +73,6 @@ export function localized(
   return texts?.[language] ?? texts?.[language.split('-')[0]] ?? text;
 }
 
-const bytes = new BytesPipe();
-
 /** A value of an extra with its unit, formatted for the page's language. */
 export function formatExtra(value: number, unit: ExtraUnit, language: LanguageCode): string {
   const decimal = (digits: string) => formatNumber(value, language, digits);
@@ -84,9 +82,9 @@ export function formatExtra(value: number, unit: ExtraUnit, language: LanguageCo
     case 'celsius':
       return `${decimal('1.0-1')} °C`;
     case 'bytes':
-      return bytes.transform(value, language);
+      return formatBytes(value, language);
     case 'bytesPerSecond':
-      return `${bytes.transform(value, language)}/s`;
+      return `${formatBytes(value, language)}/s`;
     case 'watts':
       return `${decimal('1.0-1')} W`;
     case 'milliseconds':

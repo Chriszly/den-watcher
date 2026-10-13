@@ -83,6 +83,8 @@ describe('CategoryCharts', () => {
   });
 
   it('keeps a lone chart at the width it has in a full row', () => {
+    // styles.scss sets the charts' --min-card, but the tests run without it.
+    (fixture.nativeElement as HTMLElement).style.setProperty('--min-card', '26rem');
     show([DISKS]);
     reportWidth(1000);
     const charts = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.charts');

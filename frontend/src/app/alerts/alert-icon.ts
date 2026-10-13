@@ -34,12 +34,12 @@ import { AlertLevel } from './alert';
     }
 
     :host {
-      --alert-color: light-dark(#c62828, #f85149);
+      --alert-color: var(--alert-level);
       --alert-on-color: #fff;
     }
 
     :host(.warning) {
-      --alert-color: light-dark(#b26a00, #f0a030);
+      --alert-color: var(--warning-level);
       --alert-on-color: light-dark(#fff, #1b1300);
     }
 

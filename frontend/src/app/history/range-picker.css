@@ -32,11 +32,8 @@
   color: var(--mat-sys-on-surface-variant);
 }
 
-.warning {
+.notice {
   margin: 0.75rem 0 0;
-  padding: 0.75rem 1rem;
-  border-radius: var(--mat-sys-corner-medium);
-  background: var(--warning-surface);
 }
 
 /* Centered labels of one width per row, so every button in a row is equally wide. */

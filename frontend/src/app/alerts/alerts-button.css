@@ -19,16 +19,16 @@ button:focus-visible {
   --alert-icon-size: 1.75rem;
   height: 3rem;
   padding: 0 1.25rem 0 0.625rem;
-  border: 2px solid light-dark(#c62828, #f85149);
-  background: light-dark(#fdecea, #3a1210);
-  color: light-dark(#8e1c1c, #ffb4ab);
+  border: 2px solid var(--alert-level);
+  background: var(--alert-level-surface);
+  color: var(--on-alert-level-surface);
   font: var(--mat-sys-title-medium);
 }
 
 .active.warning {
-  border-color: light-dark(#b26a00, #f0a030);
-  background: light-dark(#fff4e0, #33240a);
-  color: light-dark(#6d4100, #ffd28a);
+  border-color: var(--warning-level);
+  background: var(--warning-level-surface);
+  color: var(--on-warning-level-surface);
 }
 
 .quiet {

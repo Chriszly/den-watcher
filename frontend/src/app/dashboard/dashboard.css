@@ -11,12 +11,6 @@
   grid-template-columns: repeat(auto-fill, minmax(var(--min-card), 1fr));
 }
 
-h3 {
-  margin: 0 0 0.5rem;
-  font: var(--mat-sys-title-small);
-  color: var(--mat-sys-on-surface-variant);
-}
-
 .value {
   margin: 0;
   font-size: 2rem;
@@ -73,33 +67,21 @@ progress {
   font-size: 0.875em;
 }
 
-.warning,
-.notice {
-  padding: 0.75rem 1rem;
-  border-radius: var(--mat-sys-corner-medium);
-  background: var(--warning-surface);
-}
-
-/* A PC that is switched off is no problem, so it is told without the warning's color. */
-.notice {
-  background: var(--mat-sys-surface-container-high);
-}
-
 .disk + .disk,
 .gpu + .gpu {
   margin-top: 1rem;
 }
 
-/* GPU names are long, so each gets its own line above its usage and temperature. */
-.gpu > .label {
-  margin: 0.25rem 0 0;
-  font: var(--mat-sys-label-large);
-  font-size: calc(var(--label-scale, 1) * var(--mat-sys-label-large-size));
-}
-
-/* A section of an extra, such as a disk, above its values, which follow without its name. */
+/* GPU names are long, so each gets its own line above its usage and temperature; a section of an
+   extra, such as a disk, is above its values, which follow without its name. */
+.gpu > .label,
 .section.label {
   margin: 0.25rem 0 0;
+}
+
+.gpu > .label,
+.section.label,
+.interface .label {
   font: var(--mat-sys-label-large);
   font-size: calc(var(--label-scale, 1) * var(--mat-sys-label-large-size));
 }
@@ -125,8 +107,6 @@ progress {
 
 .interface .label {
   grid-column: 1 / -1;
-  font: var(--mat-sys-label-large);
-  font-size: calc(var(--label-scale, 1) * var(--mat-sys-label-large-size));
 }
 
 .rate {
@@ -188,47 +168,13 @@ progress {
   color: var(--mat-sys-error);
 }
 
-/* Faded while the hub does not answer: the values are from before it stopped. */
-.stale {
-  opacity: 0.55;
-}
-
 /* A card with a value that needs attention gets a red frame, besides the sign at its title. */
 .card.alerting {
-  border: 2px solid light-dark(#c62828, #f85149);
+  border: 2px solid var(--alert-level);
 }
 
 .card.alerting:has(> h3 > app-card-alert.warning) {
-  border-color: light-dark(#b26a00, #f0a030);
-}
-
-/* The alerts of the picked device, above its cards, big enough to see from across the room. */
-.alerts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 0 0 1.25rem;
-  padding: 0;
-  list-style: none;
-}
-
-.alerts > li {
-  --alert-icon-size: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem 1rem 0.5rem 0.5rem;
-  border: 2px solid light-dark(#c62828, #f85149);
-  border-radius: var(--mat-sys-corner-medium);
-  background: light-dark(#fdecea, #3a1210);
-  color: light-dark(#8e1c1c, #ffb4ab);
-  font: var(--mat-sys-title-medium);
-}
-
-.alerts > li.warning {
-  border-color: light-dark(#b26a00, #f0a030);
-  background: light-dark(#fff4e0, #33240a);
-  color: light-dark(#6d4100, #ffd28a);
+  border-color: var(--warning-level);
 }
 
 /* The cards come in categories, each with a title that folds it away. */

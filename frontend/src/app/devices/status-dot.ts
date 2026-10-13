@@ -22,7 +22,7 @@ import { DeviceState } from './devices';
     }
 
     :host(.unreachable) {
-      background: light-dark(#c62828, #f85149);
+      background: var(--alert-level);
     }
 
     :host(.notInUse) {

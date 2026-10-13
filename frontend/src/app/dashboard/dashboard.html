@@ -76,32 +76,32 @@
 </ng-template>
 
 @if (problem() === 'backend' && !connection.lost()) {
-  <p class="warning" role="alert">{{ i18n.t('dashboard.unreachable') }}</p>
+  <p class="notice warning" role="alert">{{ i18n.t('dashboard.unreachable') }}</p>
 } @else if (problem() === 'device' && refused()) {
-  <p class="warning" role="alert">
+  <p class="notice warning" role="alert">
     {{ i18n.t('dashboard.deviceRefused', { device: deviceName() }) }}
   </p>
 } @else if (problem() === 'device' && isPC()) {
-  <p class="notice" role="status">
+  <p class="notice quiet" role="status">
     {{ i18n.t('dashboard.deviceNotInUse', { device: deviceName() }) }}
   </p>
 } @else if (problem() === 'device' && isRouter()) {
-  <p class="warning" role="alert">
+  <p class="notice warning" role="alert">
     {{ i18n.t('dashboard.routerUnreachable', { device: deviceName() }) }}
   </p>
 } @else if (problem() === 'device' && isChecked()) {
-  <p class="warning" role="alert">
+  <p class="notice warning" role="alert">
     {{ i18n.t('dashboard.checkUnreachable', { device: deviceName() }) }}
   </p>
 } @else if (problem() === 'device') {
-  <p class="warning" role="alert">
+  <p class="notice warning" role="alert">
     {{ i18n.t('dashboard.deviceUnreachable', { device: deviceName() }) }}
   </p>
 }
 
 <!-- A wall display shows the alerts of every device above the page instead. -->
 @if (deviceAlerts().length > 0 && !kiosk.on) {
-  <ul class="alerts" role="alert">
+  <ul class="alert-chips" role="alert">
     @for (alert of deviceAlerts(); track alert.id) {
       <li [class.warning]="alert.level === 'warning'">
         <app-alert-icon [level]="alert.level" />

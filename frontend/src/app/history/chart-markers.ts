@@ -56,11 +56,11 @@ import { ChartMarker, placeMarkers } from './chart-events';
 
     .alert,
     .alertEnded {
-      --marker: light-dark(#c62828, #f85149);
+      --marker: var(--alert-level);
     }
 
     .warning {
-      --marker: light-dark(#b26a00, #f0a030);
+      --marker: var(--warning-level);
     }
 
     .alertEnded {

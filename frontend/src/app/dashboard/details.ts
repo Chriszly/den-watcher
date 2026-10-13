@@ -63,7 +63,7 @@ import { valueCard } from './categories';
                       [title]="i18n.t('arrange.make', { value: text(item.label, item.labels) })"
                       (click)="make.emit(card)"
                     >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M12 5v14M5 12h14" />
                       </svg>
                     </button>

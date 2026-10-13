@@ -144,3 +144,37 @@ svg {
 .tooltip .label {
   margin-left: 0.375rem;
 }
+
+/* What happened in the step under the pointer, below the values. */
+.tooltip .event {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.event-mark {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--mat-sys-inverse-on-surface);
+}
+
+.event-mark.alert,
+.event-mark.alertEnded {
+  background: light-dark(#f85149, #c62828);
+}
+
+.event-mark.warning {
+  background: light-dark(#f0a030, #b26a00);
+}
+
+.event-mark.reboot {
+  background: var(--mat-sys-inverse-primary);
+}
+
+.event-mark.outage {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--mat-sys-inverse-on-surface) 50%, transparent);
+}

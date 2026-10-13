@@ -35,6 +35,8 @@ describe('CardCharts', () => {
   });
 
   afterEach(() => {
+    // The marks of the charts are read alongside the history; these tests leave them unanswered.
+    http.match((r) => r.url === '/api/events');
     http.verify();
     vi.useRealTimers();
   });

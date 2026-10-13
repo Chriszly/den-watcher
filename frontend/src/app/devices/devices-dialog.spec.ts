@@ -53,6 +53,8 @@ describe('DevicesDialog', () => {
   afterEach(() => {
     // Tests that do not look at the suggestion leave it unanswered.
     http.match('/api/devices/suggestion').forEach((r) => r.flush(null));
+    // The marks of the charts are read alongside the history; these tests leave them unanswered.
+    http.match((r) => r.url === '/api/events');
     http.verify();
   });
 

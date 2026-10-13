@@ -1,8 +1,10 @@
 import { Component, computed, inject, input } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { CardSlot } from '../dashboard/card-slot';
 import { WidthIcon } from '../dashboard/width-icon';
 import { I18n } from '../i18n/i18n';
+import { ChartEvents } from './chart-events';
 import { HistoryStore } from './history-store';
 import { Chart } from './history';
 import { LineChart } from './line-chart';
@@ -27,6 +29,7 @@ import { LineChart } from './line-chart';
             [step]="h.stepSeconds"
             [unit]="chart.unit"
             [max]="chart.max"
+            [markers]="events.markers()"
           />
         </div>
       }
@@ -55,9 +58,15 @@ export class CardCharts {
   readonly chart = input<Chart>();
 
   protected readonly store = inject(HistoryStore);
+  /** What happened to the device, marked on the charts. */
+  protected readonly events = inject(ChartEvents);
   protected readonly i18n = inject(I18n);
   /** The card's place in its grid, which sets how wide it is; none outside a grid of cards. */
   protected readonly slot = inject(CardSlot, { optional: true });
   /** How many cards wide the card shows, which sets how tall its chart is. */
   protected readonly width = computed(() => this.slot?.shown() ?? 1);
+
+  constructor() {
+    this.events.watch.pipe(takeUntilDestroyed()).subscribe();
+  }
 }

@@ -203,3 +203,16 @@ The values are read as for `GET /api/devices/metrics`: a device that does not an
 ## When a disk is full
 
 Under each disk on the *Disks* card, the page tells in about how many days the disk is full when it has filled up steadily: it fits a straight line through the disk's usage (`disk:<path>`) over the last 7 days of the history, and at that line's pace from the usage now, says *Full in about 10 days*. Less than two weeks shows in amber with a warning sign. Nothing is shown when the history covers less than a day, the usage is flat or falls, it rose unsteadily (such as one large copy on an otherwise even disk, R² below 0.5), the disk would take more than a year to fill, or the device is not answering. The page computes this itself from `GET /api/history`, read at most once an hour for each device while a *Disks* card shows; it is no alert and is not kept anywhere.
+
+## Events on the charts
+
+The charts and the timeline mark what happened to the device shown, so a spike lines up with its cause:
+
+| Mark | What | From |
+| --- | --- | --- |
+| red line (amber for a warning), with a dot | an [alert](#alerts) started; a dashed line with a ring where it ended. An alert that a device does not answer is left out, as its band shows that | the alert log |
+| faint band | a time another device did not answer the hub; for a PC or laptop, a time it was switched off | its [availability](architecture.md#http-api) |
+| line in the theme's color | the device started (a reboot): its uptime was lower than at the reading before, at the time it started | kept by the hub |
+| line in a second color | den-watcher on the device was updated: its version changed, at the time the new one was first seen | kept by the hub |
+
+Pointing at a chart tells what happened in the step under the pointer, below the values; the timeline shows the marks in a row *Events* above the values. A device with the website (every hub) looks at the uptime and version of itself and every device it collects from every 15 seconds and keeps the reboots and updates in the `events` table, for `RETENTION_DAYS` ([Tables](database.md#tables)). A reboot while the hub was stopped is noticed at its next start, as long as the device's uptime is still lower than the hub last saw; a device that tells no uptime, such as a thing in `HUB_CHECKS`, has no reboots, and one that runs no den-watcher, such as a router, no updates. The page reads them with `GET /api/events`.

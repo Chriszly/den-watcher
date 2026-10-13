@@ -757,6 +757,24 @@ func (r *Remote) Availability(ctx context.Context) (Availability, error) {
 	return availability, nil
 }
 
+// OutagesBetween returns the times the device did not answer from from to to,
+// oldest first, the one that lasts included.
+func (r *Remote) OutagesBetween(ctx context.Context, from, to time.Time) ([]Outage, error) {
+	outages, err := readOutages(ctx, r.db, r.ID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	// An outage that lasts is in the database only up to its last write.
+	if outage, _, ok := r.watched.ongoing(); ok && !outage.Start.After(to) && !outage.End.Before(from) {
+		if n := len(outages); n > 0 && outages[n-1].Start.Equal(outage.Start) {
+			outages[n-1] = outage
+		} else {
+			outages = append(outages, outage)
+		}
+	}
+	return outages, nil
+}
+
 // Wait waits until every recorder has stopped after the ctx given to New is done.
 func (h *Hub) Wait() {
 	h.recording.Wait()

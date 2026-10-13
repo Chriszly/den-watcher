@@ -334,6 +334,16 @@ func (w *Watcher) Log(ctx context.Context) ([]Alert, error) {
 	return w.query(ctx, selectAlerts+` ORDER BY ended IS NOT NULL, started DESC, id DESC LIMIT ?`, LogLimit)
 }
 
+// BetweenLimit is how many alerts Between returns at most.
+const BetweenLimit = 500
+
+// Between returns the alerts of device that lasted at some time from from to
+// to, oldest first, at most BetweenLimit of them.
+func (w *Watcher) Between(ctx context.Context, device string, from, to time.Time) ([]Alert, error) {
+	return w.query(ctx, selectAlerts+` WHERE device = ? AND started <= ? AND (ended IS NULL OR ended >= ?) ORDER BY started, id LIMIT ?`,
+		device, to.UnixMilli(), from.UnixMilli(), BetweenLimit)
+}
+
 // selectAlerts starts every query that query reads.
 const selectAlerts = `SELECT id, device, device_name, kind, subject, level, value, started, ended FROM alerts`
 

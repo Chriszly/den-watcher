@@ -30,6 +30,10 @@
       }
     </svg>
 
+    @if (markers().length > 0) {
+      <app-chart-markers [markers]="markers()" [from]="from()" [to]="to()" />
+    }
+
     @if (readout(); as r) {
       <div class="crosshair" [style.left.%]="r.left"></div>
       <div class="tooltip" [class.flip]="r.left > 60" [style.left.%]="r.left" aria-hidden="true">
@@ -49,6 +53,14 @@
             @if (lines().length > 1) {
               <span class="label">{{ line.label }}</span>
             }
+          </p>
+        }
+        @for (event of r.events; track $index) {
+          <p class="event">
+            <span
+              [class]="'event-mark ' + event.kind + (event.level === 'warning' ? ' warning' : '')"
+            ></span
+            >{{ event.text }}
           </p>
         }
       </div>

@@ -20,7 +20,11 @@ describe('Arrangement', () => {
     arrangement = TestBed.inject(Arrangement);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    // The marks of the charts are read alongside the history; these tests leave them unanswered.
+    http.match((r) => r.url === '/api/events');
+    http.verify();
+  });
 
   function answer(layout: Partial<Layout>): void {
     http.expectOne('/api/layout').flush({ ...EMPTY_LAYOUT, ...layout });

@@ -83,6 +83,16 @@ describe('DemoBackend', () => {
     expect(csvFileName('Büro / PC', 0, 3600)).toBe('Büro-PC-19700101T000000Z-19700101T010000Z.csv');
   });
 
+  it('tells what happened to each device: reboots, updates, alerts and times it was off', async () => {
+    const to = Math.floor(Date.now() / 1000);
+    const from = to - 7 * 86400;
+    const kinds = async (device: string) =>
+      (await firstValueFrom(metrics.events(from, to, device))).events.map((e) => e.kind);
+    expect(await kinds('linux-nas')).toEqual(expect.arrayContaining(['update', 'alert']));
+    expect(await kinds('linux-laptop')).toContain('outage');
+    expect(await kinds('windows-pc')).toContain('reboot');
+  });
+
   it('lists Windows and Linux devices, one of them asleep', async () => {
     const list = await firstValueFrom(devices.load());
     expect(list.devices[0]).toEqual(LOCAL_DEVICE);

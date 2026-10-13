@@ -65,6 +65,8 @@ describe('Dashboard', () => {
     http.match((r) => r.url === '/api/history');
     // The folded categories are kept on the host, which the categories' own tests cover.
     http.match((r) => r.url === '/api/layout');
+    // The marks of the charts are read alongside the history; these tests leave them unanswered.
+    http.match((r) => r.url === '/api/events');
     http.verify();
     vi.useRealTimers();
     vi.restoreAllMocks();

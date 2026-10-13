@@ -20,6 +20,8 @@ describe('categories', () => {
   });
 
   afterEach(() => {
+    // The marks of the charts are read alongside the history; these tests leave them unanswered.
+    http.match((r) => r.url === '/api/events');
     http.verify();
     // jsdom's own value, from its prototype.
     delete (document as { visibilityState?: DocumentVisibilityState }).visibilityState;

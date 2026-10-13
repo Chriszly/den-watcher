@@ -117,7 +117,7 @@ func TestRecorderAddsWhatTheHubMeasuresToAFetchedMinute(t *testing.T) {
 	recorder.store(ctx, now.Add(-time.Minute), now, recorder.minuteOf(now))
 
 	got, err := store.Range(ctx, "living-room-pi", now.Add(-time.Hour), now.Add(time.Second), time.Second)
-	want := []Series{{Metric: MetricResponse, Points: []Point{{Time: now.Truncate(time.Minute).Unix(), Value: 15}}}}
+	want := []Series{{Metric: MetricResponse, Points: []Point{{Time: recorder.minuteOf(now).Unix(), Value: 15}}}}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Errorf("stored %+v, %v; want only the average response time, the rest coming with the fetched minute", got, err)
 	}

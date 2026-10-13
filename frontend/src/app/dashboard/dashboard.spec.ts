@@ -224,6 +224,22 @@ describe('Dashboard', () => {
     expect(element.querySelector('.fact')).toBeNull();
   });
 
+  it('shows how long the device took to answer the hub, and no card where nothing measured it', () => {
+    respond({ ...snapshot, responseMilliseconds: 12.34 });
+    const element = fixture.nativeElement as HTMLElement;
+    const card = () =>
+      [...element.querySelectorAll('.card')].find(
+        (c) => shown(c.querySelector('h3')!).trim() === 'Connection',
+      );
+    expect(card()?.querySelector('.value')?.textContent?.trim()).toBe('12.3 ms');
+    expect(card()?.textContent).toContain('Time to answer the hub');
+
+    vi.advanceTimersByTime(REFRESH_INTERVAL_MS);
+    http.expectOne('/api/metrics').flush(snapshot);
+    fixture.detectChanges();
+    expect(card()).toBeUndefined();
+  });
+
   it('leaves out the time when the device runs an older version', () => {
     respond(snapshot);
     expect(text()).not.toContain('Friday');

@@ -105,6 +105,22 @@ describe('chartsOf with swap and disk activity', () => {
   });
 });
 
+describe('chartsOf with the response time', () => {
+  it('charts how long the device took to answer the hub for its Connection card', () => {
+    const [chart] = chartsOf(
+      [{ metric: 'response', points: [{ time: 0, value: 12.5 }] }],
+      (key, params) => translate('en-GB', key, params),
+    );
+    expect(chart).toEqual({
+      title: 'Response time',
+      category: 'network',
+      card: 'connection',
+      unit: 'milliseconds',
+      lines: [{ label: 'Response time', points: [{ time: 0, value: 12.5 }] }],
+    });
+  });
+});
+
 describe('chartsOf with a battery', () => {
   it('charts the battery charge', () => {
     const charts = chartsOf(

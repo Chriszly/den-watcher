@@ -59,6 +59,11 @@ export interface Snapshot {
   extras?: Extra[];
   /** What the machine is, read once at start; missing on versions from before it was reported. */
   system?: System;
+  /**
+   * How long the device took to answer the hub's last reading, which the hub measures; missing for
+   * the hub itself, routers, checks and from hubs of older versions.
+   */
+  responseMilliseconds?: number;
 }
 
 export interface Fan {

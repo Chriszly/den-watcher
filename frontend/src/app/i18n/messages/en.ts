@@ -42,6 +42,8 @@ export const en = {
   'dashboard.diskFull.one': 'Full in about {count} day',
   'dashboard.diskFull.other': 'Full in about {count} days',
   'dashboard.network': 'Network',
+  'dashboard.connection': 'Connection',
+  'dashboard.responseTime': 'Time to answer the hub',
   'dashboard.noNetwork': 'No network card found',
   'dashboard.idleHidden.one': '{count} interface without traffic hidden',
   'dashboard.idleHidden.other': '{count} interfaces without traffic hidden',
@@ -235,6 +237,7 @@ export const en = {
   'history.gpuMemory': '{name} memory',
   'history.temperature': 'Temperature',
   'history.network': 'Network',
+  'history.responseTime': 'Response time',
   'history.received': 'Received',
   'history.sent': 'Sent',
   'history.interfaceReceived': '{name} received',
@@ -286,6 +289,8 @@ export const en = {
     'How fast each drive or partition is read and written right now, and, where the system tells, how often and how long it is busy.',
   'dashboard.info.network':
     'How fast each network interface receives and sends right now, busiest first, with its addresses and link speed.',
+  'dashboard.info.connection':
+    'How long the device took to answer the hub, which asks it for its values every 5 seconds over the network. A rising time can mean a busy device or a weak connection, such as poor Wi-Fi.',
   'dashboard.info.gpu': 'How busy each graphics card is, with its memory and temperature.',
   'dashboard.info.temperature':
     'The temperatures the sensors of the machine report, hottest first.',

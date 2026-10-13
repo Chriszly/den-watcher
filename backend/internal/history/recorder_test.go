@@ -96,6 +96,33 @@ func TestRecorderLeavesStoringToFetchWhenItCan(t *testing.T) {
 	}
 }
 
+func TestRecorderAddsWhatTheHubMeasuresToAFetchedMinute(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t)
+	now := time.Now().Truncate(time.Second)
+	response := func(ms float64) *float64 { return &ms }
+	recorder := &Recorder{
+		Store:  store,
+		Recent: &Recent{},
+		Collector: &sequenceCollector{[]metrics.Snapshot{
+			{Time: now.Add(-10 * time.Second), CPU: metrics.CPU{UsagePercent: 30}, ResponseMilliseconds: response(10)},
+			{Time: now.Add(-5 * time.Second), CPU: metrics.CPU{UsagePercent: 50}, ResponseMilliseconds: response(20)},
+		}},
+		Device: "living-room-pi",
+		Fetch:  func(context.Context, time.Time) bool { return true },
+	}
+
+	recorder.read(ctx)
+	recorder.read(ctx)
+	recorder.store(ctx, now.Add(-time.Minute), now, recorder.minuteOf(now))
+
+	got, err := store.Range(ctx, "living-room-pi", now.Add(-time.Hour), now.Add(time.Second), time.Second)
+	want := []Series{{Metric: MetricResponse, Points: []Point{{Time: now.Truncate(time.Minute).Unix(), Value: 15}}}}
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Errorf("stored %+v, %v; want only the average response time, the rest coming with the fetched minute", got, err)
+	}
+}
+
 func TestRecorderStoresTheMinuteItStopsIn(t *testing.T) {
 	stopped, cancel := context.WithCancel(context.Background())
 	cancel()

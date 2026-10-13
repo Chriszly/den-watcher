@@ -203,7 +203,8 @@ export type Card =
         | 'throttling'
         | 'time'
         | 'uptime'
-        | 'facts';
+        | 'facts'
+        | 'connection';
       category: Category;
     }
   | {
@@ -247,6 +248,7 @@ const CARD_TITLES = {
   time: 'dashboard.time',
   uptime: 'dashboard.uptime',
   facts: 'dashboard.system',
+  connection: 'dashboard.connection',
 } as const satisfies Record<Exclude<Card['kind'], 'extra' | 'value'>, string>;
 
 /** The name of the kind of value of each unit, for the card of the values of one unit. */
@@ -506,6 +508,7 @@ export class Dashboard {
       ...fixed('disks', 'storage', !readsLess || s.disks.length > 0),
       ...fixed('diskActivity', 'storage', hasDiskActivity(s)),
       ...fixed('network', 'network', !this.isChecked() || s.network.length > 0),
+      ...fixed('connection', 'network', s.responseMilliseconds !== undefined),
       ...fixed('gpus', 'system', s.gpus?.length),
       ...fixed('temperatures', 'temperature', !readsLess || s.temperatures.length > 0),
       ...fixed('fans', 'temperature', s.fans?.length),
@@ -773,6 +776,10 @@ export class Dashboard {
   }
 
   /** A number in the page's language, for text parameters (the number pipe may return null). */
+  protected formatMilliseconds(ms: number): string {
+    return formatExtra(ms, 'milliseconds', this.i18n.language());
+  }
+
   protected decimal(value: number, digits: string): string {
     return formatNumber(value, this.i18n.language(), digits);
   }

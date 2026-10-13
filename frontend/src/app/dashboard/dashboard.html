@@ -755,6 +755,21 @@
                           </div>
                         }
                       }
+                      @case ('connection') {
+                        @if (s.responseMilliseconds !== undefined) {
+                          <div class="card">
+                            <h3>
+                              {{ cardTitle(card) }}
+                              <app-card-info [text]="i18n.t('dashboard.info.connection')" />
+                            </h3>
+                            <p class="value">
+                              {{ formatMilliseconds(s.responseMilliseconds) }}
+                            </p>
+                            <p class="detail">{{ i18n.t('dashboard.responseTime') }}</p>
+                            <app-card-charts [chart]="chartOf(card)" />
+                          </div>
+                        }
+                      }
                       @case ('uptime') {
                         <ng-container
                           *ngTemplateOutlet="

@@ -105,7 +105,8 @@ function networkLines(
 
 /**
  * Groups the stored metrics into charts: CPU, memory and swap, battery, GPUs,
- * temperatures, network speed, disk usage and disk activity, with titles and
+ * temperatures, network speed, the time another device took to answer the hub,
+ * disk usage and disk activity, with titles and
  * labels in the language of t. Charts without values are left out. A router
  * read without a login tells no CPU or memory, which are kept as 0, so for a
  * router those lines are left out while they hold nothing but 0. A router's
@@ -183,6 +184,13 @@ export function chartsOf(
       card: 'network',
       unit: 'bytesPerSecond',
       lines: networkLines(named('network.receive'), named('network.send'), t, router),
+    },
+    {
+      title: t('history.responseTime'),
+      category: 'network',
+      card: 'connection',
+      unit: 'milliseconds',
+      lines: [{ label: t('history.responseTime'), points: metric('response') }],
     },
     {
       title: t('history.disks'),

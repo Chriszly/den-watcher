@@ -45,6 +45,7 @@ When the network counters cannot be read, as when Windows loses an adapter durin
 | `fans` | per fan: `name`, `rpm` |
 | `extras` | values beyond the fields above, which the device describes itself; see [Extras](#extras) |
 | `system` | what the machine is, read once at start: `os` (name and version), `kernel`, `architecture`, `cpu` (model), `maker` and `model` of the board or PC; each left out where unknown, and the whole field by devices from before it was reported. Never serial numbers or network card addresses |
+| `responseMilliseconds` | set by a hub on the snapshots it serves of the other devices: how long the device took to answer its last `GET /api/metrics`; a device leaves it out of its own, and the hub replaces whatever a device sends |
 
 Sensors and GPUs that share a name are numbered (`coretemp 1`, `coretemp 2`), so every name stands for one sensor in the history.
 
@@ -144,6 +145,7 @@ The charts and the database keep a subset of the snapshot: the values that make 
 | `network.receive:<card>`, `network.send:<card>` | bytes per second | network card |
 | `gpu:<name>` | % | GPU |
 | `gpu.memory:<name>` | % used | GPU with its own memory |
+| `response` | milliseconds | other device a hub collects from: how long its answer to the hub's `GET /api/metrics` took, measured by the hub every 5 seconds; not for the hub itself, routers or checks |
 | `extra:<group>/<value>` | the extra's own unit | extra value with `history: true` |
 
 Examples: `disk:/`, `network.receive:eth0`, `temperature:cpu_thermal`. Adding a metric needs no change to the database: every value is a row with its name.
@@ -181,6 +183,7 @@ With `PROMETHEUS=true`, `GET /metrics` answers with the current usage of every d
 | `denwatcher_device_up` | gauge | | 1 when the device answered, 0 when it did not: not in time, or not recently for a device the hub collects from |
 | `denwatcher_alerts` | gauge | `level` (`warning` or `alert`) | the [alerts](#alerts) of the device that last now |
 | `denwatcher_uptime_seconds` | gauge | | time since the device started |
+| `denwatcher_response_seconds` | gauge | | how long another device took to answer the hub's last reading of it; not for the hub itself, routers or checks |
 | `denwatcher_cpu_usage_percent`, `denwatcher_cpu_cores`, `denwatcher_cpu_clock_mhz`, `denwatcher_cpu_iowait_percent`, `denwatcher_cpu_steal_percent` | gauge | | the processor |
 | `denwatcher_cpu_core_usage_percent` | gauge | `core` | usage of each core, counted from 0 |
 | `denwatcher_load1`, `denwatcher_load5`, `denwatcher_load15`, `denwatcher_processes`, `denwatcher_processes_running` | gauge | | load average and processes |

@@ -41,6 +41,8 @@ export const es: Messages = {
   'dashboard.diskFull.one': 'Lleno en aproximadamente {count} día',
   'dashboard.diskFull.other': 'Lleno en unos {count} días',
   'dashboard.network': 'Red',
+  'dashboard.connection': 'Conexión',
+  'dashboard.responseTime': 'Tiempo de respuesta al hub',
   'dashboard.noNetwork': 'No se encontró ninguna tarjeta de red',
   'dashboard.idleHidden.one': '{count} interfaz sin tráfico oculta',
   'dashboard.idleHidden.other': '{count} interfaces sin tráfico ocultas',
@@ -238,6 +240,7 @@ export const es: Messages = {
   'history.gpuMemory': 'Memoria {name}',
   'history.temperature': 'Temperatura',
   'history.network': 'Red',
+  'history.responseTime': 'Tiempo de respuesta',
   'history.received': 'Recibido',
   'history.sent': 'Enviado',
   'history.interfaceReceived': '{name} recibido',
@@ -287,6 +290,8 @@ export const es: Messages = {
     'A qué velocidad se lee y escribe ahora mismo cada disco o partición y, donde el sistema lo indica, con qué frecuencia y durante cuánto tiempo está ocupado.',
   'dashboard.info.network':
     'A qué velocidad recibe y envía ahora cada interfaz de red, la más usada primero, con sus direcciones y la velocidad del enlace.',
+  'dashboard.info.connection':
+    'Cuánto tardó el dispositivo en responder al hub, que le pide sus valores cada 5 segundos por la red. Un tiempo que sube puede indicar un dispositivo ocupado o una conexión débil, como un Wi-Fi deficiente.',
   'dashboard.info.gpu':
     'Lo ocupada que está cada tarjeta gráfica, con su memoria y su temperatura.',
   'dashboard.info.temperature':

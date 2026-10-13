@@ -49,6 +49,32 @@ func TestAgentReadsTheDevicesUsage(t *testing.T) {
 	}
 }
 
+func TestAgentMeasuresHowLongTheDeviceTookToAnswer(t *testing.T) {
+	// A device that says how long it took itself is not believed.
+	device := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(20 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"time":"2001-01-01T00:00:00Z","cpu":{"usagePercent":12.5,"cores":4},"responseMilliseconds":0.5}`))
+	}))
+	defer device.Close()
+
+	got, err := NewAgent(strings.TrimPrefix(device.URL, "http://")).Collect(context.Background())
+	if err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+	if got.ResponseMilliseconds == nil || *got.ResponseMilliseconds < 20 || *got.ResponseMilliseconds > 5000 {
+		t.Errorf("ResponseMilliseconds = %v, want the 20 ms or more the answer took", got.ResponseMilliseconds)
+	}
+}
+
+func TestAgentMeasuresNoResponseOfWhatTheHubReadsItself(t *testing.T) {
+	got, err := newReaderAgent(usageFunc(func(context.Context) (metrics.Snapshot, error) {
+		return metrics.Snapshot{Time: time.Now()}, nil
+	})).Collect(context.Background())
+	if err != nil || got.ResponseMilliseconds != nil {
+		t.Errorf("Collect() = ResponseMilliseconds %v, %v; want none for a router or check", got.ResponseMilliseconds, err)
+	}
+}
+
 func TestAgentSaysWhenAnAnswerIsTooLarge(t *testing.T) {
 	device := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"disks":[{"path":"` + strings.Repeat("x", maxResponseBytes) + `"}]}`))
@@ -267,3 +293,8 @@ func TestAgentUsesANewConnectionOpenedWhileTheOwnAddressesGainOne(t *testing.T) 
 		t.Errorf("Collect() error = %v, want the reading over the new connection", err)
 	}
 }
+
+// usageFunc is a Usage that calls itself.
+type usageFunc func(ctx context.Context) (metrics.Snapshot, error)
+
+func (f usageFunc) Collect(ctx context.Context) (metrics.Snapshot, error) { return f(ctx) }

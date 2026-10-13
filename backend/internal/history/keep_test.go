@@ -20,6 +20,8 @@ func TestKeepKeepsWhatARecorderKeeps(t *testing.T) {
 		"extra:power/cpu": 19, "extra:power/gpu": 20, "extra:power/soc": 21,
 		"extra:alpha/one": 22, "extra:zeta/one": 23, "extra:Bad/one": 24,
 		"unknown": 25, "fan:one": 26, "Bad:one": 27, "cpu:one": 28, "fan:": 29,
+		// What the hub measures itself, not the device.
+		"response": 30,
 	}
 	want := map[string]float64{
 		"cpu": 1, "memory": 2, "swap": 3, "battery": 4,

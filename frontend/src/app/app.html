@@ -51,6 +51,8 @@
     <!-- Loaded only on a wall display, so the page loads fast elsewhere. -->
     @defer {
       <app-kiosk-alerts />
+    } @error {
+      <app-missing-part />
     }
   } @else {
     <app-update-notice />
@@ -62,6 +64,8 @@
     <!-- The comparison is loaded only when it is opened, so the page loads fast. -->
     @defer {
       <app-compare />
+    } @error {
+      <app-missing-part />
     }
   } @else {
     <app-dashboard />

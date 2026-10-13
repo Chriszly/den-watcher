@@ -226,6 +226,22 @@ describe('Timeline', () => {
     expect(rows()).toEqual(['CPU: 90 %', 'Memory: 45 %']);
   });
 
+  it('keeps the trail in a stretch without readings, and says nothing was recorded', () => {
+    show();
+    brush(0.2, 0.6);
+    http.expectOne((r) => r.url === '/api/history').flush({ ...ZOOMED, series: [] });
+    fixture.detectChanges();
+
+    expect(rows()).toEqual([]);
+    expect(host().querySelector('.nothing')!.textContent).toContain('Nothing was recorded');
+    expect(trail().at(-1)).toContain('Back');
+
+    host().querySelector<HTMLButtonElement>('.trail .back')!.click();
+    fixture.detectChanges();
+    expect(rows()).toEqual(['CPU: 20 %', 'Memory: 40 %', 'Disks: 30 %']);
+    expect(host().querySelector('.nothing')).toBeNull();
+  });
+
   it('takes a short drag across the rows for a click', () => {
     show();
     brush(0.5, 0.502);

@@ -124,6 +124,22 @@ describe('HubConnection', () => {
     }
   });
 
+  it('gives a backup as long as it takes', () => {
+    vi.useFakeTimers();
+    try {
+      client.post('/api/backup', {}).subscribe({ error: () => undefined });
+      const request = http.expectOne('/api/backup');
+
+      vi.advanceTimersByTime(CHANGE_TIMEOUT_MS * 4);
+      expect(request.cancelled).toBe(false);
+      expect(connection.lost()).toBe(false);
+      request.flush({});
+      expect(connection.lost()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('keeps the time the hub stopped answering', () => {
     get((r) => r.error(new ProgressEvent('error')));
     const since = connection.lostSince();

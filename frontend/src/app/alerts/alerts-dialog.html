@@ -4,10 +4,7 @@
   <p class="hint">{{ i18n.t('alerts.intro') }}</p>
   @if (notifications.available) {
     <div class="notify">
-      <mat-checkbox
-        [checked]="notifications.on()"
-        (change)="notifications.set($event.checked ? 'started' : 'off')"
-      >
+      <mat-checkbox [checked]="notifications.on()" (change)="notify($event)">
         {{ i18n.t('alerts.notify.started') }}
       </mat-checkbox>
       <mat-checkbox

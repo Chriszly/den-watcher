@@ -257,6 +257,7 @@ export const en = {
   'timeline.wholeRange': 'Whole range',
   'timeline.zoomHint': 'Drag across a row to zoom in',
   'timeline.back': 'Back',
+  'timeline.nothingRecorded': 'Nothing was recorded in this stretch.',
   'events.ended': 'Ended: {text}',
   'events.outage': 'Did not answer',
   'events.off': 'Switched off',
@@ -273,6 +274,7 @@ export const en = {
   'bytes.unit.tib': 'TiB',
   'update.available': 'Version {latest} is available (this device runs {current}).',
   'update.whatsNew': "What's new",
+  'update.partMissing': 'This part of the page could not be loaded. Reload the page to try again.',
   // Date patterns for Angular's date pipe; American English uses a 12-hour clock.
   'format.time': 'HH:mm',
   'format.timeSeconds': 'HH:mm:ss',
@@ -390,6 +392,7 @@ export const en = {
   'compare.alerts': 'Alerts',
   'compare.sortBy': 'Sort by this, largest first',
   'compare.open': 'Show this device',
+  'compare.noValues': 'No values right now',
   'compare.overTime': 'Over time',
   'compare.system': 'System',
   'compare.systemIntro': 'What each device is, as it told when Den-Watcher started on it.',

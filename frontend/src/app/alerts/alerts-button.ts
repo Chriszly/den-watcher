@@ -1,6 +1,7 @@
 import { Component, Injector, computed, inject } from '@angular/core';
 
 import { I18n } from '../i18n/i18n';
+import { MissingParts } from '../update/missing-part';
 import { AlertIcon } from './alert-icon';
 import { AlertService, worstLevel } from './alerts';
 
@@ -36,12 +37,13 @@ export class AlertsButton {
   protected readonly alerts = inject(AlertService);
   protected readonly i18n = inject(I18n);
   private readonly injector = inject(Injector);
+  private readonly parts = inject(MissingParts);
 
   protected readonly level = computed(() => worstLevel(this.alerts.active()));
 
   /** The dialog is loaded only when it is opened, so the page loads fast. */
   protected async openLog(): Promise<void> {
-    const { openAlertsDialog } = await import('./alerts-dialog');
+    const { openAlertsDialog } = await this.parts.load(() => import('./alerts-dialog'));
     openAlertsDialog(this.injector);
   }
 }

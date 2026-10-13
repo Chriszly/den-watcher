@@ -130,6 +130,17 @@ export function metric(series: Series[], name: string, router: boolean): Point[]
   return router && points.every((p) => p.value === 0) ? [] : points;
 }
 
+/**
+ * The points of the steps within the range the charts show. For a device that does not answer, the
+ * backend moves its history back to end at its last reading, which can be before the range.
+ */
+export function within(
+  points: Point[],
+  range: { from: number; to: number; step: number },
+): Point[] {
+  return points.filter((p) => p.time > range.from - range.step && p.time < range.to);
+}
+
 const CHARTS: CompareChart[] = [
   {
     title: 'compare.cpu',
@@ -212,7 +223,7 @@ export class Compare {
       lines: h.devices
         .map(({ device, history }): ChartLine => ({
           label: deviceName(device, this.i18n),
-          points: chart.points(history.series, !!device.router),
+          points: within(chart.points(history.series, !!device.router), h),
         }))
         .filter((line) => line.points.length > 0),
     })).filter((chart) => chart.lines.length > 0);
@@ -280,13 +291,16 @@ export class Compare {
     return formatUptime(seconds, this.i18n);
   }
 
-  /** Why a row has no values: the device does not answer, or its values are on their way. */
+  /**
+   * Why a row has no values: the device does not answer, its values did not come in time for the
+   * last read, or they are on their way.
+   */
   protected noValues(row: Row): string {
     if (row.device.unreachable) {
       return this.i18n.t(notInUse(row.device) ? 'devices.notInUse' : 'devices.unreachable');
     }
     if (this.summaries().has(row.device.id)) {
-      return this.i18n.t('devices.unreachable');
+      return this.i18n.t('compare.noValues');
     }
     return this.i18n.t('history.loading');
   }

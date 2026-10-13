@@ -18,6 +18,7 @@ import { LanguageSwitcher } from './language/language-switcher';
 import { Sidebar, SidebarState } from './layout/sidebar';
 import { Mascot } from './mascot/mascot';
 import { ThemeToggle } from './theme/theme-toggle';
+import { MissingPart } from './update/missing-part';
 import { UpdateNotice } from './update/update-notice';
 
 @Component({
@@ -32,6 +33,7 @@ import { UpdateNotice } from './update/update-notice';
     LanguageSwitcher,
     ManageButton,
     Mascot,
+    MissingPart,
     Sidebar,
     ThemeToggle,
     UpdateNotice,

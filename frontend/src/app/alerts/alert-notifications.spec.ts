@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
 
 import { Device, DeviceService, LOCAL_DEVICE } from '../devices/devices';
@@ -171,7 +171,10 @@ describe('AlertNotifications', () => {
 });
 
 describe('AlertsDialog', () => {
+  let fixture: ComponentFixture<AlertsDialog>;
+
   afterEach(() => {
+    FakeNotification.answer = 'granted';
     localStorage.removeItem(NOTIFY_STORAGE_KEY);
     localStorage.removeItem(LANGUAGE_STORAGE_KEY);
   });
@@ -190,7 +193,7 @@ describe('AlertsDialog', () => {
       ],
     });
     TestBed.inject(I18n).use('en-GB');
-    const fixture = TestBed.createComponent(AlertsDialog);
+    fixture = TestBed.createComponent(AlertsDialog);
     fixture.detectChanges();
     TestBed.inject(HttpTestingController).expectOne('/api/alerts').flush([]);
     fixture.detectChanges();
@@ -205,6 +208,21 @@ describe('AlertsDialog', () => {
     expect(boxes.length).toBe(2);
     expect(boxes[0].textContent).toContain('Notify me of new alerts');
     expect(element.textContent).not.toContain('https');
+  });
+
+  it('unticks the box again when the browser refuses notifications', async () => {
+    FakeNotification.permission = 'default';
+    FakeNotification.answer = 'denied';
+    const element = open(true, FakeNotification);
+    const box = element.querySelector<HTMLInputElement>('mat-checkbox input')!;
+
+    box.click();
+    expect(box.checked).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+
+    expect(box.checked).toBe(false);
+    expect(TestBed.inject(AlertNotifications).on()).toBe(false);
   });
 
   it('says why there are none on a page opened over plain http', () => {

@@ -81,6 +81,10 @@ Other names are refused with `421 Misdirected Request` ([why](architecture.md#lo
 
 The page can be put on the home screen of a phone or tablet, with its name and the bear as the icon: *Add to Home screen* in Chrome's menu on Android, *Share › Add to Home Screen* in Safari on iOS. It then opens in a window of its own, without the browser's address bar. This works over plain http on the local network; a full *Install* prompt and working offline would need https, which den-watcher does not offer, so the page has no service worker. Open it by a name or address that stays the same, as the icon keeps the address it was added with.
 
+### Show the page on a wall display
+
+Add `?kiosk` to the page's address, such as `http://raspberrypi.local:9393/?kiosk`, for a screen on the wall: the page leaves out the list of devices and every button for arranging the cards, picking the range, the language or the theme, shows its text larger, always shows the cards, also where that browser was switched to the timeline, and shows the alerts of every device above them, each with its device's name. On a hub it shows each device in turn for 30 seconds, those with an alert or that do not answer first; a PC or laptop that is switched off is skipped. `?kiosk=60` shows each for 60 seconds (10 at least). The page takes no clicks or keys then, so nothing on it changes by accident; it follows the screen's light or dark mode, and shows the language last picked in that browser, or else the browser's own. Open it in the browser's own full-screen or kiosk mode, such as `chromium --kiosk "http://raspberrypi.local:9393/?kiosk"`. The demo shows it too, with `?kiosk` added to its address.
+
 ## Or: set up a Linux machine without Docker
 
 Every [release](https://github.com/Chriszly/den-watcher/releases) after 0.1.0 has an archive for Linux: `den-watcher-<version>-linux-arm64.tar.gz` for a Raspberry Pi with a 64-bit system, `-linux-amd64.tar.gz` for a PC. It holds the program, a systemd service and an install script:

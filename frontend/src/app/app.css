@@ -43,6 +43,18 @@ h1 {
   font-size: 1.5rem;
 }
 
+/* On a wall display, the device shown, as there is no list of devices to tell it. */
+.device {
+  margin: 0 0 0 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--mat-sys-outline-variant);
+  font: var(--mat-sys-title-large);
+}
+
+span.mascot {
+  cursor: default;
+}
+
 /* The sidebar shows beside the page on wide screens; on narrow ones this button opens it. */
 .menu {
   display: flex;

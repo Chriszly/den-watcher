@@ -99,7 +99,8 @@
   </p>
 }
 
-@if (deviceAlerts().length > 0) {
+<!-- A wall display shows the alerts of every device above the page instead. -->
+@if (deviceAlerts().length > 0 && !kiosk.on) {
   <ul class="alerts" role="alert">
     @for (alert of deviceAlerts(); track alert.id) {
       <li [class.warning]="alert.level === 'warning'">
@@ -110,7 +111,9 @@
   </ul>
 }
 
-<app-range-picker />
+@if (!kiosk.on) {
+  <app-range-picker />
+}
 
 @if (snapshot(); as s) {
   <app-glance [snapshot]="s" [class.stale]="connection.lost()" />
@@ -122,11 +125,11 @@
   <p>{{ i18n.t('dashboard.loading') }}</p>
 }
 
-@if (timeline.on()) {
+@if (timeline.on() && !kiosk.on) {
   <app-timeline [class.stale]="connection.lost()" />
 } @else {
   @let arranging = arrangement.arranging();
-  @if (snapshot()) {
+  @if (snapshot() && !kiosk.on) {
     <app-arrange-bar />
   }
   <div class="categories" [class.stale]="connection.lost()">

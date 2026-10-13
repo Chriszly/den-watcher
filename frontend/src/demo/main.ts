@@ -4,6 +4,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 
 import { App } from '../app/app';
 import { appConfig } from '../app/app.config';
+import { KioskMode } from '../app/kiosk/kiosk';
 import { DemoBackend } from './demo-backend';
 import { DemoNotice } from './demo-notice';
 
@@ -20,5 +21,8 @@ bootstrapApplication(App, {
 function showNotice(app: ApplicationRef): void {
   const notice = createComponent(DemoNotice, { environmentInjector: app.injector });
   app.attachView(notice.hostView);
-  document.body.prepend(notice.location.nativeElement);
+  const element = notice.location.nativeElement as HTMLElement;
+  // On a wall display, like the page below it, it takes no clicks.
+  element.inert = app.injector.get(KioskMode).on;
+  document.body.prepend(element);
 }

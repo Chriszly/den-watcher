@@ -27,6 +27,11 @@ html {
   --warning-surface: light-dark(#fff1c2, #4b3a0b);
 }
 
+// A wall display, with ?kiosk in the address, is read from across the room.
+html.kiosk {
+  font-size: 125%;
+}
+
 body {
   margin: 0;
   font: var(--mat-sys-body-large);

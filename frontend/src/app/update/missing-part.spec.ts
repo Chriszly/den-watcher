@@ -14,6 +14,7 @@ import {
   RELOAD_GUARD_MS,
   RELOAD_STORAGE_KEY,
 } from './missing-part';
+import { KioskMode } from '../kiosk/kiosk';
 
 describe('MissingParts', () => {
   let reload: ReturnType<typeof vi.fn>;
@@ -165,7 +166,8 @@ describe('MissingParts', () => {
     );
   });
 
-  it('reloads for a missing part in place of it once the hub answers again, as on a wall display', async () => {
+  it('reloads for a missing part in place of it once the hub answers again, on a wall display', async () => {
+    (TestBed.inject(KioskMode) as { on: boolean }).on = true;
     const connection = TestBed.inject(HubConnection);
     const part = TestBed.createComponent(MissingPart);
     const text = () => (part.nativeElement as HTMLElement).textContent!;
@@ -195,6 +197,26 @@ describe('MissingParts', () => {
     part.detectChanges();
     expect(reload).toHaveBeenCalledTimes(1);
     expect(text().trim()).toBe('');
+  });
+
+  it('does not reload for a missing part when the hub answers again, but not on a wall display', async () => {
+    const connection = TestBed.inject(HubConnection);
+    const part = TestBed.createComponent(MissingPart);
+    part.detectChanges();
+    await settle();
+    http.expectOne({ method: 'HEAD', url: '/' }).error(new ProgressEvent('error'));
+    await settle();
+
+    // Someone may be typing in a dialog meanwhile, which a reload would drop.
+    connection.answered();
+    part.detectChanges();
+    await settle();
+    part.detectChanges();
+    http.expectNone({ method: 'HEAD', url: '/' });
+    expect(reload).not.toHaveBeenCalled();
+    expect((part.nativeElement as HTMLElement).textContent).toContain(
+      'This part of the page could not be loaded',
+    );
   });
 
   it('does not reload for a missing part when the hub answers again within a minute of a reload', async () => {

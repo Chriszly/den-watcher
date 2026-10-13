@@ -13,6 +13,7 @@ import { TimeoutError, firstValueFrom, timeout } from 'rxjs';
 
 import { ANSWER_TIMEOUT_MS, HubConnection, unanswered } from '../connection/connection';
 import { I18n } from '../i18n/i18n';
+import { KioskMode } from '../kiosk/kiosk';
 
 /** Where the time of the last reload for a missing part is kept, in this tab's sessionStorage. */
 export const RELOAD_STORAGE_KEY = 'reloadedForMissingPart';
@@ -127,8 +128,9 @@ export class MissingParts {
 /**
  * Stands in for a part of the page that could not be loaded: it reloads the page once, and says so
  * if the part is still missing after that, or if the page is not reloaded as the hub does not
- * answer. In that case it reloads once the hub answers again, as on a wall display nobody can
- * click to try again.
+ * answer. On a wall display, where nobody can click to try again, it then reloads once the hub
+ * answers again; elsewhere it does not reload on its own, as that would drop what someone is doing,
+ * such as typing in a dialog.
  */
 @Component({
   selector: 'app-missing-part',
@@ -152,12 +154,13 @@ export class MissingPart {
   constructor() {
     const parts = inject(MissingParts);
     const connection = inject(HubConnection);
+    const kiosk = inject(KioskMode);
     /** Whether the page was not reloaded as the hub did not answer, and waits for it to. */
     const waiting = signal(false);
     const reload = () =>
       void parts.tryReload().then((outcome) => {
         this.reloading.set(outcome === 'reloading');
-        waiting.set(outcome === 'hubAway');
+        waiting.set(outcome === 'hubAway' && kiosk.on);
       });
     reload();
     effect(() => {

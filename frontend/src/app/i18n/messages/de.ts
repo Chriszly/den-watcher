@@ -51,6 +51,7 @@ export const de: Messages = {
   'dashboard.noTemperature': 'Auf diesem Gerät nicht verfügbar',
   'dashboard.time': 'Uhrzeit',
   'dashboard.uptime': 'Laufzeit',
+  'dashboard.system': 'System',
   'dashboard.loading': 'Wird geladen…',
   'dashboard.uptimeDays': '{days} Tg. {hours} h',
   'dashboard.uptimeHours': '{hours} h {minutes} min',
@@ -283,6 +284,8 @@ export const de: Messages = {
   'dashboard.info.power':
     'Ob der Raspberry Pi zu wenig Strom bekam oder zu heiß wurde und sich deshalb verlangsamt hat, jetzt oder seit dem Start.',
   'dashboard.info.time': 'Die Uhrzeit nach der eigenen Uhr des Geräts, in seiner Zeitzone.',
+  'dashboard.info.system':
+    'Was das Gerät ist: Modell, Betriebssystem, Kernel, Architektur und Prozessor, gelesen beim Start von Den-Watcher, und die Version von Den-Watcher darauf.',
   'dashboard.info.uptime':
     'Wie lange das Gerät seit dem letzten Start läuft, und die Version von Den-Watcher darauf.',
   'dashboard.info.availability':
@@ -326,7 +329,7 @@ export const de: Messages = {
   'categories.temperature': 'Temperatur und Strom',
   'categories.programs': 'Programme und Container',
   'categories.other': 'Weiteres',
-  'categories.device': 'Uhrzeit und Laufzeit',
+  'categories.device': 'Gerät',
   'categories.all': 'Alle Karten',
   'categories.cards.one': '{count} Karte',
   'categories.cards.other': '{count} Karten',
@@ -366,4 +369,12 @@ export const de: Messages = {
   'compare.sortBy': 'Danach sortieren, größter Wert zuerst',
   'compare.open': 'Dieses Gerät anzeigen',
   'compare.overTime': 'Im Verlauf',
+  'compare.system': 'System',
+  'compare.systemIntro': 'Was jedes Gerät ist, wie es das beim Start von Den-Watcher gemeldet hat.',
+  'system.model': 'Modell',
+  'system.os': 'Betriebssystem',
+  'system.kernel': 'Kernel',
+  'system.architecture': 'Architektur',
+  'system.cpu': 'Prozessor',
+  'system.version': 'Den-Watcher',
 };

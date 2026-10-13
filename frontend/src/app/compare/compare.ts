@@ -17,6 +17,7 @@ import { EvenColumns } from '../layout/even-columns';
 import { BytesPipe } from '../metrics/bytes.pipe';
 import { History, MetricsService, Point, Series } from '../metrics/metrics';
 import { Summary } from '../metrics/summary';
+import { SYSTEM_FACTS, factValues } from '../metrics/system';
 import { PageVisibility } from '../page-visibility';
 import { refreshIntervalMs } from '../history/history-store';
 import { ChartLine, ChartUnit, LineChart } from '../history/line-chart';
@@ -33,6 +34,20 @@ const COLUMNS: { id: Column; label: MessageKey }[] = [
   { id: 'uptime', label: 'compare.uptime' },
   { id: 'alerts', label: 'compare.alerts' },
 ];
+
+/** A row of the table of what each device is: its facts in the order of SYSTEM_FACTS. */
+export interface SystemRow {
+  device: Device;
+  values: (string | undefined)[];
+}
+
+/** The facts of each device that tells them, in the order of the rows. */
+export function systemRows(rows: readonly Row[]): SystemRow[] {
+  return rows.flatMap(({ device, summary }) => {
+    const system = summary?.system;
+    return system ? [{ device, values: factValues(system, summary.version) }] : [];
+  });
+}
 
 /** One row of the table: a device and its values, which are missing while it does not answer. */
 export interface Row {
@@ -158,6 +173,7 @@ export class Compare {
   protected readonly connection = inject(HubConnection);
 
   protected readonly columns = COLUMNS;
+  protected readonly factLabels = SYSTEM_FACTS;
   protected readonly ranges = RANGES;
   protected readonly sortedBy = signal<Column | null>(null);
   protected readonly range = signal(RANGES[2]);
@@ -173,6 +189,9 @@ export class Compare {
       this.sortedBy(),
     ),
   );
+
+  /** What each device is, in the order of the table above; one that does not answer is left out. */
+  protected readonly systems = computed(() => systemRows(this.rows()));
 
   /** The devices with a history to chart: all but checks, which keep only their response time. */
   private readonly charted = computed(

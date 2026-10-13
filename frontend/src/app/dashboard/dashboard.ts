@@ -38,6 +38,7 @@ import {
   ThrottlingCondition,
   TimeZone,
 } from '../metrics/metrics';
+import { systemFacts } from '../metrics/system';
 import { PageVisibility } from '../page-visibility';
 import { ArrangeBar } from './arrange-bar';
 import { ArrangeControls } from './arrange-controls';
@@ -201,7 +202,8 @@ export type Card =
         | 'battery'
         | 'throttling'
         | 'time'
-        | 'uptime';
+        | 'uptime'
+        | 'facts';
       category: Category;
     }
   | {
@@ -244,6 +246,7 @@ const CARD_TITLES = {
   throttling: 'dashboard.power',
   time: 'dashboard.time',
   uptime: 'dashboard.uptime',
+  facts: 'dashboard.system',
 } as const satisfies Record<Exclude<Card['kind'], 'extra' | 'value'>, string>;
 
 /** The name of the kind of value of each unit, for the card of the values of one unit. */
@@ -512,6 +515,7 @@ export class Dashboard {
       ...this.madeCards(s.extras ?? []),
       ...fixed('time', 'device', s.timeZone),
       ...fixed('uptime', 'device', this.showsUptime(s) || this.shownAvailability()),
+      ...fixed('facts', 'device', s.system),
     ];
   }
 
@@ -822,6 +826,8 @@ export class Dashboard {
   protected formatUptime(seconds: number): string {
     return formatUptime(seconds, this.i18n);
   }
+
+  protected readonly systemFacts = systemFacts;
 }
 
 /** An uptime as the page shows it: days and hours, or hours and minutes below a day. */

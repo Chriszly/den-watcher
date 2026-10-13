@@ -1,6 +1,7 @@
 import { Device, LOCAL_DEVICE } from '../app/devices/devices';
 import { Extra, ExtraInfo, ExtraUnit } from '../app/metrics/extras';
 import { Snapshot, Throttling, TimeZone } from '../app/metrics/metrics';
+import { System } from '../app/metrics/system';
 import { descriptions } from './descriptions';
 
 /**
@@ -31,6 +32,8 @@ export interface DemoMachine {
   /** Values beyond the fixed ones; each value comes from values() as "extra:<group>/<value>", texts are fixed. */
   extras?: Extra[];
   throttling?: Throttling;
+  /** What the machine is; routers and checks do not tell it. */
+  system?: System;
   /** Linux laptops report the battery's power and health too. */
   batteryDetails?: boolean;
   /** Servers keep their clocks in UTC; the other devices use the visitor's time zone. */
@@ -1061,6 +1064,13 @@ function processValues(
 const piHub: DemoMachine = {
   device: LOCAL_DEVICE,
   os: 'linux',
+  system: {
+    os: 'Debian GNU/Linux 13 (trixie)',
+    kernel: '6.12.47+rpt-rpi-2712',
+    architecture: 'aarch64',
+    cpu: 'Cortex-A76',
+    model: 'Raspberry Pi 5 Model B Rev 1.0',
+  },
   cores: 4,
   maxClockMHz: 2400,
   memoryBytes: 8 * GB,
@@ -1199,6 +1209,14 @@ const windowsPc: DemoMachine = {
     removable: true,
   },
   os: 'windows',
+  system: {
+    os: 'Microsoft Windows 11 Pro 24H2',
+    kernel: '10.0.26100.6584',
+    architecture: 'x86_64',
+    cpu: 'AMD Ryzen 7 7700X 8-Core Processor',
+    maker: 'Micro-Star International Co., Ltd.',
+    model: 'MS-7E26',
+  },
   cores: 16,
   maxClockMHz: 4700,
   memoryBytes: 32 * GB,
@@ -1286,6 +1304,14 @@ const windowsLaptop: DemoMachine = {
     removable: true,
   },
   os: 'windows',
+  system: {
+    os: 'Microsoft Windows 11 Home 24H2',
+    kernel: '10.0.26100.6584',
+    architecture: 'aarch64',
+    cpu: 'Snapdragon(R) X Elite - X1E78100 - Qualcomm(R) Oryon(TM) CPU',
+    maker: 'Microsoft Corporation',
+    model: 'Microsoft Surface Laptop, 7th Edition',
+  },
   cores: 12,
   maxClockMHz: 3400,
   memoryBytes: 16 * GB,
@@ -1361,6 +1387,14 @@ const windowsServer: DemoMachine = {
     address: '192.168.1.5:9393',
   },
   os: 'windows',
+  system: {
+    os: 'Microsoft Windows Server 2025 Standard 24H2',
+    kernel: '10.0.26100.6584',
+    architecture: 'x86_64',
+    cpu: 'Intel(R) Xeon(R) E-2378 CPU @ 2.60GHz',
+    maker: 'Dell Inc.',
+    model: 'PowerEdge T350',
+  },
   cores: 8,
   maxClockMHz: 3000,
   memoryBytes: 64 * GB,
@@ -1423,6 +1457,14 @@ const linuxDesktop: DemoMachine = {
     removable: true,
   },
   os: 'linux',
+  // The board's firmware names only its maker, with a placeholder for the model.
+  system: {
+    os: 'Fedora Linux 43 (Workstation Edition)',
+    kernel: '6.17.4-300.fc43.x86_64',
+    architecture: 'x86_64',
+    cpu: 'AMD Ryzen 5 7600X 6-Core Processor',
+    maker: 'ASUS',
+  },
   cores: 12,
   maxClockMHz: 5400,
   memoryBytes: 32 * GB,
@@ -1489,6 +1531,13 @@ const linuxDesktop: DemoMachine = {
 const linuxNas: DemoMachine = {
   device: { id: 'linux-nas', kind: 'server', name: 'Linux NAS', address: '192.168.1.6:9393' },
   os: 'linux',
+  // A board whose firmware names neither maker nor model.
+  system: {
+    os: 'Debian GNU/Linux 13 (trixie)',
+    kernel: '6.12.48+deb13-amd64',
+    architecture: 'x86_64',
+    cpu: 'Intel(R) Celeron(R) N5105 @ 2.00GHz',
+  },
   cores: 4,
   maxClockMHz: 2900,
   memoryBytes: 16 * GB,
@@ -1630,6 +1679,14 @@ const linuxServer: DemoMachine = {
     address: '192.168.1.7:9393',
   },
   os: 'linux',
+  system: {
+    os: 'Ubuntu 24.04.3 LTS',
+    kernel: '6.8.0-85-generic',
+    architecture: 'x86_64',
+    cpu: 'AMD Ryzen 9 7950X3D 16-Core Processor',
+    maker: 'Gigabyte Technology Co., Ltd.',
+    model: 'B650 AORUS ELITE AX',
+  },
   cores: 32,
   maxClockMHz: 4200,
   memoryBytes: 128 * GB,
@@ -1797,6 +1854,14 @@ const linuxLaptop: DemoMachine = {
     unreachableSince: new Date(offlineSince(laptopOnline, openedAt) * 1000).toISOString(),
   },
   os: 'linux',
+  system: {
+    os: 'Arch Linux',
+    kernel: '6.17.5-arch1-1',
+    architecture: 'x86_64',
+    cpu: 'AMD Ryzen 5 7640U w/ Radeon 760M Graphics',
+    maker: 'Framework',
+    model: 'Laptop 13 (AMD Ryzen 7040Series)',
+  },
   cores: 8,
   maxClockMHz: 4400,
   memoryBytes: 16 * GB,
@@ -2127,6 +2192,7 @@ export function snapshotOf(machine: DemoMachine, t: number, version: string): Sn
     time: new Date(t * 1000).toISOString(),
     timeZone: timeZone(machine, t),
     uptimeSeconds,
+    system: machine.system,
     cpu: {
       usagePercent: v['cpu'],
       cores: machine.cores,

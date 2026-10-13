@@ -739,6 +739,22 @@
                           </div>
                         }
                       }
+                      @case ('facts') {
+                        @if (s.system; as system) {
+                          <div class="card">
+                            <h3>
+                              {{ cardTitle(card) }}
+                              <app-card-info [text]="i18n.t('dashboard.info.system')" />
+                            </h3>
+                            @for (fact of systemFacts(system, s.version); track fact.label) {
+                              <p class="fact">
+                                <span>{{ i18n.t(fact.label) }}</span
+                                ><span>{{ fact.value }}</span>
+                              </p>
+                            }
+                          </div>
+                        }
+                      }
                       @case ('uptime') {
                         <ng-container
                           *ngTemplateOutlet="

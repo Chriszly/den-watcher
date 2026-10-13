@@ -50,6 +50,9 @@ type Snapshot struct {
 	// Extras are values beyond the fields above, described well enough that
 	// a hub can show them without knowing them; see Extra.
 	Extras []Extra `json:"extras,omitempty"`
+	// System is what the machine is, read once at start. Devices running a
+	// version from before it was reported leave it out.
+	System *System `json:"system,omitempty"`
 }
 
 // CPU is the processor usage across all cores and of each core. The clock,
@@ -102,6 +105,7 @@ type Collector struct {
 	clockFiles     []string
 	throttlingFile string
 	fans           []fanSensor
+	system         *System
 
 	// readCounters reads the network counters; nil reads the machine's.
 	readCounters func(ctx context.Context) (map[string]counters, error)
@@ -145,6 +149,7 @@ func NewCollector(ctx context.Context, diskPaths []string) (*Collector, error) {
 		throttlingFile: throttlingFile(),
 		fans:           fanSensors(),
 		temperatures:   newTemperatureReader(),
+		system:         readSystem(ctx),
 	}, nil
 }
 
@@ -196,6 +201,7 @@ func (c *Collector) Collect(ctx context.Context) (Snapshot, error) {
 		Battery:      c.batteries.read(),
 		Fans:         readFans(c.fans),
 		Extras:       c.readExtras(ctx, now),
+		System:       c.system,
 	}, nil
 }
 

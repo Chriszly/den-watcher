@@ -38,6 +38,8 @@ Every device with a website keeps its history in one SQLite file. A hub keeps th
 | `hub_id` | the hub's own id, which it sends to every device, so a device that keeps its minutes for the hub tells it apart from other hubs; made at random once | for good |
 | `hub_device_kinds` | per other device that is a PC or laptop: `device`, `kind` (`pc`); a device without a row is a server or IoT device | as long as the device is collected from, or kept with its history |
 | `alerts` | every [alert](data.md#alerts): `device`, `device_name`, `kind`, `subject`, `level` and `value` (the highest reached), `started`, `ended` (Unix milliseconds, empty while it lasts) | while it lasts, then for the retention |
+| `events` | the reboots and updates of each device, for the [marks on the charts](data.md#events-on-the-charts): `device`, `time` (Unix milliseconds), `kind` (`reboot` or `update`), `detail` (the new version of an update) | for the retention |
+| `events_seen` | per device, its uptime in seconds and version of den-watcher at a recent reading, and `written` (Unix milliseconds), so a reboot or update while the hub was stopped is noticed at its start; written when they change, and the uptime at most every 10 minutes | one row per device, for good |
 | `password` | the salt and PBKDF2-SHA256 hash of the password for changing devices, one row at most | until `RESET_PASSWORD=true` |
 | `page_layout` | how the page is arranged: the folded categories, the order of the cards, the hidden ones, the pinned ones, the values made into cards, the widths of the cards and whether they are grouped by category, as JSON in `layout`, one row at most; see `PUT /api/layout` in [the HTTP API](architecture.md#http-api) | until the page changes it |
 
@@ -73,7 +75,7 @@ A device that did not answer has no values for that time, which shows as a gap i
 
 Changing `RETENTION_DAYS` takes effect at the next start. Shortening it deletes the older values then; lengthening it cannot bring back what was already deleted.
 
-Outages and the list of devices are not bound to the retention: they are kept as long as the device is. The one exception is a device removed with its history kept: its availability and kind are kept with it, and deleted once it was removed longer than the retention ago, unless a device with the same name was added again, on the page or in `HUB_DEVICES`.
+Alerts and events (reboots and updates) are deleted once they are older than the retention too, checked every hour. Outages and the list of devices are not bound to the retention: they are kept as long as the device is. The one exception is a device removed with its history kept: its availability and kind are kept with it, and deleted once it was removed longer than the retention ago, unless a device with the same name was added again, on the page or in `HUB_DEVICES`.
 
 ## Size
 

@@ -147,6 +147,29 @@ func readAvailability(ctx context.Context, db *sql.DB, device string) (Availabil
 	return availability, nil
 }
 
+// outagesLimit is how many outages readOutages returns at most.
+const outagesLimit = 500
+
+// readOutages returns the outages of device that lasted at some time from
+// from to to, oldest first.
+func readOutages(ctx context.Context, db *sql.DB, device string, from, to time.Time) ([]Outage, error) {
+	rows, err := db.QueryContext(ctx, `SELECT started, ended FROM hub_outages WHERE device = ? AND started <= ? AND ended >= ? ORDER BY started LIMIT ?`,
+		device, to.UnixMilli(), from.UnixMilli(), outagesLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	outages := []Outage{}
+	for rows.Next() {
+		var started, ended int64
+		if err := rows.Scan(&started, &ended); err != nil {
+			return nil, err
+		}
+		outages = append(outages, Outage{Start: time.UnixMilli(started).UTC(), End: time.UnixMilli(ended).UTC()})
+	}
+	return outages, rows.Err()
+}
+
 // noteInterval is how often an outage is written to the database while it
 // lasts, so a crash of the hub loses at most that much of it. In between, the
 // page gets its current end from memory, not from every failed reading.

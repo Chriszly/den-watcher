@@ -175,6 +175,16 @@ func (f fakeAlertLog) Log(context.Context) ([]alerts.Alert, error) {
 	return f.list, f.err
 }
 
+func (f fakeAlertLog) Between(_ context.Context, device string, _, _ time.Time) ([]alerts.Alert, error) {
+	var list []alerts.Alert
+	for _, a := range f.list {
+		if a.Device == device {
+			list = append(list, a)
+		}
+	}
+	return list, f.err
+}
+
 func TestServesTheAlertLog(t *testing.T) {
 	ended := time.Date(2026, 10, 11, 18, 5, 0, 0, time.UTC)
 	logged := []alerts.Alert{{ID: 1, Device: "local", Kind: alerts.KindOffline, Level: alerts.Critical, Started: ended.Add(-time.Hour), Ended: &ended}}
@@ -550,6 +560,13 @@ type fakeAvailability hub.Availability
 
 func (f fakeAvailability) Availability(context.Context) (hub.Availability, error) {
 	return hub.Availability(f), nil
+}
+
+func (f fakeAvailability) OutagesBetween(context.Context, time.Time, time.Time) ([]hub.Outage, error) {
+	if f.LastOutage == nil {
+		return nil, nil
+	}
+	return []hub.Outage{*f.LastOutage}, nil
 }
 
 func TestAvailabilityOfAnotherDevice(t *testing.T) {

@@ -47,6 +47,8 @@ describe('Timeline', () => {
   }
 
   afterEach(() => {
+    // The marks of the charts are read alongside the history; these tests leave them unanswered.
+    http.match((r) => r.url === '/api/events');
     http.verify();
     vi.useRealTimers();
   });
@@ -87,6 +89,30 @@ describe('Timeline', () => {
     fixture.detectChanges();
     expect(rows()[0]).toBe('CPU: 20 %');
     expect(host.style.getPropertyValue('--cursor-display')).toBe('none');
+  });
+
+  it('marks what happened in a row above the values, and tells it at the pointer', () => {
+    show();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('app-timeline-marks')).toBeNull();
+    http
+      .expectOne((r) => r.url === '/api/events')
+      .flush({
+        from: 0,
+        to: 300,
+        events: [
+          { kind: 'reboot', time: 120 },
+          { kind: 'update', time: 900, detail: '9.9.9' },
+        ],
+      });
+    fixture.detectChanges();
+    const marks = host.querySelector('app-timeline-marks')!;
+    expect(marks.querySelector('.label')!.textContent).toBe('Events');
+    expect(marks.querySelectorAll('.marker').length).toBe(1);
+
+    point(0, 0.5);
+    expect(marks.querySelector('.value')!.textContent).toBe('Restarted');
+    expect(rows()[0]).toBe('CPU: 50 %');
   });
 
   it('forgets the time under the pointer once the range no longer has it', () => {

@@ -2,6 +2,7 @@ import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
+import { Alert } from '../alerts/alert';
 import { LOCAL_DEVICE } from '../devices/devices';
 import { Extra, ExtraInfo } from './extras';
 import { System } from './system';
@@ -195,6 +196,30 @@ export interface Point {
   value: number;
 }
 
+/** What happened to a device in a range, as GET /api/events serves it. */
+export interface DeviceEvents {
+  from: number;
+  to: number;
+  /** Oldest first. */
+  events: DeviceEvent[];
+}
+
+/**
+ * Something that happened to a device: an alert, a time it did not answer the hub, a reboot or an
+ * update of Den-Watcher on it; a newer backend may name kinds this page does not know yet.
+ */
+export interface DeviceEvent {
+  kind: 'alert' | 'outage' | 'reboot' | 'update';
+  /** When it happened or started, in Unix seconds. */
+  time: number;
+  /** When an alert or outage ended, in Unix seconds; missing while an alert lasts. */
+  end?: number;
+  /** The new version of an update. */
+  detail?: string;
+  /** The alert of an alert event. */
+  alert?: Alert;
+}
+
 /** Reads the usage of a device from the backend: the one it runs on unless another is named. */
 @Injectable({ providedIn: 'root' })
 export class MetricsService {
@@ -222,6 +247,13 @@ export class MetricsService {
       params: { from, to, ...deviceParam(device) },
       responseType: 'blob',
       observe: 'response',
+    });
+  }
+
+  /** What happened to a device from `from` to `to`, both Unix seconds. */
+  events(from: number, to: number, device = LOCAL_DEVICE.id): Observable<DeviceEvents> {
+    return this.http.get<DeviceEvents>('/api/events', {
+      params: { from, to, ...deviceParam(device) },
     });
   }
 }

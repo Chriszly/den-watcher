@@ -73,6 +73,7 @@ import (
 
 	"github.com/Chriszly/den-watcher/backend/internal/addons"
 	"github.com/Chriszly/den-watcher/backend/internal/alerts"
+	"github.com/Chriszly/den-watcher/backend/internal/events"
 	"github.com/Chriszly/den-watcher/backend/internal/history"
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 	"github.com/Chriszly/den-watcher/backend/internal/layout"
@@ -321,6 +322,13 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		return server.Site{}, nil, err
 	}
 
+	happenings, err := events.Open(ctx, store.DB(), func() []events.Target {
+		return eventTargets(sampler.Reusing(reuseFor), others)
+	}, retention)
+	if err != nil {
+		return server.Site{}, nil, err
+	}
+
 	pageLayout, err := layout.Open(ctx, store.DB())
 	if err != nil {
 		return server.Site{}, nil, err
@@ -333,6 +341,7 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 	recording.Go(func() { recorder.Run(ctx) })
 	recording.Go(func() { pruner.Run(ctx) })
 	recording.Go(func() { watcher.Run(ctx) })
+	recording.Go(func() { happenings.Run(ctx) })
 
 	site := server.Site{
 		Devices: hubDevices{
@@ -356,6 +365,7 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		Alerts:       watcher,
 		Layout:       pageLayout,
 		Backups:      store,
+		Events:       happenings,
 	}
 	if checker := update.NewChecker(version.Version); checker != nil && checkUpdates {
 		site.Update = checker.Status
@@ -456,6 +466,16 @@ func alertTargets(localName string, local alerts.Usage, others *hub.Hub) []alert
 			UnreachableSince: since,
 			Usage:            remote.Agent.Latest(),
 		})
+	}
+	return targets
+}
+
+// eventTargets lists this device, read by local, and the devices the hub
+// collects from, for the events log.
+func eventTargets(local events.Usage, others *hub.Hub) []events.Target {
+	targets := []events.Target{{ID: hub.LocalID, Usage: local}}
+	for _, remote := range others.Remotes() {
+		targets = append(targets, events.Target{ID: remote.ID, Usage: remote.Agent.Latest()})
 	}
 	return targets
 }

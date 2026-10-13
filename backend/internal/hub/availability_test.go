@@ -325,3 +325,24 @@ func TestWatchedAgentWritesAnOngoingOutageEveryFiveMinutes(t *testing.T) {
 		t.Errorf("availability after the outage = %+v, %v; want 1 outage of 5 min 15 s", got, err)
 	}
 }
+
+func TestReadOutagesKeepsToTheRange(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t)
+	openTestHub(t, store, nil) // creates the tables
+	at := func(minute int) time.Time { return time.Date(2026, 10, 1, 12, minute, 0, 0, time.UTC) }
+	for _, o := range [][2]int{{0, 5}, {20, 30}, {50, 55}} {
+		if _, err := store.DB().ExecContext(ctx, `INSERT INTO hub_outages (device, started, ended) VALUES ('pi', ?, ?)`,
+			at(o[0]).UnixMilli(), at(o[1]).UnixMilli()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := readOutages(ctx, store.DB(), "pi", at(25), at(52))
+	want := []Outage{{Start: at(20), End: at(30)}, {Start: at(50), End: at(55)}}
+	if err != nil || len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("readOutages() = %+v, %v; want %+v", got, err, want)
+	}
+	if got, err := readOutages(ctx, store.DB(), "other", at(0), at(59)); err != nil || len(got) != 0 {
+		t.Fatalf("another device: %+v, %v", got, err)
+	}
+}

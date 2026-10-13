@@ -5,6 +5,8 @@ import { I18n } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
 import { ExtraUnit, formatExtra } from '../metrics/extras';
 import { Point } from '../metrics/metrics';
+import { ChartMarker, POINTER_SLACK, markersIn } from './chart-events';
+import { ChartMarkers } from './chart-markers';
 
 /** What the values of a chart are: any unit an extra can have, but text. */
 export type ChartUnit = Exclude<ExtraUnit, 'text'>;
@@ -30,7 +32,7 @@ export const COLORS = 8;
  */
 @Component({
   selector: 'app-line-chart',
-  imports: [DatePipe, NgTemplateOutlet],
+  imports: [ChartMarkers, DatePipe, NgTemplateOutlet],
   templateUrl: './line-chart.html',
   styleUrl: './line-chart.css',
 })
@@ -46,6 +48,8 @@ export class LineChart {
   readonly unit = input.required<ChartUnit>();
   /** The top of the y axis; when not set, it fits the highest value. */
   readonly max = input<number>();
+  /** What happened to the device, marked on the chart and told in the readout. */
+  readonly markers = input<ChartMarker[]>([]);
 
   protected readonly width = WIDTH;
   protected readonly height = HEIGHT;
@@ -117,6 +121,12 @@ export class LineChart {
       time,
       left: stepCenter(time, this.from(), this.to(), this.step()),
       values: this.lines().map((line) => line.points.find((p) => p.time === time)?.value ?? null),
+      events: markersIn(
+        this.markers(),
+        time,
+        this.step(),
+        (this.to() - this.from()) * POINTER_SLACK,
+      ),
     };
   });
 

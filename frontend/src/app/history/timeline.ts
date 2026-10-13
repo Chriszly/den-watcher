@@ -3,12 +3,14 @@ import { DOCUMENT, Component, Injectable, computed, inject, signal } from '@angu
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { I18n } from '../i18n/i18n';
+import { ChartEvents } from './chart-events';
 import { HistoryStore } from './history-store';
 import { Chart, DeviceCharts } from './history';
 import { COLORS, dateTimeFormat, needsYear, stepCenter } from './line-chart';
 import { TimelineOverview } from './timeline-overview';
 import { TimelineLine, TimelineRow } from './timeline-row';
 import { CsvDownload } from './csv-download';
+import { TimelineMarks } from './timeline-marks';
 import { Stretch, TimelineZoom } from './timeline-zoom';
 
 /** Where the choice of the timeline over the cards is kept between visits, in localStorage. */
@@ -49,7 +51,7 @@ export class TimelineMode {
  */
 @Component({
   selector: 'app-timeline',
-  imports: [CsvDownload, DatePipe, TimelineOverview, TimelineRow],
+  imports: [CsvDownload, DatePipe, TimelineMarks, TimelineOverview, TimelineRow],
   providers: [TimelineZoom],
   template: `
     @if (whole(); as w) {
@@ -115,6 +117,16 @@ export class TimelineMode {
             (pointercancel)="brush.set(null)"
             (dblclick)="zoom.back()"
           >
+            @if (marked().length > 0) {
+              <app-timeline-marks
+                [markers]="marked()"
+                [from]="h.from"
+                [to]="h.to"
+                [step]="h.stepSeconds"
+                [cursor]="shownCursor()"
+                (hover)="cursor.set($event)"
+              />
+            }
             @for (line of lines(); track $index) {
               <app-timeline-row
                 [line]="line"
@@ -143,6 +155,7 @@ export class Timeline {
   protected readonly store = inject(HistoryStore);
   protected readonly i18n = inject(I18n);
   protected readonly zoom = inject(TimelineZoom);
+  private readonly events = inject(ChartEvents);
   private readonly deviceCharts = inject(DeviceCharts);
 
   /** The history of the whole range picked at the top of the page. */
@@ -152,6 +165,16 @@ export class Timeline {
   protected readonly shown = computed(() =>
     this.zoom.stretch() ? (this.zoom.history() ?? this.whole()) : this.whole(),
   );
+
+  /** What happened to the device within the shown history, for the row of marks. */
+  protected readonly marked = computed(() => {
+    const history = this.shown();
+    return history
+      ? this.events
+          .markers()
+          .filter((m) => (m.end ?? m.time) >= history.from && m.time <= history.to)
+      : [];
+  });
 
   /** The step under the pointer, or null while the pointer is elsewhere. */
   protected readonly cursor = signal<number | null>(null);
@@ -233,6 +256,7 @@ export class Timeline {
 
   constructor() {
     this.store.watch.pipe(takeUntilDestroyed()).subscribe();
+    this.events.watch.pipe(takeUntilDestroyed()).subscribe();
   }
 
   /**

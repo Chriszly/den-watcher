@@ -71,6 +71,31 @@ describe('LineChart', () => {
     expect(element.querySelector('.tooltip')).toBeNull();
   });
 
+  it('marks what happened, and tells it at the pointer', () => {
+    const element = render([{ label: 'CPU', points: [{ time: 120, value: 12.5 }] }]);
+    fixture.componentRef.setInput('markers', [
+      { kind: 'reboot', time: 150, text: 'Restarted' },
+      { kind: 'outage', time: 300, end: 450, text: 'Did not answer' },
+      { kind: 'update', time: 900, text: 'Outside the range' },
+    ]);
+    fixture.detectChanges();
+    const marks = element.querySelectorAll<HTMLElement>('app-chart-markers .marker');
+    expect(marks.length).toBe(2);
+    expect(marks[0].classList).toContain('reboot');
+    expect(marks[0].style.left).toBe('25%');
+    expect(marks[1].classList).toContain('band');
+    expect(marks[1].style.width).toBe('25%');
+
+    const plot = element.querySelector('.plot') as HTMLElement;
+    plot.getBoundingClientRect = () => ({ left: 0, width: 600 }) as DOMRect;
+    plot.dispatchEvent(new MouseEvent('pointermove', { clientX: 150 }));
+    fixture.detectChanges();
+    expect(element.querySelector('.tooltip .event')?.textContent?.trim()).toBe('Restarted');
+    plot.dispatchEvent(new MouseEvent('pointermove', { clientX: 30 }));
+    fixture.detectChanges();
+    expect(element.querySelector('.tooltip .event')).toBeNull();
+  });
+
   it('shows the values of the last step at the right edge', () => {
     const element = render([{ label: 'CPU', points: [{ time: 540, value: 30 }] }]);
     const plot = element.querySelector('.plot') as HTMLElement;

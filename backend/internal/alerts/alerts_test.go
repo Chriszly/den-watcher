@@ -316,3 +316,37 @@ func TestAServerThatDoesNotAnswerDropsItsHolds(t *testing.T) {
 		t.Fatalf("after one reading back: %+v", got)
 	}
 }
+
+func TestBetweenReturnsTheAlertsOfADeviceThatLastedInTheRange(t *testing.T) {
+	ctx := context.Background()
+	u := &usage{snapshot: disk(91)}
+	other := &usage{snapshot: disk(91)}
+	targets := []Target{{ID: "nas", Name: "NAS", Usage: u}, {ID: "pi", Name: "Pi", Usage: other}}
+	w, _ := openTest(t, &targets)
+	start := time.Unix(1_800_000_000, 0)
+	w.Check(ctx, start)
+	u.snapshot = disk(50)
+	end := start.Add(time.Hour)
+	w.Check(ctx, end)
+
+	for _, tt := range []struct {
+		from, to time.Time
+		want     int
+	}{
+		{start.Add(-time.Hour), start.Add(-time.Minute), 0},
+		{start.Add(-time.Hour), start, 1},
+		{start.Add(time.Minute), start.Add(2 * time.Minute), 1},
+		{end, end.Add(time.Hour), 1},
+		{end.Add(time.Minute), end.Add(time.Hour), 0},
+	} {
+		got, err := w.Between(ctx, "nas", tt.from, tt.to)
+		if err != nil || len(got) != tt.want {
+			t.Errorf("Between(%v, %v) = %+v, %v; want %d alerts", tt.from, tt.to, got, err, tt.want)
+		}
+	}
+	// The alert of the Pi lasts, so it is in every range after it started.
+	got, err := w.Between(ctx, "pi", end.Add(24*time.Hour), end.Add(25*time.Hour))
+	if err != nil || len(got) != 1 || got[0].Ended != nil {
+		t.Errorf("the lasting alert: %+v, %v", got, err)
+	}
+}

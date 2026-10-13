@@ -2,6 +2,7 @@ import { Component, inject, input } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { EvenColumns } from '../layout/even-columns';
+import { ChartEvents } from './chart-events';
 import { HistoryStore } from './history-store';
 import { Chart } from './history';
 import { LineChart } from './line-chart';
@@ -28,6 +29,7 @@ import { LineChart } from './line-chart';
                 [step]="h.stepSeconds"
                 [unit]="chart.unit"
                 [max]="chart.max"
+                [markers]="events.markers()"
               />
             </div>
           }
@@ -41,8 +43,11 @@ export class CategoryCharts {
   readonly charts = input.required<Chart[]>();
 
   protected readonly store = inject(HistoryStore);
+  /** What happened to the device, marked on the charts. */
+  protected readonly events = inject(ChartEvents);
 
   constructor() {
     this.store.watch.pipe(takeUntilDestroyed()).subscribe();
+    this.events.watch.pipe(takeUntilDestroyed()).subscribe();
   }
 }

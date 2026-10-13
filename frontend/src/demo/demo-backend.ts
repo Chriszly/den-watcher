@@ -14,6 +14,7 @@ import { EMPTY_LAYOUT } from '../app/dashboard/page-layout';
 import { History, Series } from '../app/metrics/metrics';
 import { DEMO_BUILD, demoVersion } from './demo-build';
 import { alertLog, fleetAlerts } from './alerts';
+import { demoEvents } from './events';
 import { DemoMachine, FLEET, extraInfoOf, offlineSince, snapshotOf } from './fleet';
 
 /** How many days of history the demo hub keeps; more than 30 shows the "All" range. */
@@ -115,6 +116,17 @@ export class DemoBackend implements HttpBackend {
           csvFileName(machine.device.name, h.from, h.to),
         );
       }
+      case '/api/events':
+        return respond(
+          request,
+          demoEvents(
+            machine,
+            Number(url.searchParams.get('from')),
+            Number(url.searchParams.get('to')),
+            now,
+            this.version,
+          ),
+        );
       case '/api/availability':
         return respond(request, availability(machine, now));
       default:

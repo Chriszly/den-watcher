@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/alerts"
+	"github.com/Chriszly/den-watcher/backend/internal/events"
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 	"github.com/Chriszly/den-watcher/backend/internal/lan"
 	"github.com/Chriszly/den-watcher/backend/internal/layout"
@@ -71,6 +72,8 @@ type Device struct {
 // was added.
 type AvailabilityReader interface {
 	Availability(ctx context.Context) (hub.Availability, error)
+	// OutagesBetween returns the times it did not answer from from to to.
+	OutagesBetween(ctx context.Context, from, to time.Time) ([]hub.Outage, error)
 }
 
 // Devices lists the devices the site shows. The first is the machine the site
@@ -109,6 +112,9 @@ type Site struct {
 	// Backups makes copies of the database, which POST /api/backup sends
 	// guarded by Password; nil leaves it out.
 	Backups Backups
+	// Events are the reboots and updates of each device; nil leaves out GET
+	// /api/events, which also needs Alerts.
+	Events EventLog
 }
 
 // LayoutStore keeps how the page is arranged, for every browser that opens it.
@@ -121,6 +127,14 @@ type LayoutStore interface {
 // AlertLog tells the newest alerts of every device.
 type AlertLog interface {
 	Log(ctx context.Context) ([]alerts.Alert, error)
+	// Between returns the alerts of a device that lasted at some time from
+	// from to to.
+	Between(ctx context.Context, device string, from, to time.Time) ([]alerts.Alert, error)
+}
+
+// EventLog tells the reboots and updates of a device.
+type EventLog interface {
+	Between(ctx context.Context, device string, from, to time.Time) ([]events.Event, error)
 }
 
 // New returns the handler for the whole site: the JSON API under /api/ and
@@ -155,6 +169,11 @@ func New(site Site) http.Handler {
 	}
 	if site.Alerts != nil {
 		mux.HandleFunc("GET /api/alerts", alertsHandler(site.Alerts))
+	}
+	if site.Events != nil && site.Alerts != nil {
+		mux.HandleFunc("GET /api/events", forDevice(site.Devices, func(d Device) http.HandlerFunc {
+			return eventsHandler(d, site.Alerts, site.Events, site.Retention)
+		}))
 	}
 	if site.Layout != nil {
 		mux.HandleFunc("GET /api/layout", readLayout(site.Layout))

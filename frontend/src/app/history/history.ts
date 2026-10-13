@@ -7,16 +7,12 @@ import { ExtraInfo, localized } from '../metrics/extras';
 import { History, Point, Series } from '../metrics/metrics';
 import { Category, byCategory, extraCategory, unitCard, valueCard } from '../dashboard/categories';
 import { HistoryStore } from './history-store';
-import { ChartLine, ChartUnit } from './line-chart';
+import { ChartData, ChartLine } from './line-chart';
 
-export interface Chart {
-  title: string;
+export interface Chart extends ChartData {
   category: Category;
   /** The id of the chart, which its dashboard card draws, such as "cpu" or "extra:pressure@percent". */
   card: string;
-  unit: ChartUnit;
-  max?: number;
-  lines: ChartLine[];
 }
 
 /**
@@ -119,12 +115,7 @@ export function chartsOf(
   router = false,
 ): Chart[] {
   const named = (kind: string) => linesOf(series, kind);
-  const metric = (name: string) => {
-    const points = pointsOf(series, name);
-    const untold =
-      router && (name === 'cpu' || name === 'memory') && points.every((p) => p.value === 0);
-    return untold ? [] : points;
-  };
+  const metric = (name: string) => devicePoints(series, name, router);
 
   const charts: Chart[] = [
     {
@@ -295,6 +286,18 @@ export function valueChartsOf(
 /** Whether a router's interface is its internet connection: "WAN", or "WAN 2" for a second one. */
 export function isWan(name: string): boolean {
   return name === 'WAN' || name.startsWith('WAN ');
+}
+
+/**
+ * The points of one metric of a device, such as "cpu"; none when it is not stored, and none for a
+ * router's CPU and memory while they hold nothing but 0, as a router read without a login tells
+ * neither.
+ */
+export function devicePoints(series: Series[], name: string, router: boolean): Point[] {
+  const points = pointsOf(series, name);
+  const untold =
+    router && (name === 'cpu' || name === 'memory') && points.every((p) => p.value === 0);
+  return untold ? [] : points;
 }
 
 /** The points of one metric, such as "cpu"; none when it is not stored. */

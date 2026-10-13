@@ -2,7 +2,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
 import { ChartCanvas } from './chart-canvas';
-import { ChartLine, LineChart, needsYear, niceCeiling } from './line-chart';
+import {
+  ChartData,
+  ChartLine,
+  LineChart,
+  needsYear,
+  niceCeiling,
+  pointerFraction,
+} from './line-chart';
 
 describe('LineChart', () => {
   let fixture: ComponentFixture<LineChart>;
@@ -11,15 +18,16 @@ describe('LineChart', () => {
     vi.restoreAllMocks();
   });
 
+  function chart(lines: ChartLine[]): ChartData {
+    return { title: 'CPU and memory', lines, unit: 'percent', max: 100 };
+  }
+
   function render(lines: ChartLine[], from = 0, to = 600, step = 60): HTMLElement {
     fixture = TestBed.createComponent(LineChart);
-    fixture.componentRef.setInput('chartTitle', 'CPU and memory');
-    fixture.componentRef.setInput('lines', lines);
+    fixture.componentRef.setInput('chart', chart(lines));
     fixture.componentRef.setInput('from', from);
     fixture.componentRef.setInput('to', to);
     fixture.componentRef.setInput('step', step);
-    fixture.componentRef.setInput('unit', 'percent');
-    fixture.componentRef.setInput('max', 100);
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
   }
@@ -177,7 +185,7 @@ describe('LineChart', () => {
     const element = render(lines());
     // Angular warns when a list it updates repeats a key.
     const warn = vi.spyOn(console, 'warn');
-    fixture.componentRef.setInput('lines', lines());
+    fixture.componentRef.setInput('chart', chart(lines()));
     fixture.detectChanges();
     expect(warn).not.toHaveBeenCalled();
 
@@ -187,6 +195,19 @@ describe('LineChart', () => {
     expect([...swatches[8].classList].sort()).toEqual(['dashed', 'series-0', 'swatch']);
     expect(drawn().map((line) => line.dashed)).toEqual([...Array(8).fill(false), true]);
     expect(drawn()[8].series).toBe(0);
+  });
+});
+
+describe('pointerFraction', () => {
+  it('tells where the pointer is across an element, within its edges', () => {
+    const element = {
+      getBoundingClientRect: () => ({ left: 100, width: 200 }),
+    } as unknown as Element;
+    const at = (clientX: number) => pointerFraction({ clientX } as PointerEvent, element);
+
+    expect(at(150)).toBe(0.25);
+    expect(at(50)).toBe(0);
+    expect(at(400)).toBe(1);
   });
 });
 

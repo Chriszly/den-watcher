@@ -1,6 +1,6 @@
 import { ExtraInfo } from '../metrics/extras';
 import { History } from '../metrics/metrics';
-import { LIVE_SPAN, LiveHistory } from './live-history';
+import { SHORT_SPAN, LiveHistory } from './live-history';
 
 const FAN: ExtraInfo = { title: 'Fans', label: 'Fan', unit: 'number' };
 
@@ -21,7 +21,7 @@ const MINUTE: History = {
 describe('LiveHistory', () => {
   it('keeps short ranges of an answering device', () => {
     expect(LiveHistory.canKeep(MINUTE, 60)).toBe(true);
-    expect(LiveHistory.canKeep(MINUTE, LIVE_SPAN + 1)).toBe(false);
+    expect(LiveHistory.canKeep(MINUTE, SHORT_SPAN + 1)).toBe(false);
     expect(LiveHistory.canKeep({ ...MINUTE, lastReading: 1055 }, 60)).toBe(false);
   });
 

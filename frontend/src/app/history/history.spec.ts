@@ -1,6 +1,6 @@
 import { TextParams, translate } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
-import { chartsOf, extraChartsOf, valueChartsOf } from './history';
+import { chartsOf, devicePoints, extraChartsOf, valueChartsOf } from './history';
 
 describe('chartsOf', () => {
   it('groups metrics into charts and adds up the network cards', () => {
@@ -244,5 +244,17 @@ describe('extraChartsOf', () => {
         lines: [{ label: 'Stalls', points }],
       },
     ]);
+  });
+});
+
+describe('devicePoints', () => {
+  const idle = [{ metric: 'cpu', points: [{ time: 0, value: 0 }] }];
+
+  it("drops a router's CPU that is 0 throughout, as it does not report it", () => {
+    expect(devicePoints(idle, 'cpu', true)).toEqual([]);
+  });
+
+  it('keeps the CPU of an idle device that is no router', () => {
+    expect(devicePoints(idle, 'cpu', false)).toEqual([{ time: 0, value: 0 }]);
   });
 });

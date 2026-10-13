@@ -6,7 +6,7 @@ import { DeviceService } from '../devices/devices';
 import { MessageKey } from '../i18n/messages/en';
 import { History, MetricsService } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
-import { LiveHistory } from './live-history';
+import { LiveHistory, SHORT_SPAN } from './live-history';
 
 /** A time range a chart can show, always ending now. */
 export interface Range {
@@ -72,7 +72,7 @@ const DEFAULT_RETENTION_DAYS = 30;
  * above that, where a step is hours long and a minute changes nothing visible.
  */
 export function refreshIntervalMs(spanSeconds: number): number {
-  if (spanSeconds <= 30 * 60) {
+  if (spanSeconds <= SHORT_SPAN) {
     return 5_000;
   }
   return spanSeconds <= 86400 ? 60_000 : 300_000;

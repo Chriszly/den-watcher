@@ -22,13 +22,10 @@ import { LineChart } from './line-chart';
       @if (chart(); as chart) {
         <div class="chart">
           <app-line-chart
-            [chartTitle]="chart.title"
-            [lines]="chart.lines"
+            [chart]="chart"
             [from]="h.from"
             [to]="h.to"
             [step]="h.stepSeconds"
-            [unit]="chart.unit"
-            [max]="chart.max"
             [markers]="events.markers()"
           />
         </div>

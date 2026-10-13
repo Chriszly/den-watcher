@@ -19,7 +19,8 @@ import { History, MetricsService, Point, Series } from '../metrics/metrics';
 import { Summary } from '../metrics/summary';
 import { SYSTEM_FACTS, factValues } from '../metrics/system';
 import { PageVisibility } from '../page-visibility';
-import { refreshIntervalMs } from '../history/history-store';
+import { devicePoints } from '../history/history';
+import { Range, refreshIntervalMs } from '../history/history-store';
 import { ChartLine, ChartUnit, LineChart } from '../history/line-chart';
 
 /** A column of the table the rows can be sorted by, largest first. */
@@ -90,12 +91,7 @@ export function sortRows(rows: readonly Row[], column: Column | null): Row[] {
   return [...rows].sort((a, b) => value(b) - value(a));
 }
 
-/** A time range of the charts, ending now. */
-interface Range {
-  label: MessageKey;
-  seconds: number;
-}
-
+/** The time ranges of the charts, fewer than the history has, as they chart every device. */
 const RANGES: Range[] = [
   { label: 'history.range1h', seconds: 3600 },
   { label: 'history.range6h', seconds: 6 * 3600 },
@@ -124,12 +120,6 @@ export function largest(series: Series[], kind: string): Point[] {
   return [...values].map(([time, value]) => ({ time, value })).sort((a, b) => a.time - b.time);
 }
 
-/** The points of a metric; none for a router's CPU and memory when it does not tell them. */
-export function metric(series: Series[], name: string, router: boolean): Point[] {
-  const points = series.find((s) => s.metric === name)?.points ?? [];
-  return router && points.every((p) => p.value === 0) ? [] : points;
-}
-
 /**
  * The points of the steps within the range the charts show. For a device that does not answer, the
  * backend moves its history back to end at its last reading, which can be before the range.
@@ -146,13 +136,13 @@ const CHARTS: CompareChart[] = [
     title: 'compare.cpu',
     unit: 'percent',
     max: 100,
-    points: (s, router) => metric(s, 'cpu', router),
+    points: (s, router) => devicePoints(s, 'cpu', router),
   },
   {
     title: 'compare.memory',
     unit: 'percent',
     max: 100,
-    points: (s, router) => metric(s, 'memory', router),
+    points: (s, router) => devicePoints(s, 'memory', router),
   },
   { title: 'compare.disk', unit: 'percent', max: 100, points: (s) => largest(s, 'disk') },
   { title: 'compare.temperature', unit: 'celsius', points: (s) => largest(s, 'temperature') },

@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DeviceService } from '../devices/devices';
 import { History, Snapshot } from '../metrics/metrics';
 import { summarize } from '../metrics/summary';
-import { Compare, Row, largest, metric, sortRows, within } from './compare';
+import { Compare, Row, largest, sortRows, within } from './compare';
 
 const snapshot: Snapshot = {
   time: '2026-10-02T17:00:00Z',
@@ -126,18 +126,6 @@ describe('largest', () => {
       { time: 60, value: 90 },
       { time: 120, value: 30 },
     ]);
-  });
-});
-
-describe('metric', () => {
-  const idle = [{ metric: 'cpu', points: [{ time: 0, value: 0 }] }];
-
-  it("drops a router's CPU that is 0 throughout, as it does not report it", () => {
-    expect(metric(idle, 'cpu', true)).toEqual([]);
-  });
-
-  it('keeps the CPU of an idle device that is no router', () => {
-    expect(metric(idle, 'cpu', false)).toEqual([{ time: 0, value: 0 }]);
   });
 });
 

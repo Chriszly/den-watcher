@@ -8,6 +8,7 @@ import { CsvDownload } from './csv-download';
 import { DeviceCharts } from './history';
 import { HistoryStore } from './history-store';
 import { dateTimeFormat, needsYear } from './line-chart';
+import { SHORT_SPAN } from './live-history';
 
 /**
  * Picks the stretch of time every chart on the page shows: a unit (minutes, hours, days or all) and
@@ -32,7 +33,7 @@ export class RangePicker {
   protected readonly dateFormat = computed(() => {
     const history = this.store.history();
     const year = history !== null && needsYear(history.from, history.to);
-    return this.i18n.t(dateTimeFormat(this.store.span() <= 30 * 60, year));
+    return this.i18n.t(dateTimeFormat(this.store.span() <= SHORT_SPAN, year));
   });
 
   /** For a device that is not answering, when the shown data ends, in the page's language. */

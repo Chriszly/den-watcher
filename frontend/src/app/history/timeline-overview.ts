@@ -1,6 +1,7 @@
 import { Component, ElementRef, computed, inject, input, output, signal } from '@angular/core';
 
 import { I18n } from '../i18n/i18n';
+import { pointerFraction } from './line-chart';
 import { Sparkline } from './sparkline';
 import { MIN_ZOOM_SECONDS, Stretch } from './timeline-zoom';
 import { TimelineLine } from './timeline-row';
@@ -171,8 +172,6 @@ export class TimelineOverview {
   }
 
   private timeAt(event: PointerEvent): number {
-    const area = this.host.getBoundingClientRect();
-    const fraction = Math.min(1, Math.max(0, (event.clientX - area.left) / area.width));
-    return this.from() + fraction * (this.to() - this.from());
+    return this.from() + pointerFraction(event, this.host) * (this.to() - this.from());
   }
 }

@@ -126,15 +126,7 @@
       @for (chart of charts(); track chart.title) {
         <div class="card">
           <h3>{{ chart.title }}</h3>
-          <app-line-chart
-            [chartTitle]="chart.title"
-            [lines]="chart.lines"
-            [from]="h.from"
-            [to]="h.to"
-            [step]="h.step"
-            [unit]="chart.unit"
-            [max]="chart.max"
-          />
+          <app-line-chart [chart]="chart" [from]="h.from" [to]="h.to" [step]="h.step" />
         </div>
       } @empty {
         <p class="detail">{{ i18n.t('history.empty') }}</p>

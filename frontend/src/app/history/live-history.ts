@@ -3,11 +3,12 @@ import { History, Point } from '../metrics/metrics';
 import { RingBuffer } from './ring-buffer';
 
 /**
- * The longest range kept up to date with only its newest steps. The backend reads ranges of up to
- * 30 minutes from the readings in memory in 5 second steps, so a few seconds of it come in the same
- * steps as the whole range; a longer range has longer steps than a short read would get.
+ * The longest short range: the backend reads ranges of up to 30 minutes from the readings in memory
+ * in 5 second steps. Such a range is read every 5 seconds and shows the seconds of its times. It is
+ * also the longest range kept up to date with only its newest steps, as a few seconds of it come in
+ * the same steps as the whole range; a longer range has longer steps than a short read would get.
  */
-export const LIVE_SPAN = 30 * 60;
+export const SHORT_SPAN = 30 * 60;
 
 /**
  * The history of the latest `span` seconds, kept in a ring buffer per metric, so a refresh reads
@@ -24,7 +25,7 @@ export class LiveHistory {
    * range is long, nor when the device is not answering and the range ends at its last reading.
    */
   static canKeep(history: History, span: number): boolean {
-    return span <= LIVE_SPAN && history.lastReading === undefined && history.stepSeconds > 0;
+    return span <= SHORT_SPAN && history.lastReading === undefined && history.stepSeconds > 0;
   }
 
   constructor(

@@ -7,7 +7,8 @@ import { I18n } from '../i18n/i18n';
 import { ChartEvents } from './chart-events';
 import { HistoryStore } from './history-store';
 import { Chart, DeviceCharts } from './history';
-import { COLORS, dateTimeFormat, needsYear, stepCenter } from './line-chart';
+import { COLORS, dateTimeFormat, needsYear, pointerFraction, stepCenter } from './line-chart';
+import { SHORT_SPAN } from './live-history';
 import { TimelineOverview } from './timeline-overview';
 import { TimelineLine, TimelineRow } from './timeline-row';
 import { CsvDownload } from './csv-download';
@@ -259,7 +260,7 @@ export class Timeline {
    */
   protected stretchLabel({ from, to }: Stretch): string {
     const language = this.i18n.language();
-    const seconds = to - from <= 30 * 60;
+    const seconds = to - from <= SHORT_SPAN;
     const year = needsYear(from, to);
     const start = formatDate(from * 1000, this.i18n.t(dateTimeFormat(seconds, year)), language);
     const sameDay = new Date(from * 1000).toDateString() === new Date(to * 1000).toDateString();
@@ -310,8 +311,7 @@ export class Timeline {
   /** Where the pointer is on the rows' time axis, as a fraction of it. */
   private fractionAt(event: PointerEvent): number {
     const rows = event.currentTarget as HTMLElement;
-    const area = rows.querySelector('.strip')!.getBoundingClientRect();
-    return Math.min(1, Math.max(0, (event.clientX - area.left) / area.width));
+    return pointerFraction(event, rows.querySelector('.strip')!);
   }
 }
 

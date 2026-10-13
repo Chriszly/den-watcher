@@ -8,6 +8,7 @@ import { Point } from '../metrics/metrics';
 import { CanvasLine, ChartCanvas, PlotPoint } from './chart-canvas';
 import { ChartMarker, POINTER_SLACK, markersIn } from './chart-events';
 import { ChartMarkers } from './chart-markers';
+import { SHORT_SPAN } from './live-history';
 
 /** What the values of a chart are: any unit an extra can have, but text. */
 export type ChartUnit = Exclude<ExtraUnit, 'text'>;
@@ -16,6 +17,16 @@ export type ChartUnit = Exclude<ExtraUnit, 'text'>;
 export interface ChartLine {
   label: string;
   points: Point[];
+}
+
+/** What a chart draws, as the history and the comparison make it. */
+export interface ChartData {
+  /** What the chart shows, such as "CPU and memory", for its text alternative. */
+  title: string;
+  lines: ChartLine[];
+  unit: ChartUnit;
+  /** The top of the y axis; when not set, it fits the highest value. */
+  max?: number;
 }
 
 /** How many colors the lines take in turn; lines after them are dashed. */
@@ -36,19 +47,17 @@ export const COLORS = 8;
 export class LineChart {
   protected readonly i18n = inject(I18n);
 
-  /** What the chart shows, such as "CPU and memory", for its text alternative. */
-  readonly chartTitle = input.required<string>();
-  readonly lines = input.required<ChartLine[]>();
+  readonly chart = input.required<ChartData>();
   readonly from = input.required<number>();
   readonly to = input.required<number>();
   readonly step = input.required<number>();
-  readonly unit = input.required<ChartUnit>();
-  /** The top of the y axis; when not set, it fits the highest value. */
-  readonly max = input<number>();
   /** What happened to the device, marked on the chart and told in the readout. */
   readonly markers = input<ChartMarker[]>([]);
 
-  protected readonly top = computed(() => chartTop(this.lines(), this.unit(), this.max()));
+  protected readonly lines = computed(() => this.chart().lines);
+  private readonly unit = computed(() => this.chart().unit);
+
+  protected readonly top = computed(() => chartTop(this.lines(), this.unit(), this.chart().max));
 
   protected readonly canvasLines = computed(() =>
     this.lines().map((line, index): CanvasLine => ({
@@ -67,7 +76,7 @@ export class LineChart {
    */
   protected readonly timeFormat = computed(() => {
     const span = this.to() - this.from();
-    if (span <= 30 * 60) {
+    if (span <= SHORT_SPAN) {
       return this.i18n.t('format.timeSeconds');
     }
     if (span <= 86400) {
@@ -93,7 +102,7 @@ export class LineChart {
         : this.i18n.t('history.chartLineNoData', { label: line.label });
     });
     return this.i18n.t('history.chartSummary', {
-      title: this.chartTitle(),
+      title: this.chart().title,
       from: formatDate(this.from() * 1000, format, language),
       to: formatDate(this.to() * 1000, format, language),
       lines: new Intl.ListFormat(language).format(lines),
@@ -150,11 +159,15 @@ export class LineChart {
  * `from` to `to` (Unix seconds) in steps of `step` seconds.
  */
 export function stepUnder(event: PointerEvent, from: number, to: number, step: number): number {
-  const area = (event.currentTarget as HTMLElement).getBoundingClientRect();
-  const fraction = Math.min(1, Math.max(0, (event.clientX - area.left) / area.width));
-  const time = from + fraction * (to - from);
+  const time = from + pointerFraction(event, event.currentTarget as Element) * (to - from);
   // The right edge belongs to the last step, which starts before `to`.
   return Math.floor(Math.min(time, to - 1) / step) * step;
+}
+
+/** Where the pointer is across an element, as a fraction of its width from 0 to 1. */
+export function pointerFraction(event: PointerEvent, element: Element): number {
+  const area = element.getBoundingClientRect();
+  return Math.min(1, Math.max(0, (event.clientX - area.left) / area.width));
 }
 
 /** Where the middle of the step that starts at `time` is on a time axis, in percent of its width. */

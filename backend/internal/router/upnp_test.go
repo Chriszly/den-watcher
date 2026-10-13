@@ -239,15 +239,44 @@ func TestUPnPDoesNotSearchAgainAtOnceAfterAFailedRead(t *testing.T) {
 	router.fail = true
 	router.mu.Unlock()
 	reader := router.reader()
-	if _, err := reader.Collect(t.Context()); err == nil {
-		t.Fatal("read a router whose actions fail")
-	}
-	if _, err := reader.Collect(t.Context()); err == nil {
-		t.Fatal("read a router whose actions fail")
+	for range upnpReadFailures + 1 {
+		if _, err := reader.Collect(t.Context()); err == nil {
+			t.Fatal("read a router whose actions fail")
+		}
 	}
 	router.mu.Lock()
 	defer router.mu.Unlock()
 	if router.descriptions != 1 {
 		t.Errorf("read the description %d times, want once", router.descriptions)
+	}
+	// Each failed reading asked the router once, but not the last: its
+	// services are looked for again, not before upnpSearchBackoff.
+	if len(router.actions) != upnpReadFailures {
+		t.Errorf("called %d actions, want %d", len(router.actions), upnpReadFailures)
+	}
+}
+
+func TestUPnPReadsAgainAfterOneFailedRead(t *testing.T) {
+	router := newFakeUPnPRouter(t)
+	reader := router.reader()
+	if _, err := reader.Collect(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	router.mu.Lock()
+	router.fail = true
+	router.mu.Unlock()
+	if _, err := reader.Collect(t.Context()); err == nil {
+		t.Fatal("read a router whose actions fail")
+	}
+	router.mu.Lock()
+	router.fail = false
+	router.mu.Unlock()
+	if _, err := reader.Collect(t.Context()); err != nil {
+		t.Fatalf("the reading after one that failed: %v", err)
+	}
+	router.mu.Lock()
+	defer router.mu.Unlock()
+	if router.descriptions != 1 {
+		t.Errorf("read the description %d times, want once with the services kept", router.descriptions)
 	}
 }

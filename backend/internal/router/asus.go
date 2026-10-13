@@ -53,6 +53,7 @@ type ASUSReader struct {
 	token       string
 	refusedAt   time.Time
 	refusedLogs bool
+	untakenAt   time.Time            // when a token was not taken right after its login
 	cores       map[string][2]uint64 // usage and total of each core, from before
 	traffic     map[string]*[2]counter
 	uptime      uint64
@@ -85,14 +86,16 @@ func (a *ASUSReader) Collect(ctx context.Context) (metrics.Snapshot, error) {
 // values asks appGet.cgi, and logs in again once when the token is no
 // longer taken.
 func (a *ASUSReader) values(ctx context.Context) (map[string]json.RawMessage, error) {
-	for attempt := 0; ; attempt++ {
-		if a.token == "" {
+	for {
+		fresh := a.token == ""
+		if fresh {
 			if err := a.login(ctx); err != nil {
 				return nil, err
 			}
 		}
 		values, err := a.appGet(ctx)
 		if err == nil {
+			a.untakenAt = time.Time{}
 			return values, nil
 		}
 		// Only a signed-out token is dropped: logging in again after a
@@ -101,10 +104,18 @@ func (a *ASUSReader) values(ctx context.Context) (map[string]json.RawMessage, er
 		if !errors.Is(err, errASUSSignedOut) {
 			return nil, err
 		}
-		a.token = ""
-		if attempt > 0 {
+		// A token not taken right after the login says more about the
+		// answer, such as one that does not parse, than about the token:
+		// it is kept, and no login made for asusLoginBackoff, so the admin
+		// is not signed out with every reading.
+		if fresh {
+			a.untakenAt = time.Now()
 			return nil, err
 		}
+		if !a.untakenAt.IsZero() && time.Since(a.untakenAt) < asusLoginBackoff {
+			return nil, err
+		}
+		a.token = ""
 	}
 }
 

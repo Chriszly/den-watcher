@@ -9,6 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 
+import { readStored, store } from '../browser';
 import { DeviceService } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
 import { Alert } from './alert';
@@ -89,11 +90,7 @@ export class AlertNotifications {
     }
     this.permission.set(permission);
     this.setting.set(permission === 'granted' ? setting : 'off');
-    try {
-      this.document.defaultView?.localStorage.setItem(NOTIFY_STORAGE_KEY, this.setting());
-    } catch {
-      // Without storage the choice lasts until the page is closed.
-    }
+    store(this.document.defaultView, NOTIFY_STORAGE_KEY, this.setting());
   }
 
   /** Reads again whether the browser allows notifications, as it may be changed in its settings. */
@@ -154,11 +151,7 @@ export class AlertNotifications {
   }
 
   private read(): NotifySetting {
-    try {
-      const stored = this.document.defaultView?.localStorage.getItem(NOTIFY_STORAGE_KEY);
-      return stored === 'started' || stored === 'startedAndEnded' ? stored : 'off';
-    } catch {
-      return 'off';
-    }
+    const stored = readStored(this.document.defaultView, NOTIFY_STORAGE_KEY);
+    return stored === 'started' || stored === 'startedAndEnded' ? stored : 'off';
   }
 }

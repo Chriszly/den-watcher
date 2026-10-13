@@ -1,4 +1,6 @@
-import { DestroyRef, Directive, ElementRef, afterRenderEffect, inject, input } from '@angular/core';
+import { Directive, ElementRef, afterRenderEffect, inject, input } from '@angular/core';
+
+import { observeWidth } from '../browser';
 
 /** The smallest share of the normal size names shrink to; longer ones are cut with an ellipsis. */
 export const MIN_LABEL_SCALE = 0.6;
@@ -33,7 +35,6 @@ export class FitLabels {
   readonly content = input.required<unknown>({ alias: 'appFitLabels' });
 
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
-  private width = 0;
   /** The card's text with every digit as 0, as of the last fit. */
   private shape: string | null = null;
 
@@ -49,14 +50,7 @@ export class FitLabels {
 
     // Of the card's sizes only its width changes what fits; the fit is applied in the next frame, so the
     // observer does not report a size it caused itself.
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry.contentRect.width !== this.width) {
-        this.width = entry.contentRect.width;
-        requestAnimationFrame(() => this.fit());
-      }
-    });
-    observer.observe(this.host);
-    inject(DestroyRef).onDestroy(() => observer.disconnect());
+    observeWidth(this.host, () => requestAnimationFrame(() => this.fit()));
   }
 
   private fit(): void {

@@ -1,5 +1,7 @@
 import { DOCUMENT } from '@angular/common';
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+
+import { mediaMatches } from '../browser';
 
 export type ColorScheme = 'light' | 'dark';
 
@@ -16,25 +18,11 @@ export const THEME_COLORS: Record<ColorScheme, string> = { light: '#fff8f5', dar
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
-  private readonly systemQuery = this.document.defaultView?.matchMedia?.(
-    '(prefers-color-scheme: dark)',
-  );
-
-  private readonly system = signal<ColorScheme>(this.systemQuery?.matches ? 'dark' : 'light');
+  private readonly systemDark = mediaMatches('(prefers-color-scheme: dark)', false);
   private readonly chosen = signal<ColorScheme | null>(null);
 
   /** The color scheme the page is shown in right now. */
-  readonly scheme = computed(() => this.chosen() ?? this.system());
-
-  constructor() {
-    const query = this.systemQuery;
-    if (query) {
-      const update = (event: MediaQueryListEvent) =>
-        this.system.set(event.matches ? 'dark' : 'light');
-      query.addEventListener('change', update);
-      inject(DestroyRef).onDestroy(() => query.removeEventListener('change', update));
-    }
-  }
+  readonly scheme = computed(() => this.chosen() ?? (this.systemDark() ? 'dark' : 'light'));
 
   /** Switches between light and dark. */
   toggle(): void {

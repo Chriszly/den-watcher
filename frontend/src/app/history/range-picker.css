@@ -11,8 +11,18 @@
   gap: 0.75rem;
 }
 
+/* The period and its download keep together on the right, and wrap together. */
+.shown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
 .period {
-  margin: 0 0 0 auto;
+  margin: 0;
   color: var(--mat-sys-on-surface-variant);
   font: var(--mat-sys-body-medium);
 }

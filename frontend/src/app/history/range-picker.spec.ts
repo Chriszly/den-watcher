@@ -178,6 +178,21 @@ describe('RangePicker', () => {
     );
   });
 
+  it('downloads the period shown as CSV', () => {
+    fixture.detectChanges();
+    expect(element().querySelector('app-csv-download')).toBeNull();
+    const { from, to } = respond();
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:file');
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    element().querySelector<HTMLButtonElement>('app-csv-download button')!.click();
+    const request = http.expectOne((r) => r.url === '/api/history.csv');
+    expect(request.request.params.get('from')).toBe(String(from));
+    expect(request.request.params.get('to')).toBe(String(to));
+    request.flush(new Blob(['time\r\n']));
+    vi.advanceTimersByTime(0);
+    vi.restoreAllMocks();
+  });
+
   it('shows another device without the error or the period of the previous one', () => {
     respond();
     vi.advanceTimersByTime(5_000);

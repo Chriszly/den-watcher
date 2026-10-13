@@ -8,6 +8,7 @@ import { Chart, DeviceCharts } from './history';
 import { COLORS, dateTimeFormat, needsYear, stepCenter } from './line-chart';
 import { TimelineOverview } from './timeline-overview';
 import { TimelineLine, TimelineRow } from './timeline-row';
+import { CsvDownload } from './csv-download';
 import { Stretch, TimelineZoom } from './timeline-zoom';
 
 /** Where the choice of the timeline over the cards is kept between visits, in localStorage. */
@@ -48,7 +49,7 @@ export class TimelineMode {
  */
 @Component({
   selector: 'app-timeline',
-  imports: [DatePipe, TimelineOverview, TimelineRow],
+  imports: [CsvDownload, DatePipe, TimelineOverview, TimelineRow],
   providers: [TimelineZoom],
   template: `
     @if (whole(); as w) {
@@ -76,6 +77,9 @@ export class TimelineMode {
               <button type="button" class="back" (click)="zoom.back()">
                 ← {{ i18n.t('timeline.back') }}
               </button>
+              @if (zoom.stretch(); as stretch) {
+                <app-csv-download [from]="stretch.from" [to]="stretch.to" />
+              }
             } @else {
               <span class="hint">{{ i18n.t('timeline.zoomHint') }}</span>
             }

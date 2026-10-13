@@ -199,6 +199,10 @@ export const de: Messages = {
   'history.notLive':
     'Keine Live-Daten: Dieses Gerät antwortet seit {time} nicht. Die Diagramme zeigen die letzten bis dahin aufgezeichneten Daten.',
   'history.empty': 'Für diesen Zeitraum ist noch keine Auslastung aufgezeichnet.',
+  'history.downloadCsv': 'CSV herunterladen',
+  'history.downloadCsvHint':
+    'Die Werte der gezeigten Zeit als CSV-Datei für eine Tabellenkalkulation: eine Spalte je Wert und eine Zeile je Zeitpunkt, in UTC',
+  'history.downloadFailed': 'Die Datei konnte nicht heruntergeladen werden.',
   'history.unreachable': 'Der Verlauf kann nicht gelesen werden.',
   'history.loading': 'Wird geladen…',
   'history.unitMinutes': 'Minuten',

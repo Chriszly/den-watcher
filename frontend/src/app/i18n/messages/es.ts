@@ -199,6 +199,10 @@ export const es: Messages = {
   'history.notLive':
     'No son datos en directo: este dispositivo no responde desde el {time}. Los gráficos muestran los últimos datos registrados hasta entonces.',
   'history.empty': 'Aún no hay uso registrado para este periodo.',
+  'history.downloadCsv': 'Descargar CSV',
+  'history.downloadCsvHint':
+    'Los valores del periodo mostrado en un archivo CSV para una hoja de cálculo: una columna por valor y una fila por momento, en UTC',
+  'history.downloadFailed': 'No se pudo descargar el archivo.',
   'history.unreachable': 'No se puede leer el historial.',
   'history.loading': 'Cargando…',
   'history.unitMinutes': 'Minutos',

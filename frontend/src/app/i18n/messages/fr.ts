@@ -197,6 +197,10 @@ export const fr: Messages = {
   'history.notLive':
     'Données en différé : cet appareil ne répond plus depuis le {time}. Les graphiques montrent les dernières données enregistrées jusque-là.',
   'history.empty': 'Aucune utilisation enregistrée pour cette période.',
+  'history.downloadCsv': 'Télécharger en CSV',
+  'history.downloadCsvHint':
+    'Les valeurs de la période affichée dans un fichier CSV pour un tableur : une colonne par valeur et une ligne par instant, en UTC',
+  'history.downloadFailed': "Le fichier n'a pas pu être téléchargé.",
   'history.unreachable': 'Impossible de lire l’historique.',
   'history.loading': 'Chargement…',
   'history.unitMinutes': 'Minutes',

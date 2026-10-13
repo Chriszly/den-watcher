@@ -25,6 +25,7 @@ import { RangePicker } from '../history/range-picker';
 import { Timeline, TimelineMode } from '../history/timeline';
 import { Availability, DeviceService, LOCAL_DEVICE, deviceName } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
+import { KioskMode } from '../kiosk/kiosk';
 import { EvenColumns } from '../layout/even-columns';
 import { ScrollRows } from '../layout/scroll-rows';
 import { BytesPipe } from '../metrics/bytes.pipe';
@@ -357,6 +358,7 @@ export class Dashboard {
   protected readonly smartCard = ALERT_CARDS.smart;
   /** Whether every value shows on one timeline instead of in the categories; the mascot switches it. */
   protected readonly timeline = inject(TimelineMode);
+  protected readonly kiosk = inject(KioskMode);
   /**
    * The sections of the page: the pinned cards, then the categories, or one section of every other
    * card when the cards are not grouped by category, each with its cards and then the details for

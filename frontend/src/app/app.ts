@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { AlertNotifications } from './alerts/alert-notifications';
@@ -8,10 +8,12 @@ import { Compare } from './compare/compare';
 import { ConnectionBanner } from './connection/connection-banner';
 import { Dashboard } from './dashboard/dashboard';
 import { DevicePicker } from './devices/device-picker';
-import { DeviceService } from './devices/devices';
+import { DeviceService, deviceName } from './devices/devices';
 import { ManageButton } from './devices/manage-button';
 import { TimelineMode } from './history/timeline';
 import { I18n } from './i18n/i18n';
+import { KioskAlerts } from './kiosk/kiosk-alerts';
+import { KioskMode } from './kiosk/kiosk';
 import { LanguageSwitcher } from './language/language-switcher';
 import { Sidebar, SidebarState } from './layout/sidebar';
 import { Mascot } from './mascot/mascot';
@@ -26,6 +28,7 @@ import { UpdateNotice } from './update/update-notice';
     ConnectionBanner,
     Dashboard,
     DevicePicker,
+    KioskAlerts,
     LanguageSwitcher,
     ManageButton,
     Mascot,
@@ -41,11 +44,16 @@ export class App {
   protected readonly sidebar = inject(SidebarState);
   protected readonly i18n = inject(I18n);
   protected readonly timeline = inject(TimelineMode);
+  protected readonly kiosk = inject(KioskMode);
+
+  /** The name of the device shown, which a wall display shows in the header instead of a list. */
+  protected readonly selectedName = computed(() => deviceName(this.devices.selected(), this.i18n));
 
   constructor() {
     this.devices.polling.pipe(takeUntilDestroyed()).subscribe();
     // They tell about alerts in the tab's title and favicon and in the browser's notifications.
     inject(AlertTab);
     inject(AlertNotifications);
+    this.kiosk.cycle.pipe(takeUntilDestroyed()).subscribe();
   }
 }

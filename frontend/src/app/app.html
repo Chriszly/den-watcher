@@ -1,12 +1,13 @@
 @let several = devices.devices().length > 1;
-@if (several) {
+@if (several && !kiosk.on) {
   <app-sidebar [label]="i18n.t('devices.label')">
     <app-device-picker [compact]="sidebar.compact()" />
   </app-sidebar>
 }
-<main>
+<!-- A wall display shows the page but takes no clicks or keys, so nothing changes by accident. -->
+<main [attr.inert]="kiosk.on ? '' : null">
   <header>
-    @if (several) {
+    @if (several && !kiosk.on) {
       <button
         type="button"
         class="menu"
@@ -20,27 +21,44 @@
         <span class="visually-hidden">{{ i18n.t('sidebar.open') }}</span>
       </button>
     }
-    <!-- A quiet switch: the mascot turns the cards into one timeline of every value, and back. -->
-    <button
-      type="button"
-      class="mascot"
-      [attr.aria-pressed]="timeline.on()"
-      [attr.aria-label]="i18n.t('timeline.show')"
-      (click)="timeline.toggle()"
-    >
-      <app-mascot />
-    </button>
+    @if (kiosk.on) {
+      <span class="mascot"><app-mascot /></span>
+    } @else {
+      <!-- A quiet switch: the mascot turns the cards into one timeline of every value, and back. -->
+      <button
+        type="button"
+        class="mascot"
+        [attr.aria-pressed]="timeline.on()"
+        [attr.aria-label]="i18n.t('timeline.show')"
+        (click)="timeline.toggle()"
+      >
+        <app-mascot />
+      </button>
+    }
     <h1>Den-Watcher</h1>
-    <app-alerts-button />
-    <app-theme-toggle />
-    <app-language-switcher />
+    @if (kiosk.on) {
+      @if (several) {
+        <p class="device">{{ selectedName() }}</p>
+      }
+    } @else {
+      <app-alerts-button />
+      <app-theme-toggle />
+      <app-language-switcher />
+    }
   </header>
   <app-connection-banner />
-  <app-update-notice />
-  @if (!several) {
-    <app-manage-button />
+  @if (kiosk.on) {
+    <!-- Loaded only on a wall display, so the page loads fast elsewhere. -->
+    @defer {
+      <app-kiosk-alerts />
+    }
+  } @else {
+    <app-update-notice />
+    @if (!several) {
+      <app-manage-button />
+    }
   }
-  @if (devices.comparing() && several) {
+  @if (devices.comparing() && several && !kiosk.on) {
     <!-- The comparison is loaded only when it is opened, so the page loads fast. -->
     @defer {
       <app-compare />

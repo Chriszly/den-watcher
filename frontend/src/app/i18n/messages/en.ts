@@ -39,6 +39,8 @@ export const en = {
   'dashboard.unit.number': 'Counts',
   'dashboard.diskUsage': 'Disk usage of {path}',
   'dashboard.noDisk': 'No disk configured',
+  'dashboard.diskFull.one': 'Full in about {count} day',
+  'dashboard.diskFull.other': 'Full in about {count} days',
   'dashboard.network': 'Network',
   'dashboard.noNetwork': 'No network card found',
   'dashboard.idleHidden.one': '{count} interface without traffic hidden',
@@ -264,7 +266,8 @@ export const en = {
     'How busy the processor is: in total and per core, with its clock speed, the load average and the processes.',
   'dashboard.info.memory':
     'How much of the working memory (RAM) is in use and how much is still available, and the swap space on disk.',
-  'dashboard.info.disks': 'How full each drive or partition is.',
+  'dashboard.info.disks':
+    'How full each drive or partition is, and when one that has filled up steadily over the last week will be full at that pace.',
   'dashboard.info.diskActivity':
     'How fast each drive or partition is read and written right now, and, where the system tells, how often and how long it is busy.',
   'dashboard.info.network':

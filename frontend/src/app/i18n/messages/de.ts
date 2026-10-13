@@ -38,6 +38,8 @@ export const de: Messages = {
   'dashboard.unit.number': 'Anzahl',
   'dashboard.diskUsage': 'Belegung von {path}',
   'dashboard.noDisk': 'Kein Datenträger eingerichtet',
+  'dashboard.diskFull.one': 'Voll in etwa {count} Tag',
+  'dashboard.diskFull.other': 'Voll in etwa {count} Tagen',
   'dashboard.network': 'Netzwerk',
   'dashboard.noNetwork': 'Keine Netzwerkkarte gefunden',
   'dashboard.idleHidden.one': '{count} Schnittstelle ohne Datenverkehr ausgeblendet',
@@ -265,7 +267,8 @@ export const de: Messages = {
     'Wie ausgelastet der Prozessor ist: insgesamt und je Kern, mit Taktrate, durchschnittlicher Last und den Prozessen.',
   'dashboard.info.memory':
     'Wie viel Arbeitsspeicher (RAM) belegt und wie viel noch verfügbar ist, und der Auslagerungsspeicher auf dem Datenträger.',
-  'dashboard.info.disks': 'Wie voll jedes Laufwerk oder jede Partition ist.',
+  'dashboard.info.disks':
+    'Wie voll jedes Laufwerk oder jede Partition ist, und wann eines, das sich in der letzten Woche stetig gefüllt hat, in diesem Tempo voll ist.',
   'dashboard.info.diskActivity':
     'Wie schnell jedes Laufwerk oder jede Partition gerade gelesen und geschrieben wird und, wo das System es angibt, wie oft und wie lange es beschäftigt ist.',
   'dashboard.info.network':

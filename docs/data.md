@@ -191,3 +191,7 @@ With `PROMETHEUS=true`, `GET /metrics` answers with the current usage of every d
 | `denwatcher_extra` | gauge | `group`, `item`, `unit`, `label`, `section` | each value of the [extras](#extras) that is a number, by the ids of its group and item, with its unit (such as `percent` or `bytesPerSecond`), its English label and, where it has one, its section; texts are left out |
 
 The values are read as for `GET /api/devices/metrics`: a device that does not answer within 3 seconds has `denwatcher_device_up` 0 for that scrape. The rates are measured by the device between its own readings; Prometheus' `rate()` over the counters gives the same over the scrape interval.
+
+## When a disk is full
+
+Under each disk on the *Disks* card, the page tells in about how many days the disk is full when it has filled up steadily: it fits a straight line through the disk's usage (`disk:<path>`) over the last 7 days of the history, and at that line's pace from the usage now, says *Full in about 10 days*. Less than two weeks shows in amber with a warning sign. Nothing is shown when the history covers less than a day, the usage is flat or falls, it rose unsteadily (such as one large copy on an otherwise even disk, R² below 0.5), the disk would take more than a year to fill, or the device is not answering. The page computes this itself from `GET /api/history`, read at most once an hour for each device while a *Disks* card shows; it is no alert and is not kept anywhere.

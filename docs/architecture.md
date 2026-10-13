@@ -63,6 +63,7 @@ What goes over the wire:
 | Browser | Hub | `GET /api/metrics?device=<id>`: the selected device's current usage | every 2 s |
 | Browser | Hub | `GET /api/devices`: the list of devices, with online state | every 5 s |
 | Browser | Hub | `GET /api/history?device=<id>&from=…&to=…`: chart data | every 5 s for ranges up to 30 min, every minute up to a day, every 5 min beyond |
+| Browser | Hub | `GET /api/history?device=<id>&from=…&to=…` over the last 7 days: [when a disk is full](data.md#when-a-disk-is-full) | at most once an hour per device, while a *Disks* card shows |
 | Browser | Hub | `GET /api/availability?device=<id>`: uptime of another device | every 10 s, while one is selected |
 | Browser | Hub | `GET /api/update`: running version and newer release | every hour |
 | Browser | Hub | `GET /api/devices/suggestion`: the device the page is open on, to fill in the *Devices* dialog | when the dialog opens |
@@ -73,7 +74,7 @@ What goes over the wire:
 | Prometheus | Hub | `GET /metrics`: the usage of every device in the Prometheus text format; only with `PROMETHEUS=true` | as often as Prometheus scrapes |
 | Hub | GitHub | `GET https://api.github.com/repos/Chriszly/den-watcher/releases/latest` | once a day, at start and every 24 h after, or an hour after a failed check; only on releases, never with `DATA_ONLY` |
 
-The usage, availability and chart polls pause while the tab is hidden and read again at once when it is shown; the list of devices, which carries the alerts that last, is read every 30 seconds then, for the tab's title and the browser's notifications. All traffic on the local network is plain HTTP. Nothing else leaves the network: no telemetry, no account, no cloud service. The daily version check only reads the newest release's tag; nothing is downloaded or installed.
+The usage, availability, chart and disk forecast polls pause while the tab is hidden and read again at once when it is shown; the list of devices, which carries the alerts that last, is read every 30 seconds then, for the tab's title and the browser's notifications. All traffic on the local network is plain HTTP. Nothing else leaves the network: no telemetry, no account, no cloud service. The daily version check only reads the newest release's tag; nothing is downloaded or installed.
 
 Devices never talk to each other or to the browser on their own. Every connection starts from a browser, from the hub or, with `PROMETHEUS=true`, from Prometheus.
 

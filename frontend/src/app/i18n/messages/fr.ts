@@ -36,6 +36,8 @@ export const fr: Messages = {
   'dashboard.unit.number': 'Nombres',
   'dashboard.diskUsage': 'Utilisation de {path}',
   'dashboard.noDisk': 'Aucun disque configuré',
+  'dashboard.diskFull.one': 'Plein dans environ {count} jour',
+  'dashboard.diskFull.other': 'Plein dans environ {count} jours',
   'dashboard.network': 'Réseau',
   'dashboard.noNetwork': 'Aucune carte réseau trouvée',
   'dashboard.idleHidden.one': '{count} interface sans trafic masquée',
@@ -263,7 +265,8 @@ export const fr: Messages = {
     "L'occupation du processeur, au total et par cœur, avec sa fréquence, la charge moyenne et les processus.",
   'dashboard.info.memory':
     "La part de la mémoire vive (RAM) utilisée et celle encore disponible, ainsi que l'espace d'échange sur le disque.",
-  'dashboard.info.disks': 'Le remplissage de chaque disque ou partition.',
+  'dashboard.info.disks':
+    "Le remplissage de chaque disque ou partition, et quand celui qui s'est rempli régulièrement la semaine passée sera plein à ce rythme.",
   'dashboard.info.diskActivity':
     "La vitesse de lecture et d'écriture actuelle de chaque disque ou partition et, quand le système l'indique, la fréquence et la durée de son activité.",
   'dashboard.info.network':

@@ -59,6 +59,7 @@ import {
 } from './categories';
 import { CATEGORY_TITLES, CategoryFold } from './category-fold';
 import { Details } from './details';
+import { DiskForecast } from './disk-forecast';
 import { FitLabels } from './fit-labels';
 import { Glance } from './glance';
 import { HiddenCard, HiddenCards } from './hidden-cards';
@@ -288,6 +289,7 @@ type Problem = 'backend' | 'device';
     CategoryFold,
     Details,
     DecimalPipe,
+    DiskForecast,
     EvenColumns,
     FitLabels,
     Glance,

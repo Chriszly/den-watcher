@@ -26,34 +26,53 @@ if [[ ! -t 0 ]]; then
   echo "Run this in a terminal; it asks for the router." >&2
   exit 1
 fi
+# The value of a setting in .env, without quotes and without a comment after
+# it, which Compose leaves out too.
+setting() {
+  sed -n "s/^$1=//p" "$env_file" 2> /dev/null | tail -n 1 | sed 's/[[:space:]]#.*//' | tr -d '[:space:]"'\''' || true
+}
+
+kind=""
 # A device that only serves its usage to a hub (DATA_ONLY) shows no routers
-# and would not start with one.
-data_only="$(sed -n 's/^DATA_ONLY=//p' "$env_file" 2> /dev/null | tail -n 1 | tr -d '[:space:]"'\''' || true)"
-if [[ "$data_only" =~ ^(1|t|T|true|TRUE|True)$ ]]; then
-  echo "This device only serves its usage to a hub (DATA_ONLY in .env), which shows no router. Set up the router on the hub instead." >&2
-  exit 1
+# and would not start with one; one that has a router all the same can only
+# stop showing it.
+if [[ "$(setting DATA_ONLY)" =~ ^(1|t|T|true|TRUE|True)$ ]]; then
+  if [[ -z "$(setting HUB_ROUTERS)" ]]; then
+    echo "This device only serves its usage to a hub (DATA_ONLY in .env), which shows no router. Set up the router on the hub instead." >&2
+    exit 1
+  fi
+  echo "This device only serves its usage to a hub (DATA_ONLY in .env), which shows no router,"
+  echo "and does not start while HUB_ROUTERS in .env names one. Set up the router on the hub instead."
+  read -r -p "Stop showing a router here, so it starts again? [y/n, default y] " answer
+  if [[ "${answer:-y}" != [yY]* ]]; then
+    echo "Nothing changed. Remove HUB_ROUTERS from .env, or DATA_ONLY to give this device its own page." >&2
+    exit 1
+  fi
+  kind=6
 fi
 
-echo "den-watcher can show your router as a device: its internet traffic, and depending on the"
-echo "router its line, ports, clients, CPU, memory and temperatures."
-echo "Read from the router over the local network only. No data is sent to any server;"
-echo "everything stays on your own devices, and a router password is stored encrypted where"
-echo "the system allows it."
-echo "Which router is it? A login is only asked for where the router needs one."
-echo "  1) Any router with UPnP (Technicolor, most internet providers' boxes): internet traffic,"
-echo "     no login; UPnP must be switched on in the router's settings"
-echo "  2) ASUS, with its login: CPU, memory, ports, Wi-Fi, clients and temperatures"
-echo "  3) FRITZ!Box, with a FRITZ!Box user: internet traffic, line, noise margin and clients;"
-echo "     allow access for applications in Home Network > Network > Network Settings"
-echo "  4) A router with SNMP v2c (MikroTik, OpenWrt, Ubiquiti, business routers): traffic"
-echo "     of every port, CPU and memory, with its community"
-echo "  5) A router with SNMPv3: the same, with a user and password"
-echo "  6) none: stop showing a router"
-read -r -p "[1-6, default 1] " kind
-kind="${kind:-1}"
-if [[ ! "$kind" =~ ^[1-6]$ ]]; then
-  echo "Choose one of 1 to 6." >&2
-  exit 1
+if [[ -z "$kind" ]]; then
+  echo "den-watcher can show your router as a device: its internet traffic, and depending on the"
+  echo "router its line, ports, clients, CPU, memory and temperatures."
+  echo "Read from the router over the local network only. No data is sent to any server;"
+  echo "everything stays on your own devices, and a router password is stored encrypted where"
+  echo "the system allows it."
+  echo "Which router is it? A login is only asked for where the router needs one."
+  echo "  1) Any router with UPnP (Technicolor, most internet providers' boxes): internet traffic,"
+  echo "     no login; UPnP must be switched on in the router's settings"
+  echo "  2) ASUS, with its login: CPU, memory, ports, Wi-Fi, clients and temperatures"
+  echo "  3) FRITZ!Box, with a FRITZ!Box user: internet traffic, line, noise margin and clients;"
+  echo "     allow access for applications in Home Network > Network > Network Settings"
+  echo "  4) A router with SNMP v2c (MikroTik, OpenWrt, Ubiquiti, business routers): traffic"
+  echo "     of every port, CPU and memory, with its community"
+  echo "  5) A router with SNMPv3: the same, with a user and password"
+  echo "  6) none: stop showing a router"
+  read -r -p "[1-6, default 1] " kind
+  kind="${kind:-1}"
+  if [[ ! "$kind" =~ ^[1-6]$ ]]; then
+    echo "Choose one of 1 to 6." >&2
+    exit 1
+  fi
 fi
 
 entry=""

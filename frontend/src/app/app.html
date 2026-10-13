@@ -55,6 +55,10 @@
       <app-missing-part />
     }
   } @else {
+    <!-- A dialog that could not be loaded, where the page was not reloaded for it. -->
+    @if (parts.missing()) {
+      <p class="missing-part" role="alert">{{ i18n.t('update.partMissing') }}</p>
+    }
     <app-update-notice />
     @if (!several) {
       <app-manage-button />

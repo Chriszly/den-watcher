@@ -8,6 +8,7 @@ import { Dashboard } from '../dashboard/dashboard';
 import { Device, DeviceService, LOCAL_DEVICE } from '../devices/devices';
 import { TIMELINE_STORAGE_KEY } from '../history/timeline';
 import { I18n, LANGUAGE_STORAGE_KEY } from '../i18n/i18n';
+import { PAGE_RELOAD } from '../update/missing-part';
 import { KioskMode, PAGE_SEARCH, kioskOrder, kioskSeconds, nextKioskDevice } from './kiosk';
 
 const disk: Alert = {
@@ -136,6 +137,27 @@ describe('App on a wall display', () => {
       'NAS: Disk / is 96 % full',
     );
     expect(element.querySelector('main')?.hasAttribute('inert')).toBe(true);
+  });
+
+  it('stands in for the alerts when they cannot be loaded', async () => {
+    TestBed.configureTestingModule({
+      imports: [App],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PAGE_SEARCH, useValue: '?kiosk' },
+        { provide: PAGE_RELOAD, useValue: vi.fn() },
+      ],
+    });
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    for (const block of await fixture.getDeferBlocks()) {
+      await block.render(DeferBlockState.Error);
+    }
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('app-kiosk-alerts')).toBeNull();
+    expect(element.querySelector('app-missing-part')).not.toBeNull();
   });
 
   it('shows the cards, not the timeline picked in this browser, and keeps that choice', () => {

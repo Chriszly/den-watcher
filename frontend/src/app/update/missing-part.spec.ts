@@ -121,6 +121,7 @@ describe('MissingParts', () => {
     expect(probe.cancelled).toBe(true);
     expect(reload).not.toHaveBeenCalled();
     expect(parts.missing()).toBe(true);
+    expect(TestBed.inject(HubConnection).lost()).toBe(true);
   });
 
   it('reloads when the hub answers with an error, as the demo does, as a reload shows a page', async () => {
@@ -160,6 +161,56 @@ describe('MissingParts', () => {
     again.detectChanges();
     expect(reload).toHaveBeenCalledTimes(1);
     expect((again.nativeElement as HTMLElement).textContent).toContain(
+      'This part of the page could not be loaded',
+    );
+  });
+
+  it('reloads for a missing part in place of it once the hub answers again, as on a wall display', async () => {
+    const connection = TestBed.inject(HubConnection);
+    const part = TestBed.createComponent(MissingPart);
+    const text = () => (part.nativeElement as HTMLElement).textContent!;
+    part.detectChanges();
+    await settle();
+    http.expectOne({ method: 'HEAD', url: '/' }).error(new ProgressEvent('error'));
+    await settle();
+    part.detectChanges();
+    expect(reload).not.toHaveBeenCalled();
+    expect(text()).toContain('This part of the page could not be loaded');
+
+    // An answer to the page's polls, but the hub is gone again when asked: it waits once more.
+    connection.answered();
+    part.detectChanges();
+    await settle();
+    http.expectOne({ method: 'HEAD', url: '/' }).error(new ProgressEvent('error'));
+    await settle();
+    part.detectChanges();
+    expect(reload).not.toHaveBeenCalled();
+    expect(connection.lost()).toBe(true);
+
+    connection.answered();
+    part.detectChanges();
+    await settle();
+    hubAnswers();
+    await settle();
+    part.detectChanges();
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(text().trim()).toBe('');
+  });
+
+  it('does not reload for a missing part when the hub answers again within a minute of a reload', async () => {
+    sessionStorage.setItem(RELOAD_STORAGE_KEY, String(Date.now()));
+    const connection = TestBed.inject(HubConnection);
+    connection.failed();
+    const part = TestBed.createComponent(MissingPart);
+    part.detectChanges();
+    await settle();
+
+    connection.answered();
+    part.detectChanges();
+    await settle();
+    part.detectChanges();
+    expect(reload).not.toHaveBeenCalled();
+    expect((part.nativeElement as HTMLElement).textContent).toContain(
       'This part of the page could not be loaded',
     );
   });

@@ -33,6 +33,9 @@ setting() {
 }
 
 kind=""
+# The other settings in .env DATA_ONLY does not start with, comma-separated:
+# without the router, the device still does not start while one is set.
+still_set=""
 # A device that only serves its usage to a hub (DATA_ONLY) shows no routers
 # and would not start with one; one that has a router all the same can only
 # stop showing it.
@@ -41,11 +44,24 @@ if [[ "$(setting DATA_ONLY)" =~ ^(1|t|T|true|TRUE|True)$ ]]; then
     echo "This device only serves its usage to a hub (DATA_ONLY in .env), which shows no router. Set up the router on the hub instead." >&2
     exit 1
   fi
+  for other in HUB_DEVICES HUB_CHECKS; do
+    if [[ -n "$(setting "$other")" ]]; then
+      still_set="${still_set:+$still_set, }$other"
+    fi
+  done
+  if [[ "$(setting PROMETHEUS)" =~ ^(1|t|T|true|TRUE|True)$ ]]; then
+    still_set="${still_set:+$still_set, }PROMETHEUS"
+  fi
   echo "This device only serves its usage to a hub (DATA_ONLY in .env), which shows no router,"
   echo "and does not start while HUB_ROUTERS in .env names one. Set up the router on the hub instead."
-  read -r -p "Stop showing a router here, so it starts again? [y/n, default y] " answer
+  if [[ -n "$still_set" ]]; then
+    echo "Nor does it start with $still_set in .env, which this does not change."
+    read -r -p "Stop showing a router here? [y/n, default y] " answer
+  else
+    read -r -p "Stop showing a router here, so it starts again? [y/n, default y] " answer
+  fi
   if [[ "${answer:-y}" != [yY]* ]]; then
-    echo "Nothing changed. Remove HUB_ROUTERS from .env, or DATA_ONLY to give this device its own page." >&2
+    echo "Nothing changed. Remove HUB_ROUTERS${still_set:+, $still_set} from .env, or DATA_ONLY to give this device its own page." >&2
     exit 1
   fi
   kind=6
@@ -156,6 +172,10 @@ fi
 
 if [[ -n "$entry" ]]; then
   echo "Router: $name. Start it with: docker compose up -d"
+elif [[ -n "$still_set" ]]; then
+  echo "No router is shown any more, but with DATA_ONLY the device still does not start while"
+  echo ".env sets $still_set: remove $still_set, or DATA_ONLY to give this device its own page,"
+  echo "then apply it with: docker compose up -d"
 else
   echo "No router is shown any more. Apply it with: docker compose up -d"
 fi

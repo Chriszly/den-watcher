@@ -1,7 +1,15 @@
 import { DOCUMENT } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, Injectable, InjectionToken, inject, signal } from '@angular/core';
-import { firstValueFrom, timeout } from 'rxjs';
+import {
+  Component,
+  Injectable,
+  InjectionToken,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
+import { TimeoutError, firstValueFrom, timeout } from 'rxjs';
 
 import { ANSWER_TIMEOUT_MS, HubConnection, unanswered } from '../connection/connection';
 import { I18n } from '../i18n/i18n';
@@ -19,6 +27,12 @@ export const PAGE_RELOAD = new InjectionToken<() => void>('page reload', {
     return () => location.reload();
   },
 });
+
+/**
+ * Whether the page reloads for a missing part, or why not: it was reloaded for one within a
+ * minute (or could not tell), or the hub does not answer.
+ */
+export type ReloadOutcome = 'reloading' | 'notAgain' | 'hubAway';
 
 /**
  * Reloads the page once when a part of it that is loaded only when needed, such as the comparison
@@ -58,16 +72,24 @@ export class MissingParts {
    * answer; true if it does.
    */
   async reload(): Promise<boolean> {
-    if (!this.mayReload() || this.connection.lost() || !(await this.hubAnswers())) {
-      return false;
+    return (await this.tryReload()) === 'reloading';
+  }
+
+  /** Reloads the page as reload() does, and says why it does not. */
+  async tryReload(): Promise<ReloadOutcome> {
+    if (!this.mayReload()) {
+      return 'notAgain';
+    }
+    if (this.connection.lost() || !(await this.hubAnswers())) {
+      return 'hubAway';
     }
     try {
       this.storage?.setItem(RELOAD_STORAGE_KEY, String(Date.now()));
     } catch {
-      return false;
+      return 'notAgain';
     }
     this.reloadPage();
-    return true;
+    return 'reloading';
   }
 
   /** Whether the page was not reloaded for a missing part within a minute. */
@@ -93,6 +115,10 @@ export class MissingParts {
       );
       return true;
     } catch (error) {
+      if (error instanceof TimeoutError) {
+        // The time limit gives the request up before the interceptor sees it fail.
+        this.connection.failed();
+      }
       return !unanswered(error);
     }
   }
@@ -101,7 +127,8 @@ export class MissingParts {
 /**
  * Stands in for a part of the page that could not be loaded: it reloads the page once, and says so
  * if the part is still missing after that, or if the page is not reloaded as the hub does not
- * answer.
+ * answer. In that case it reloads once the hub answers again, as on a wall display nobody can
+ * click to try again.
  */
 @Component({
   selector: 'app-missing-part',
@@ -123,8 +150,22 @@ export class MissingPart {
   protected readonly reloading = signal<boolean | null>(null);
 
   constructor() {
-    void inject(MissingParts)
-      .reload()
-      .then((reloading) => this.reloading.set(reloading));
+    const parts = inject(MissingParts);
+    const connection = inject(HubConnection);
+    /** Whether the page was not reloaded as the hub did not answer, and waits for it to. */
+    const waiting = signal(false);
+    const reload = () =>
+      void parts.tryReload().then((outcome) => {
+        this.reloading.set(outcome === 'reloading');
+        waiting.set(outcome === 'hubAway');
+      });
+    reload();
+    effect(() => {
+      // Any answer ends the lost state, such as one to the page's polls; the reload asks the hub first.
+      if (waiting() && !connection.lost()) {
+        waiting.set(false);
+        untracked(reload);
+      }
+    });
   }
 }

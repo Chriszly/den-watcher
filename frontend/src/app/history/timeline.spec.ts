@@ -119,7 +119,16 @@ describe('Timeline', () => {
     show();
     point(0, 0.5);
     vi.advanceTimersByTime(5_000);
-    http.expectOne((r) => r.url === '/api/history').flush({ ...HISTORY, from: 1000, to: 1300 });
+    // The next read is of the newest steps only, which move the range on to now.
+    const now = Math.floor(Date.now() / 1000);
+    http
+      .expectOne((r) => r.url === '/api/history')
+      .flush({
+        ...HISTORY,
+        from: 200,
+        to: now,
+        series: [{ metric: 'cpu', points: [{ time: now - 100, value: 20 }] }],
+      });
     fixture.detectChanges();
     expect(rows()[0]).toBe('CPU: 20 %');
     expect((fixture.nativeElement as HTMLElement).style.getPropertyValue('--cursor-display')).toBe(

@@ -1,11 +1,12 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { Observable, catchError, exhaustMap, of, share, switchMap, tap } from 'rxjs';
+import { Observable, catchError, defer, exhaustMap, of, share, switchMap, tap } from 'rxjs';
 
 import { DeviceService } from '../devices/devices';
 import { MessageKey } from '../i18n/messages/en';
 import { History, MetricsService } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
+import { LiveHistory } from './live-history';
 
 /** A time range a chart can show, always ending now. */
 export interface Range {
@@ -53,6 +54,13 @@ export const UNITS: RangeUnit[] = [
     ],
   },
 ];
+
+/**
+ * How often a short range is read whole again instead of only its newest steps, in reads: once a
+ * minute at a read every 5 seconds. It picks up the steps the backend filled in later, such as
+ * those of a gap a hub could not reach the device in.
+ */
+const FULL_READ_EVERY = 12;
 
 /** How many days the backend keeps by default, used until it says otherwise. */
 const DEFAULT_RETENTION_DAYS = 30;
@@ -147,14 +155,43 @@ export class HistoryStore {
       }),
       // A tick while the previous answer is still on its way is skipped; long
       // ranges take the backend a moment.
-      switchMap(({ span, device }) =>
-        this.page.ticks(refreshIntervalMs(span)).pipe(
-          exhaustMap(() => {
-            const to = nowSeconds();
-            return this.metrics.history(to - span, to, device).pipe(catchError(() => of(null)));
-          }),
-        ),
-      ),
+      switchMap(({ span, device }) => {
+        // A short range is kept in ring buffers, so most reads ask only for its newest steps.
+        let live: LiveHistory | null = null;
+        let reads = 0;
+        const readAll = (to: number) =>
+          this.metrics.history(to - span, to, device).pipe(
+            tap((history) => {
+              live = LiveHistory.canKeep(history, span) ? new LiveHistory(history, span) : null;
+            }),
+          );
+        return this.page.ticks(refreshIntervalMs(span)).pipe(
+          exhaustMap(() =>
+            defer(() => {
+              const to = nowSeconds();
+              const kept = live;
+              const since = kept?.since() ?? null;
+              const whole = reads++ % FULL_READ_EVERY === 0;
+              if (!kept || since === null || whole) {
+                return readAll(to);
+              }
+              // The backend needs a range of at least a second.
+              const until = Math.max(to, since + 1);
+              return this.metrics.history(since, until, device).pipe(
+                switchMap((update) => {
+                  const history = kept.add(update, until - span, until);
+                  return history ? of(history) : readAll(to);
+                }),
+              );
+            }).pipe(
+              catchError(() => {
+                live = null;
+                return of(null);
+              }),
+            ),
+          ),
+        );
+      }),
       tap((history) => this.received(history)),
     );
   }

@@ -7,7 +7,7 @@ A small website that shows the usage of the hardware it runs on: CPU, memory, di
 - **Read-only:** it only reads hardware data and runs without privileges, in a read-only container or as an unprivileged service
 - **Several devices:** a hub polls each device every 5 seconds and keeps all history; Windows PCs only report to it, and a compare page shows all devices side by side, as a table that sorts by any value and as charts with a line per device
 - **Your router too:** the hub reads its internet traffic over UPnP, every port over SNMP, a FRITZ!Box's line and clients, and an ASUS router's CPU, memory, Wi-Fi and clients with its login. Read from the router over the local network only. No data is sent to any server; everything stays on your own devices, and a router password is stored encrypted where the system allows it.
-- **Alerts on the page:** a full disk, hot or busy device, failing disk or server that stops answering shows as a red sign on the page, with a log of past alerts; nothing is sent anywhere
+- **Alerts on the page:** a full disk, hot or busy device, failing disk or server that stops answering shows as a red sign on the page and in the browser tab's title and icon, with a log of past alerts and, where the browser allows, its notifications; nothing is sent anywhere
 - **Grafana if you like:** with `PROMETHEUS=true`, the hub serves the usage of every device at `/metrics` for Prometheus on your network
 - **Five languages:** British and American English, German, French and Spanish, switched in place
 

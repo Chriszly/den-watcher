@@ -5,10 +5,26 @@ import { DemoMachine, FLEET, snapshotOf } from './fleet';
 const ACTIVE_FOR_SECONDS = 3 * 3600 + 17 * 60;
 
 /**
+ * The id of each alert by what it is about, so an alert keeps its id from one read to the next,
+ * as in the backend, and the page tells only a new one as new.
+ */
+const ids = new Map<string, number>();
+
+function alertId(device: string, kind: Alert['kind'], subject = ''): number {
+  const key = `${device}\n${kind}\n${subject}`;
+  let id = ids.get(key);
+  if (id === undefined) {
+    id = 1000 + ids.size;
+    ids.set(key, id);
+  }
+  return id;
+}
+
+/**
  * The alerts of a machine at t, by the same thresholds as the backend: a disk from 90 % a warning
  * and from 95 % an alert, memory the same, a temperature from 85 °C and 95 °C.
  */
-export function activeAlerts(machine: DemoMachine, t: number, ids = { next: 1000 }): Alert[] {
+export function activeAlerts(machine: DemoMachine, t: number): Alert[] {
   const s = snapshotOf(machine, t, 'demo');
   const started = new Date((t - ACTIVE_FOR_SECONDS) * 1000).toISOString();
   const base = { device: machine.device.id, deviceName: machine.device.name, started };
@@ -23,7 +39,7 @@ export function activeAlerts(machine: DemoMachine, t: number, ids = { next: 1000
     if (value >= warn) {
       alerts.push({
         ...base,
-        id: ids.next++,
+        id: alertId(machine.device.id, kind, subject),
         kind,
         ...(subject ? { subject } : {}),
         level: value >= alert ? 'alert' : 'warning',
@@ -81,9 +97,8 @@ function earlierAlerts(t: number): Alert[] {
 
 /** The alerts that last now of each machine in the fleet, by device id. */
 export function fleetAlerts(t: number): Map<string, Alert[]> {
-  const ids = { next: 1000 };
   return new Map(
-    FLEET.map((m) => [m.device.id, m.online && !m.online(t) ? [] : activeAlerts(m, t, ids)]),
+    FLEET.map((m) => [m.device.id, m.online && !m.online(t) ? [] : activeAlerts(m, t)]),
   );
 }
 

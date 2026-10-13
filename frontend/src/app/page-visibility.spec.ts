@@ -53,6 +53,25 @@ describe('PageVisibility', () => {
     expect(ticks).toEqual([0, 0, 1]);
   });
 
+  it('ticks slowly while the page is hidden when asked to', () => {
+    const ticks: number[] = [];
+    TestBed.inject(PageVisibility)
+      .ticks(1000, 30000)
+      .subscribe((tick) => ticks.push(tick));
+    vi.advanceTimersByTime(0);
+
+    show('hidden');
+    vi.advanceTimersByTime(29000);
+    expect(ticks).toEqual([0]);
+    vi.advanceTimersByTime(1000);
+    expect(ticks).toEqual([0, 0]);
+    vi.advanceTimersByTime(30000);
+    expect(ticks).toEqual([0, 0, 1]);
+
+    show('visible');
+    expect(ticks).toEqual([0, 0, 1, 0]);
+  });
+
   it('ticks on when a visibility event leaves the page shown', () => {
     const ticks = ticksEverySecond();
 

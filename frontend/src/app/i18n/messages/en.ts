@@ -300,12 +300,20 @@ export const en = {
   'alerts.openLog': 'Show the alerts and the log of earlier ones',
   'alerts.logTitle': 'Alerts',
   'alerts.intro':
-    'Values that need attention, such as a disk over 90 % full or a server that has not answered for 2 minutes, and the earlier ones. They are only shown on this page; nothing is sent anywhere.',
+    'Values that need attention, such as a disk over 90 % full or a server that has not answered for 2 minutes, and the earlier ones. They are shown on this page and in its tab; nothing is sent anywhere.',
   'alerts.empty': 'No alerts so far.',
   'alerts.logFailed': 'The log could not be read.',
   'alerts.since': 'since {since}',
   'alerts.fromTo': '{from} to {to}',
   'alerts.onCard': 'Needs attention',
+  'alerts.notify.started': 'Notify me of new alerts while this page is open',
+  'alerts.notify.ended': 'Also when one ends',
+  'alerts.notify.blocked':
+    'The browser blocks notifications from this page; allow them in its settings for the site.',
+  'alerts.notify.insecure':
+    "Notifications from the browser need the page opened over https or on localhost; the tab's title shows the number of alerts anyway.",
+  'alerts.notify.startedBody': '{level}: {text}',
+  'alerts.notify.endedBody': 'Ended: {text}',
   'categories.pinned': 'Pinned',
   'categories.system': 'System',
   'categories.storage': 'Storage',

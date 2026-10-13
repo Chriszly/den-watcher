@@ -46,6 +46,14 @@ describe('DemoBackend', () => {
     expect(log.filter((a) => a.ended).length).toBeGreaterThan(0);
   });
 
+  it('keeps the id of an alert from one read to the next, so only a new one is told as new', async () => {
+    const ids = async () =>
+      (await firstValueFrom(devices.load())).devices
+        .flatMap((d) => d.alerts ?? [])
+        .map((a) => a.id);
+    expect(await ids()).toEqual(await ids());
+  });
+
   it('lists Windows and Linux devices, one of them asleep', async () => {
     const list = await firstValueFrom(devices.load());
     expect(list.devices[0]).toEqual(LOCAL_DEVICE);

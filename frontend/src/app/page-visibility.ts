@@ -28,10 +28,18 @@ export class PageVisibility {
 
   /**
    * Emits at once and then every intervalMs while the page is shown. While it
-   * is hidden nothing is emitted; when it is shown again, the first tick comes
-   * at once.
+   * is hidden nothing is emitted, or every hiddenIntervalMs when that is given;
+   * when it is shown again, the first tick comes at once.
    */
-  ticks(intervalMs: number): Observable<number> {
-    return this.visible.pipe(switchMap((visible) => (visible ? timer(0, intervalMs) : EMPTY)));
+  ticks(intervalMs: number, hiddenIntervalMs?: number): Observable<number> {
+    return this.visible.pipe(
+      switchMap((visible) =>
+        visible
+          ? timer(0, intervalMs)
+          : hiddenIntervalMs
+            ? timer(hiddenIntervalMs, hiddenIntervalMs)
+            : EMPTY,
+      ),
+    );
   }
 }

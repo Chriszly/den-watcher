@@ -73,7 +73,7 @@ What goes over the wire:
 | Prometheus | Hub | `GET /metrics`: the usage of every device in the Prometheus text format; only with `PROMETHEUS=true` | as often as Prometheus scrapes |
 | Hub | GitHub | `GET https://api.github.com/repos/Chriszly/den-watcher/releases/latest` | once a day, at start and every 24 h after, or an hour after a failed check; only on releases, never with `DATA_ONLY` |
 
-The usage, device, availability and chart polls pause while the tab is hidden and read again at once when it is shown. All traffic on the local network is plain HTTP. Nothing else leaves the network: no telemetry, no account, no cloud service. The daily version check only reads the newest release's tag; nothing is downloaded or installed.
+The usage, availability and chart polls pause while the tab is hidden and read again at once when it is shown; the list of devices, which carries the alerts that last, is read every 30 seconds then, for the tab's title and the browser's notifications. All traffic on the local network is plain HTTP. Nothing else leaves the network: no telemetry, no account, no cloud service. The daily version check only reads the newest release's tag; nothing is downloaded or installed.
 
 Devices never talk to each other or to the browser on their own. Every connection starts from a browser, from the hub or, with `PROMETHEUS=true`, from Prometheus.
 
@@ -254,14 +254,14 @@ The requests must be `application/json`. A browser does not send JSON to another
 | What | Interval | Notes |
 | --- | --- | --- |
 | Current usage (dashboard) | 2 s | matches the sampler |
-| Device list and online dots | 5 s | |
+| Device list, online dots and alerts | 5 s | 30 s while the tab is hidden |
 | Availability or Usage in the Uptime card | 10 s | only for another device |
 | Charts, up to 30 min | 5 s | from memory |
 | Charts, up to a day | 1 min | from the database, per minute |
 | Charts, longer | 5 min | from the hourly averages |
 | New version notice | 1 h | |
 
-A poll that is still waiting for its answer skips the next tick instead of piling up requests. All polls but the version notice pause while the tab is hidden.
+A poll that is still waiting for its answer skips the next tick instead of piling up requests. All polls but the version notice and the list of devices pause while the tab is hidden; the list is read every 30 seconds then, for the [alerts](data.md#alerts) in the tab's title and the browser's notifications.
 
 ## Local network only
 

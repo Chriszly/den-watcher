@@ -1,11 +1,13 @@
-import { DOCUMENT } from '@angular/common';
 import { Component, ElementRef, afterNextRender, inject, viewChild } from '@angular/core';
+
+import { AlertTab } from '../alerts/alert-tab';
 
 /**
  * The bear mascot, drawn in the colors of the theme palette.
  *
  * A favicon cannot read the page's CSS, so once the bear is drawn it is also
- * copied, with its colors filled in, into the page's favicon.
+ * copied, with its colors filled in, into the page's favicon, which tells about
+ * alerts with a dot.
  */
 @Component({
   selector: 'app-mascot',
@@ -13,7 +15,7 @@ import { Component, ElementRef, afterNextRender, inject, viewChild } from '@angu
   styleUrl: './mascot.css',
 })
 export class Mascot {
-  private readonly document = inject(DOCUMENT);
+  private readonly tab = inject(AlertTab);
   private readonly svg = viewChild.required<ElementRef<SVGSVGElement>>('svg');
 
   constructor() {
@@ -21,15 +23,12 @@ export class Mascot {
   }
 
   private updateFavicon(): void {
-    const icon = this.document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-    if (icon) {
-      icon.href = svgDataUrl(this.svg().nativeElement);
-    }
+    this.tab.icon.set(svgMarkup(this.svg().nativeElement));
   }
 }
 
-/** Returns a copy of the drawn SVG as a data URL, with its computed colors written into it. */
-export function svgDataUrl(svg: SVGSVGElement): string {
+/** Returns a copy of the drawn SVG as markup, with its computed colors written into it. */
+export function svgMarkup(svg: SVGSVGElement): string {
   const copy = svg.cloneNode(true) as SVGSVGElement;
   removeAngularAttributes(copy);
   const originals = svg.querySelectorAll<SVGElement>('*');
@@ -42,7 +41,7 @@ export function svgDataUrl(svg: SVGSVGElement): string {
     removeAngularAttributes(shape);
   });
   copy.removeAttribute('aria-hidden');
-  return 'data:image/svg+xml,' + encodeURIComponent(new XMLSerializer().serializeToString(copy));
+  return new XMLSerializer().serializeToString(copy);
 }
 
 /** Drops the attributes Angular adds for its style scoping, which mean nothing in a favicon. */

@@ -33,6 +33,16 @@ describe('DeviceService', () => {
     vi.restoreAllMocks();
   });
 
+  it('shows a device on its own, also while comparing', () => {
+    http.expectOne('/api/devices').flush({ devices: [{ id: 'local', name: '' }] });
+    devices.comparing.set(true);
+
+    devices.show('nas');
+
+    expect(devices.selectedId()).toBe('nas');
+    expect(devices.comparing()).toBe(false);
+  });
+
   it('reads the list again every few seconds, and only now and then while the page is hidden', () => {
     let visibilityState: DocumentVisibilityState = 'visible';
     vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibilityState);

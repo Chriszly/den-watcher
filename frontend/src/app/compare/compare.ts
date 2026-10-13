@@ -273,8 +273,7 @@ export class Compare {
 
   /** Shows one device on its own, as when it is picked in the list of devices. */
   protected open(device: Device): void {
-    this.devices.selectedId.set(device.id);
-    this.devices.comparing.set(false);
+    this.devices.show(device.id);
   }
 
   protected deviceName(device: Device): string {

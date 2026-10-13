@@ -40,7 +40,6 @@ export class DevicePicker {
 
   /** Shows the device on its own, also when the devices were being compared. */
   protected pick(device: Device): void {
-    this.devices.selectedId.set(device.id);
-    this.devices.comparing.set(false);
+    this.devices.show(device.id);
   }
 }

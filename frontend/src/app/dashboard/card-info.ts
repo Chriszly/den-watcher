@@ -1,9 +1,6 @@
-import { Component, afterEveryRender, inject, input, signal } from '@angular/core';
+import { Component, afterEveryRender, signal } from '@angular/core';
 
-import { I18n } from '../i18n/i18n';
 import { CardTip } from './card-tip';
-
-let nextId = 0;
 
 /** An (i) next to a card's title that tells what the card shows, as a {@link CardTip}. */
 @Component({
@@ -12,12 +9,6 @@ let nextId = 0;
   styleUrl: './card-info.css',
 })
 export class CardInfo extends CardTip {
-  /** What the card shows. */
-  readonly text = input.required<string>();
-
-  protected readonly i18n = inject(I18n);
-  protected readonly id = `card-info-${nextId++}`;
-
   /** The card's title, for the button's name, as the heading the (i) stands in shows it. */
   protected readonly title = signal('');
 

@@ -104,15 +104,8 @@
 }
 
 <!-- A wall display shows the alerts of every device above the page instead. -->
-@if (deviceAlerts().length > 0 && !kiosk.on) {
-  <ul class="alert-chips" role="alert">
-    @for (alert of deviceAlerts(); track alert.id) {
-      <li [class.warning]="alert.level === 'warning'">
-        <app-alert-icon [level]="alert.level" />
-        {{ alertText(alert) }}
-      </li>
-    }
-  </ul>
+@if (!kiosk.on) {
+  <app-alert-chips [alerts]="deviceAlerts()" />
 }
 
 @if (!kiosk.on) {

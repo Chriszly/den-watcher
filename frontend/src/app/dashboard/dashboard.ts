@@ -13,8 +13,8 @@ import {
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, exhaustMap, of, switchMap, tap } from 'rxjs';
 
-import { Alert, AlertKind, AlertLevel } from '../alerts/alert';
-import { AlertIcon } from '../alerts/alert-icon';
+import { AlertKind, AlertLevel } from '../alerts/alert';
+import { AlertChips } from '../alerts/alert-chips';
 import { alertText, throttlingText, worstLevel } from '../alerts/alerts';
 import { HubConnection } from '../connection/connection';
 import { CardCharts } from '../history/card-charts';
@@ -290,7 +290,7 @@ type Problem = 'backend' | 'device';
 @Component({
   selector: 'app-dashboard',
   imports: [
-    AlertIcon,
+    AlertChips,
     ArrangeBar,
     ArrangeControls,
     BytesPipe,
@@ -735,10 +735,6 @@ export class Dashboard {
       .filter((a) => a.kind === kind)
       .map((a) => alertText(a, this.i18n))
       .join('\n');
-  }
-
-  protected alertText(alert: Alert): string {
-    return alertText(alert, this.i18n);
   }
 
   /** Whether the device tells its uptime: a router read over UPnP may not, a check never does. */

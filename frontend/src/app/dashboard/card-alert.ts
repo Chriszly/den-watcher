@@ -1,15 +1,12 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, input } from '@angular/core';
 
 import { AlertLevel } from '../alerts/alert';
 import { AlertIcon } from '../alerts/alert-icon';
-import { I18n } from '../i18n/i18n';
 import { CardTip } from './card-tip';
-
-let nextId = 0;
 
 /**
  * The sign of the alerts on a card at its title, which tells what they are as a {@link CardTip},
- * one alert to a line.
+ * one alert to a line of its text.
  */
 @Component({
   selector: 'app-card-alert',
@@ -40,9 +37,4 @@ let nextId = 0;
 })
 export class CardAlert extends CardTip {
   readonly level = input.required<AlertLevel>();
-  /** The alerts on the card, one to a line. */
-  readonly text = input.required<string>();
-
-  protected readonly i18n = inject(I18n);
-  protected readonly id = `card-alert-${nextId++}`;
 }

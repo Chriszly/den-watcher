@@ -94,8 +94,7 @@ export class KioskMode {
           switchMap(() => timer(0, this.seconds! * 1000)),
           tap((tick) => {
             const devices = this.devices.devices();
-            this.devices.comparing.set(false);
-            this.devices.selectedId.set(
+            this.devices.show(
               tick === 0
                 ? (kioskOrder(devices)[0]?.id ?? LOCAL_DEVICE.id)
                 : nextKioskDevice(devices, this.devices.selectedId()),

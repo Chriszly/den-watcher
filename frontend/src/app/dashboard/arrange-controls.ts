@@ -18,7 +18,7 @@ import { WidthIcon } from './width-icon';
   template: `
     <button
       type="button"
-      class="handle"
+      class="icon-button handle"
       cdkDragHandle
       [attr.aria-label]="i18n.t('arrange.drag', { card: card() })"
       [title]="i18n.t('arrange.drag', { card: card() })"
@@ -34,7 +34,7 @@ import { WidthIcon } from './width-icon';
     </button>
     <button
       type="button"
-      class="earlier"
+      class="icon-button earlier"
       [disabled]="first()"
       (click)="earlier.emit()"
       [attr.aria-label]="i18n.t('arrange.earlier', { card: card() })"
@@ -46,7 +46,7 @@ import { WidthIcon } from './width-icon';
     </button>
     <button
       type="button"
-      class="later"
+      class="icon-button later"
       [disabled]="last()"
       (click)="later.emit()"
       [attr.aria-label]="i18n.t('arrange.later', { card: card() })"
@@ -58,7 +58,7 @@ import { WidthIcon } from './width-icon';
       @let label = i18n.t(slot.next() > 1 ? 'arrange.wider' : 'arrange.narrower', { card: card() });
       <button
         type="button"
-        class="width"
+        class="icon-button width"
         [attr.aria-pressed]="slot.shown() > 1"
         (click)="slot.step()"
         [attr.aria-label]="label"
@@ -69,7 +69,7 @@ import { WidthIcon } from './width-icon';
     }
     <button
       type="button"
-      class="pin"
+      class="icon-button pin"
       [attr.aria-pressed]="pinned()"
       (click)="pin.emit()"
       [attr.aria-label]="i18n.t('arrange.pin', { card: card() })"
@@ -81,7 +81,7 @@ import { WidthIcon } from './width-icon';
     </button>
     <button
       type="button"
-      class="hide"
+      class="icon-button hide"
       (click)="hide.emit()"
       [attr.aria-label]="i18n.t(made() ? 'arrange.unmake' : 'arrange.hide', { card: card() })"
       [title]="i18n.t(made() ? 'arrange.unmake' : 'arrange.hide', { card: card() })"

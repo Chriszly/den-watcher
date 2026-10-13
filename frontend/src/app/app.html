@@ -10,7 +10,7 @@
     @if (several && !kiosk.on) {
       <button
         type="button"
-        class="menu"
+        class="icon-button menu"
         [attr.aria-expanded]="sidebar.open()"
         [title]="i18n.t('sidebar.open')"
         (click)="sidebar.open.set(true)"

@@ -193,6 +193,61 @@ body {
   }
 }
 
+// A round button with only an icon, as Material's icon button; the component sets its size.
+.icon-button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--mat-sys-on-surface-variant);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--mat-sys-surface-container-high);
+    color: var(--mat-sys-on-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+  }
+
+  &:disabled {
+    opacity: 0.38;
+    cursor: default;
+  }
+}
+
+// A button with its label in an outline, as Material's outlined button, which would add
+// Material's button code to the first load.
+.outlined-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding: 0 1rem;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: var(--mat-sys-corner-full);
+  background: none;
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-large);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, currentColor 8%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+  }
+
+  &:disabled {
+    opacity: 0.38;
+    cursor: default;
+  }
+}
+
 // An icon drawn with lines, in the color of the text; the button it is in sets its size.
 .line-icon {
   fill: none;

@@ -6,30 +6,8 @@
 }
 
 button {
-  display: grid;
-  place-items: center;
   width: 2rem;
   height: 2rem;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: none;
-  color: var(--mat-sys-on-surface-variant);
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    background: var(--mat-sys-surface-container-high);
-    color: var(--mat-sys-on-surface);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--mat-sys-primary);
-  }
-
-  &:disabled {
-    opacity: 0.38;
-    cursor: default;
-  }
 }
 
 svg {
@@ -50,14 +28,11 @@ svg {
   --width-icon: 1.25rem;
 }
 
-.width[aria-pressed='true'] {
+/* Pressed, in the theme's color, which gives way to the hover's. */
+:is(.width, .pin)[aria-pressed='true']:not(:hover) {
   color: var(--mat-sys-primary);
 }
 
-.pin[aria-pressed='true'] {
-  color: var(--mat-sys-primary);
-
-  > svg {
-    fill: currentColor;
-  }
+.pin[aria-pressed='true'] > svg {
+  fill: currentColor;
 }

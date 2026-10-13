@@ -57,22 +57,9 @@ span.mascot {
 
 /* The sidebar shows beside the page on wide screens; on narrow ones this button opens it. */
 .menu {
-  display: flex;
   flex: none;
   padding: 0.5rem;
-  border: none;
-  border-radius: 50%;
-  background: none;
   color: var(--mat-sys-on-surface);
-  cursor: pointer;
-}
-
-.menu:hover {
-  background: var(--mat-sys-surface-container-high);
-}
-
-.menu:focus-visible {
-  outline: 2px solid var(--mat-sys-primary);
 }
 
 .menu > svg {

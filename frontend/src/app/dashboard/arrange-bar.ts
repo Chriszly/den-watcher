@@ -13,7 +13,7 @@ import { Arrangement } from './arrangement';
   template: `
     <button
       type="button"
-      class="group"
+      class="outlined-button group"
       role="switch"
       [attr.aria-checked]="arrangement.grouped()"
       (click)="arrangement.group(!arrangement.grouped())"
@@ -26,18 +26,22 @@ import { Arrangement } from './arrangement';
         <p>{{ i18n.t('arrange.notice') }}</p>
         <button
           type="button"
-          class="reset"
+          class="outlined-button reset"
           [disabled]="!arrangement.arranged()"
           (click)="arrangement.reset()"
         >
           {{ i18n.t('arrange.reset') }}
         </button>
-        <button type="button" class="done" (click)="arrangement.arranging.set(false)">
+        <button
+          type="button"
+          class="outlined-button done"
+          (click)="arrangement.arranging.set(false)"
+        >
           {{ i18n.t('arrange.done') }}
         </button>
       </div>
     } @else {
-      <button type="button" class="start" (click)="arrangement.arranging.set(true)">
+      <button type="button" class="outlined-button start" (click)="arrangement.arranging.set(true)">
         <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" />
         </svg>

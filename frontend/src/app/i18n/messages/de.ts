@@ -151,6 +151,10 @@ export const de: Messages = {
     'Antwortet ein Server nicht, ist das ein Ausfall. Ein ausgeschalteter PC oder Laptop ist nur nicht in Benutzung.',
   'devicesDialog.add': 'Hinzufügen',
   'devicesDialog.close': 'Schließen',
+  'devicesDialog.backup': 'Sicherung herunterladen',
+  'devicesDialog.backupHint':
+    'Eine Kopie der Datenbank des Hubs zum Aufbewahren: der Verlauf, die Geräte mit ihren Adressen, die Alarme und der Hash des Passworts. Router-Passwörter sind nicht darin.',
+  'devicesDialog.backupTitle': 'Sicherung',
   'devices.problem.wrongPassword': 'Das Passwort ist falsch.',
   'devices.problem.passwordLength': 'Das Passwort braucht mindestens {count} Zeichen.',
   'devices.problem.name':
@@ -175,6 +179,7 @@ export const de: Messages = {
     'Ein Gerät mit diesem Namen wird gerade noch entfernt. Versuche es gleich noch einmal.',
   'devices.problem.demo':
     'Dies ist eine Demo, darum können keine Geräte hinzugefügt, entfernt oder geändert werden.',
+  'devices.problem.demoBackup': 'Dies ist eine Demo, darum gibt es keine Datenbank zum Sichern.',
   'devices.problem.other': 'Die Geräte konnten nicht geändert werden. Versuche es noch einmal.',
   'passwordDialog.enterTitle': 'Passwort eingeben',
   'passwordDialog.chooseTitle': 'Passwort festlegen',
@@ -192,6 +197,10 @@ export const de: Messages = {
   'passwordDialog.confirmRemove': 'Entfernen',
   'passwordDialog.kind': '{device} zu {kind} ändern?',
   'passwordDialog.confirmKind': 'Ändern',
+  'passwordDialog.confirmBackup': 'Herunterladen',
+  'passwordDialog.backupHint':
+    'Die Datei gehört nicht in fremde Hände: Sie enthält die Adressen der Geräte und den Hash des Passworts.',
+  'passwordDialog.backup': 'Eine Sicherung der Datenbank des Hubs herunterladen?',
   'history.unit': 'Einheit des angezeigten Zeitraums',
   'history.range': 'Angezeigter Zeitraum',
   'history.unreachableStale':

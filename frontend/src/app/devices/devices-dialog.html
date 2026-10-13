@@ -88,6 +88,12 @@
     <p class="hint">{{ i18n.t('devicesDialog.kindHint') }}</p>
   </form>
 
+  <h3>{{ i18n.t('devicesDialog.backupTitle') }}</h3>
+  <p class="hint">{{ i18n.t('devicesDialog.backupHint') }}</p>
+  <button mat-stroked-button type="button" class="backup" [disabled]="busy()" (click)="backup()">
+    {{ i18n.t('devicesDialog.backup') }}
+  </button>
+
   @if (problem()) {
     <p class="error" role="alert">{{ problem() }}</p>
   }

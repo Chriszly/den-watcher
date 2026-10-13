@@ -149,6 +149,10 @@ export const fr: Messages = {
     'Quand un serveur ne répond pas, c’est une panne. Un PC ou portable éteint n’est simplement pas utilisé.',
   'devicesDialog.add': 'Ajouter',
   'devicesDialog.close': 'Fermer',
+  'devicesDialog.backup': 'Télécharger la sauvegarde',
+  'devicesDialog.backupHint':
+    'Une copie de la base de données du hub à conserver : l’historique, les appareils avec leurs adresses, les alertes et le hachage du mot de passe. Les mots de passe des routeurs n’y figurent pas.',
+  'devicesDialog.backupTitle': 'Sauvegarde',
   'devices.problem.wrongPassword': 'Le mot de passe est incorrect.',
   'devices.problem.passwordLength': 'Le mot de passe doit comporter au moins {count} caractères.',
   'devices.problem.name':
@@ -173,6 +177,8 @@ export const fr: Messages = {
     'Un appareil portant ce nom est encore en cours de retrait. Réessayez dans un instant.',
   'devices.problem.demo':
     'Ceci est une démo : les appareils ne peuvent être ni ajoutés, ni supprimés, ni modifiés.',
+  'devices.problem.demoBackup':
+    'Ceci est une démo : il n’y a pas de base de données à sauvegarder.',
   'devices.problem.other': 'Les appareils n’ont pas pu être modifiés. Réessayez.',
   'passwordDialog.enterTitle': 'Saisir le mot de passe',
   'passwordDialog.chooseTitle': 'Choisir un mot de passe',
@@ -190,6 +196,10 @@ export const fr: Messages = {
   'passwordDialog.confirmRemove': 'Retirer',
   'passwordDialog.kind': 'Passer {device} en {kind} ?',
   'passwordDialog.confirmKind': 'Modifier',
+  'passwordDialog.confirmBackup': 'Télécharger',
+  'passwordDialog.backupHint':
+    'Gardez le fichier privé : il contient les adresses de vos appareils et le hachage du mot de passe.',
+  'passwordDialog.backup': 'Télécharger une sauvegarde de la base de données du hub ?',
   'history.unit': 'Unité de la période affichée',
   'history.range': 'Période affichée',
   'history.unreachableStale':

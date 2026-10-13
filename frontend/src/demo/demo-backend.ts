@@ -40,7 +40,8 @@ const LATENCY_MS = 60;
 
 /**
  * Answers the page's requests to /api with made-up values from the sample
- * devices instead of sending them anywhere. Devices cannot be added, removed or changed; the
+ * devices instead of sending them anywhere. Devices cannot be added, removed or changed, nor a
+ * backup downloaded; the
  * page's layout is kept in the visitor's browser.
  */
 @Injectable()
@@ -76,6 +77,9 @@ export class DemoBackend implements HttpBackend {
     }
     if (url.pathname === '/api/layout') {
       return this.layout(request);
+    }
+    if (request.method === 'POST' && url.pathname === '/api/backup') {
+      return fail(request, 403, { problem: 'demoBackup' });
     }
     if (request.method === 'POST' || request.method === 'PUT' || request.method === 'DELETE') {
       return fail(request, 403, { problem: 'demo' });

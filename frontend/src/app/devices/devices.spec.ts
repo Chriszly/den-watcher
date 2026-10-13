@@ -3,7 +3,12 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Subscription } from 'rxjs';
 
-import { DEVICES_HIDDEN_REFRESH_MS, DEVICES_REFRESH_MS, DeviceService } from './devices';
+import {
+  DEVICES_HIDDEN_REFRESH_MS,
+  DEVICES_REFRESH_MS,
+  DeviceService,
+  backupName,
+} from './devices';
 
 describe('DeviceService', () => {
   let http: HttpTestingController;
@@ -71,5 +76,15 @@ describe('DeviceService', () => {
     http.expectOne('/api/devices').flush({ devices: [{ id: 'local', name: '' }] });
 
     expect(devices.selectedId()).toBe('local');
+  });
+});
+
+describe('backupName', () => {
+  it('names a backup as the hub does, or with a name of its own', () => {
+    expect(backupName('attachment; filename="den-watcher-2026-10-13.db"')).toBe(
+      'den-watcher-2026-10-13.db',
+    );
+    expect(backupName('attachment; filename="../etc/passwd"')).toBe('den-watcher.db');
+    expect(backupName(null)).toBe('den-watcher.db');
   });
 });

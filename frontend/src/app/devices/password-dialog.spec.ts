@@ -83,4 +83,13 @@ describe('PasswordDialog', () => {
     expect(element().querySelector('mat-checkbox')).toBeNull();
     expect(confirmButton().textContent?.trim()).toBe('Change');
   });
+
+  it('asks for the password to download a backup and says what the file holds', async () => {
+    await open({ action: 'backup', deviceName: '', passwordSet: true });
+
+    expect(element().textContent).toContain("Download a backup of the hub's database?");
+    expect(element().textContent).toContain('Keep the file private');
+    expect(element().querySelector('mat-checkbox')).toBeNull();
+    expect(confirmButton().textContent?.trim()).toBe('Download');
+  });
 });

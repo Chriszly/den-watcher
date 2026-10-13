@@ -106,6 +106,9 @@ type Site struct {
 	// Prometheus adds GET /metrics, the usage of every device for
 	// Prometheus, from PROMETHEUS.
 	Prometheus bool
+	// Backups makes copies of the database, which POST /api/backup sends
+	// guarded by Password; nil leaves it out.
+	Backups Backups
 }
 
 // LayoutStore keeps how the page is arranged, for every browser that opens it.
@@ -128,11 +131,14 @@ func New(site Site) http.Handler {
 	mux.HandleFunc("GET /api/devices", devicesHandler(site))
 	mux.HandleFunc("GET /api/devices/metrics", fleetMetricsHandler(site.Devices))
 	if site.Hub != nil && site.Password != nil {
-		changes := &deviceChanges{hub: site.Hub, password: site.Password}
+		changes := &deviceChanges{hub: site.Hub, password: site.Password, backups: site.Backups}
 		mux.HandleFunc("GET /api/devices/suggestion", changes.suggest)
 		mux.HandleFunc("POST /api/devices", changes.add)
 		mux.HandleFunc("DELETE /api/devices/{id}", changes.remove)
 		mux.HandleFunc("PUT /api/devices/{id}/kind", changes.setKind)
+		if site.Backups != nil {
+			mux.HandleFunc("POST /api/backup", changes.backup)
+		}
 	}
 	link := &hubLink{}
 	mux.HandleFunc("GET /api/metrics", link.remember(forDevice(site.Devices, metricsHandler)))

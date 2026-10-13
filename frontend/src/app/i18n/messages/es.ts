@@ -151,6 +151,10 @@ export const es: Messages = {
     'Si un servidor no responde, es un corte. Un PC o portátil apagado simplemente no está en uso.',
   'devicesDialog.add': 'Añadir',
   'devicesDialog.close': 'Cerrar',
+  'devicesDialog.backup': 'Descargar copia de seguridad',
+  'devicesDialog.backupHint':
+    'Una copia de la base de datos del hub para guardar: el historial, los dispositivos con sus direcciones, las alertas y el hash de la contraseña. Las contraseñas de los routers no están en ella.',
+  'devicesDialog.backupTitle': 'Copia de seguridad',
   'devices.problem.wrongPassword': 'La contraseña no es correcta.',
   'devices.problem.passwordLength': 'La contraseña necesita al menos {count} caracteres.',
   'devices.problem.name':
@@ -175,6 +179,7 @@ export const es: Messages = {
     'Todavía se está quitando un dispositivo con este nombre. Vuelve a intentarlo en un momento.',
   'devices.problem.demo':
     'Esto es una demo, así que no se pueden añadir, quitar ni cambiar dispositivos.',
+  'devices.problem.demoBackup': 'Esto es una demo, así que no hay base de datos que copiar.',
   'devices.problem.other': 'No se pudieron cambiar los dispositivos. Inténtalo de nuevo.',
   'passwordDialog.enterTitle': 'Introducir la contraseña',
   'passwordDialog.chooseTitle': 'Elegir una contraseña',
@@ -192,6 +197,10 @@ export const es: Messages = {
   'passwordDialog.confirmRemove': 'Quitar',
   'passwordDialog.kind': '¿Cambiar {device} a {kind}?',
   'passwordDialog.confirmKind': 'Cambiar',
+  'passwordDialog.confirmBackup': 'Descargar',
+  'passwordDialog.backupHint':
+    'Guarda el archivo en privado: contiene las direcciones de tus dispositivos y el hash de la contraseña.',
+  'passwordDialog.backup': '¿Descargar una copia de seguridad de la base de datos del hub?',
   'history.unit': 'Unidad del periodo mostrado',
   'history.range': 'Periodo mostrado',
   'history.unreachableStale':

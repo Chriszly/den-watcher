@@ -46,7 +46,9 @@ CREATE INDEX IF NOT EXISTS samples_hourly_by_time ON samples_hourly (time);
 
 // Store is the database the history is kept in.
 type Store struct {
-	db    *sql.DB
+	db *sql.DB
+	// path is the database's file, next to which Backup makes its copies.
+	path  string
 	cache rangeCache
 	// brokenInfo has a brokenInfoKey for each description of an extra that
 	// could not be read and was logged.
@@ -79,7 +81,8 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	return &Store{db: db, cache: newRangeCache()}, nil
+	removeBackups(path)
+	return &Store{db: db, path: path, cache: newRangeCache()}, nil
 }
 
 // openDB opens the SQLite file at path, which is created once something is

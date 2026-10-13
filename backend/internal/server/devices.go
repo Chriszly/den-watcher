@@ -60,6 +60,8 @@ type problemResponse struct {
 type deviceChanges struct {
 	hub      Hub
 	password Password
+	// backups makes the copies of the database; nil when there is none.
+	backups Backups
 
 	// mu makes changes happen one at a time, so two first changes cannot
 	// both choose the password. The password is checked before, so the wait
@@ -150,7 +152,12 @@ func (c *deviceChanges) change(w http.ResponseWriter, r *http.Request, given str
 	from := sender.Addr()
 	err := c.password.Check(r.Context(), from, given)
 	c.mu.Lock()
-	defer c.mu.Unlock()
+	locked := true
+	defer func() {
+		if locked {
+			c.mu.Unlock()
+		}
+	}()
 	if errors.Is(err, password.ErrNotSet) {
 		// Another change may have chosen it meanwhile.
 		err = c.password.Check(r.Context(), from, given)
@@ -175,6 +182,13 @@ func (c *deviceChanges) change(w http.ResponseWriter, r *http.Request, given str
 			return
 		}
 		slog.Info("the password for changing devices has been chosen")
+	}
+	if d, ok := result.(download); ok {
+		// A download may take long; other changes need not wait for it.
+		c.mu.Unlock()
+		locked = false
+		d.send(w)
+		return
 	}
 	if result == nil {
 		w.WriteHeader(http.StatusNoContent)
@@ -211,6 +225,8 @@ func writeProblem(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, problemResponse{problemWrongPassword, "the password is wrong"})
 	case errors.Is(err, password.ErrLength):
 		writeJSON(w, http.StatusBadRequest, problemResponse{problemPasswordLength, err.Error()})
+	case errors.Is(err, errBackup):
+		http.Error(w, errBackup.Error(), http.StatusInternalServerError)
 	case errors.Is(err, hub.ErrStopping):
 		// The program is about to stop; nothing went wrong.
 		http.Error(w, "the hub is stopping; try again once it runs", http.StatusServiceUnavailable)

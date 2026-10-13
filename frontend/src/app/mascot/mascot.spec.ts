@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { Mascot, svgDataUrl } from './mascot';
+import { Mascot, svgMarkup } from './mascot';
 
 describe('Mascot', () => {
   let icon: HTMLLinkElement;
@@ -30,7 +30,7 @@ describe('Mascot', () => {
     svg.appendChild(shape);
     document.body.appendChild(svg);
 
-    const copy = decodeURIComponent(svgDataUrl(svg).split(',')[1]);
+    const copy = svgMarkup(svg);
     svg.remove();
 
     expect(copy).toContain('fill="rgb(227, 113, 0)"');

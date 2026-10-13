@@ -138,6 +138,12 @@ export function deviceState(device: Device, hubLost = false): DeviceState {
 /** How often the list is read again, so the page shows which devices answer. */
 export const DEVICES_REFRESH_MS = 5000;
 
+/**
+ * How often the list is read while the tab is hidden: it carries the alerts that last, so the
+ * tab's title and the browser's notifications can tell about new ones.
+ */
+export const DEVICES_HIDDEN_REFRESH_MS = 30_000;
+
 /** The shortest password that can be chosen; the backend checks it too. */
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -153,6 +159,8 @@ export class DeviceService {
   /** Only this device until the list has been read. */
   readonly devices = signal<Device[]>([LOCAL_DEVICE]);
   readonly passwordSet = signal(false);
+  /** Whether the list has been read from the backend at least once. */
+  readonly loaded = signal(false);
   readonly selectedId = signal(LOCAL_DEVICE.id);
   /** Whether the page compares all devices instead of showing the picked one. */
   readonly comparing = signal(false);
@@ -161,11 +169,11 @@ export class DeviceService {
   );
 
   /**
-   * Reads the list again and again while it is subscribed to and the page is shown; without the
-   * list only this device is shown. A failed read is skipped.
+   * Reads the list again and again while it is subscribed to, slowly while the page is hidden;
+   * without the list only this device is shown. A failed read is skipped.
    */
   readonly polling = inject(PageVisibility)
-    .ticks(DEVICES_REFRESH_MS)
+    .ticks(DEVICES_REFRESH_MS, DEVICES_HIDDEN_REFRESH_MS)
     .pipe(exhaustMap(() => this.load().pipe(catchError(() => EMPTY))));
 
   /** Reads the list of devices from the backend. */
@@ -174,6 +182,7 @@ export class DeviceService {
       tap((list) => {
         this.devices.set(list.devices);
         this.passwordSet.set(list.passwordSet);
+        this.loaded.set(true);
         if (!list.devices.some((d) => d.id === this.selectedId())) {
           this.selectedId.set(LOCAL_DEVICE.id);
         }

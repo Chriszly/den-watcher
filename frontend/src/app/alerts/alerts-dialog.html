@@ -2,6 +2,29 @@
 
 <mat-dialog-content>
   <p class="hint">{{ i18n.t('alerts.intro') }}</p>
+  @if (notifications.available) {
+    <div class="notify">
+      <mat-checkbox
+        [checked]="notifications.on()"
+        (change)="notifications.set($event.checked ? 'started' : 'off')"
+      >
+        {{ i18n.t('alerts.notify.started') }}
+      </mat-checkbox>
+      <mat-checkbox
+        class="ended"
+        [checked]="notifications.on() && notifications.setting() === 'startedAndEnded'"
+        [disabled]="!notifications.on()"
+        (change)="notifications.set($event.checked ? 'startedAndEnded' : 'started')"
+      >
+        {{ i18n.t('alerts.notify.ended') }}
+      </mat-checkbox>
+      @if (notifications.permission() === 'denied') {
+        <p class="hint">{{ i18n.t('alerts.notify.blocked') }}</p>
+      }
+    </div>
+  } @else if (!notifications.secure) {
+    <p class="hint">{{ i18n.t('alerts.notify.insecure') }}</p>
+  }
   @if (failed()) {
     <p class="hint" role="alert">{{ i18n.t('alerts.logFailed') }}</p>
   } @else if (log(); as log) {

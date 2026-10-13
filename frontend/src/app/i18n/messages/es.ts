@@ -302,12 +302,20 @@ export const es: Messages = {
   'alerts.openLog': 'Mostrar las alertas y el registro de las anteriores',
   'alerts.logTitle': 'Alertas',
   'alerts.intro':
-    'Los valores que requieren atención, como un disco lleno a más del 90 % o un servidor que no responde desde hace 2 minutos, y los anteriores. Solo se muestran en esta página; no se envía nada a ningún sitio.',
+    'Los valores que requieren atención, como un disco lleno a más del 90 % o un servidor que no responde desde hace 2 minutos, y los anteriores. Se muestran en esta página y en su pestaña; no se envía nada a ningún sitio.',
   'alerts.empty': 'Aún no hay alertas.',
   'alerts.logFailed': 'No se pudo leer el registro.',
   'alerts.since': 'desde {since}',
   'alerts.fromTo': 'del {from} al {to}',
   'alerts.onCard': 'Requiere atención',
+  'alerts.notify.started': 'Avisarme de las alertas nuevas mientras esta página esté abierta',
+  'alerts.notify.ended': 'También cuando termine una',
+  'alerts.notify.blocked':
+    'El navegador bloquea las notificaciones de esta página; permítelas en su configuración del sitio.',
+  'alerts.notify.insecure':
+    'Las notificaciones del navegador requieren abrir la página por https o en localhost; el título de la pestaña muestra igualmente el número de alertas.',
+  'alerts.notify.startedBody': '{level}: {text}',
+  'alerts.notify.endedBody': 'Terminada: {text}',
   'categories.pinned': 'Fijadas',
   'categories.system': 'Sistema',
   'categories.storage': 'Almacenamiento',

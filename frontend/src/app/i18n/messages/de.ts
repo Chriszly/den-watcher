@@ -302,12 +302,20 @@ export const de: Messages = {
   'alerts.openLog': 'Alarme und das Protokoll der früheren anzeigen',
   'alerts.logTitle': 'Alarme',
   'alerts.intro':
-    'Werte, die Aufmerksamkeit brauchen, etwa ein Datenträger über 90 % voll oder ein Server, der seit 2 Minuten nicht antwortet, und die früheren. Sie werden nur auf dieser Seite gezeigt; nichts wird irgendwohin gesendet.',
+    'Werte, die Aufmerksamkeit brauchen, etwa ein Datenträger über 90 % voll oder ein Server, der seit 2 Minuten nicht antwortet, und die früheren. Sie werden auf dieser Seite und in ihrem Tab gezeigt; nichts wird irgendwohin gesendet.',
   'alerts.empty': 'Bisher keine Alarme.',
   'alerts.logFailed': 'Das Protokoll konnte nicht gelesen werden.',
   'alerts.since': 'seit {since}',
   'alerts.fromTo': '{from} bis {to}',
   'alerts.onCard': 'Braucht Aufmerksamkeit',
+  'alerts.notify.started': 'Neue Alarme melden, solange diese Seite offen ist',
+  'alerts.notify.ended': 'Auch, wenn einer endet',
+  'alerts.notify.blocked':
+    'Der Browser blockiert Benachrichtigungen dieser Seite; erlaube sie in seinen Einstellungen für die Website.',
+  'alerts.notify.insecure':
+    'Benachrichtigungen des Browsers gehen nur, wenn die Seite über https oder als localhost geöffnet ist; der Titel des Tabs zeigt die Zahl der Alarme trotzdem.',
+  'alerts.notify.startedBody': '{level}: {text}',
+  'alerts.notify.endedBody': 'Beendet: {text}',
   'categories.pinned': 'Angeheftet',
   'categories.system': 'System',
   'categories.storage': 'Speicher',

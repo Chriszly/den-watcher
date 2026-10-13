@@ -300,12 +300,20 @@ export const fr: Messages = {
   'alerts.openLog': 'Afficher les alertes et le journal des précédentes',
   'alerts.logTitle': 'Alertes',
   'alerts.intro':
-    'Les valeurs qui demandent votre attention, comme un disque plein à plus de 90 % ou un serveur qui ne répond plus depuis 2 minutes, et les précédentes. Elles ne sont affichées que sur cette page ; rien n’est envoyé nulle part.',
+    'Les valeurs qui demandent votre attention, comme un disque plein à plus de 90 % ou un serveur qui ne répond plus depuis 2 minutes, et les précédentes. Elles sont affichées sur cette page et dans son onglet ; rien n’est envoyé nulle part.',
   'alerts.empty': 'Aucune alerte pour l’instant.',
   'alerts.logFailed': 'Le journal n’a pas pu être lu.',
   'alerts.since': 'depuis le {since}',
   'alerts.fromTo': 'du {from} au {to}',
   'alerts.onCard': 'Demande votre attention',
+  'alerts.notify.started': 'Me notifier les nouvelles alertes tant que cette page est ouverte',
+  'alerts.notify.ended': 'Aussi quand une alerte prend fin',
+  'alerts.notify.blocked':
+    'Le navigateur bloque les notifications de cette page ; autorisez-les dans ses paramètres du site.',
+  'alerts.notify.insecure':
+    'Les notifications du navigateur demandent que la page soit ouverte en https ou sur localhost ; le titre de l’onglet affiche tout de même le nombre d’alertes.',
+  'alerts.notify.startedBody': '{level} : {text}',
+  'alerts.notify.endedBody': 'Terminée : {text}',
   'categories.pinned': 'Épinglées',
   'categories.system': 'Système',
   'categories.storage': 'Stockage',

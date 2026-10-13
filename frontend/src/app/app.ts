@@ -1,6 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+import { AlertNotifications } from './alerts/alert-notifications';
+import { AlertTab } from './alerts/alert-tab';
 import { AlertsButton } from './alerts/alerts-button';
 import { Compare } from './compare/compare';
 import { ConnectionBanner } from './connection/connection-banner';
@@ -42,5 +44,8 @@ export class App {
 
   constructor() {
     this.devices.polling.pipe(takeUntilDestroyed()).subscribe();
+    // They tell about alerts in the tab's title and favicon and in the browser's notifications.
+    inject(AlertTab);
+    inject(AlertNotifications);
   }
 }

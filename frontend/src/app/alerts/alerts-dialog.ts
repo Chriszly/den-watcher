@@ -2,6 +2,7 @@ import { formatDate } from '@angular/common';
 import { Component, Injector, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
   MatDialog,
   MatDialogActions,
@@ -14,6 +15,7 @@ import { DeviceService } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
 import { Alert } from './alert';
 import { AlertIcon } from './alert-icon';
+import { AlertNotifications } from './alert-notifications';
 import { AlertService, alertDeviceName, alertText } from './alerts';
 
 /** The log of alerts: the ones that last first, then the ones that ended, newest first. */
@@ -22,6 +24,7 @@ import { AlertService, alertDeviceName, alertText } from './alerts';
   imports: [
     AlertIcon,
     MatButtonModule,
+    MatCheckboxModule,
     MatDialogActions,
     MatDialogClose,
     MatDialogContent,
@@ -32,6 +35,7 @@ import { AlertService, alertDeviceName, alertText } from './alerts';
 })
 export class AlertsDialog {
   protected readonly i18n = inject(I18n);
+  protected readonly notifications = inject(AlertNotifications);
   private readonly devices = inject(DeviceService);
 
   /** Null while the log is read. */
@@ -39,6 +43,7 @@ export class AlertsDialog {
   protected readonly failed = signal(false);
 
   constructor() {
+    this.notifications.refresh();
     inject(AlertService)
       .log()
       .pipe(takeUntilDestroyed())

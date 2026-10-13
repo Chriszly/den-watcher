@@ -11,6 +11,22 @@ p {
   color: var(--mat-sys-on-surface-variant);
 }
 
+.notify {
+  display: flex;
+  flex-direction: column;
+  /* The box's touch area is wider than the box; it lines up with the text above. */
+  margin: 0 0 0.75rem -0.625rem;
+}
+
+/* The second box only adds to the first, so it is set in below it. */
+.notify .ended {
+  margin-left: 1.5rem;
+}
+
+.notify .hint {
+  margin: 0.25rem 0 0 0.625rem;
+}
+
 ul {
   margin: 0;
   padding: 0;

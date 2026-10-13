@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Subscription } from 'rxjs';
 
-import { DEVICES_REFRESH_MS, DeviceService } from './devices';
+import { DEVICES_HIDDEN_REFRESH_MS, DEVICES_REFRESH_MS, DeviceService } from './devices';
 
 describe('DeviceService', () => {
   let http: HttpTestingController;
@@ -28,7 +28,7 @@ describe('DeviceService', () => {
     vi.restoreAllMocks();
   });
 
-  it('reads the list again every few seconds, but not while the page is hidden', () => {
+  it('reads the list again every few seconds, and only now and then while the page is hidden', () => {
     let visibilityState: DocumentVisibilityState = 'visible';
     vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibilityState);
     http.expectOne('/api/devices').flush({ devices: [{ id: 'local', name: '' }] });
@@ -38,8 +38,10 @@ describe('DeviceService', () => {
 
     visibilityState = 'hidden';
     document.dispatchEvent(new Event('visibilitychange'));
-    vi.advanceTimersByTime(10 * DEVICES_REFRESH_MS);
+    vi.advanceTimersByTime(DEVICES_HIDDEN_REFRESH_MS - 1);
     http.expectNone('/api/devices');
+    vi.advanceTimersByTime(1);
+    http.expectOne('/api/devices').flush({ devices: [{ id: 'local', name: '' }] });
 
     visibilityState = 'visible';
     document.dispatchEvent(new Event('visibilitychange'));
@@ -51,6 +53,7 @@ describe('DeviceService', () => {
       ],
     });
     expect(devices.devices().map((d) => d.id)).toEqual(['local', 'pi']);
+    expect(devices.loaded()).toBe(true);
   });
 
   it('keeps only this device when the list cannot be read, and tries again', () => {

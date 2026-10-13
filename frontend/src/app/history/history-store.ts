@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { Observable, catchError, defer, exhaustMap, of, share, switchMap, tap } from 'rxjs';
+import { Observable, catchError, defer, of, share, switchMap, tap } from 'rxjs';
 
 import { DeviceService } from '../devices/devices';
 import { MessageKey } from '../i18n/messages/en';
@@ -165,30 +165,28 @@ export class HistoryStore {
               live = LiveHistory.canKeep(history, span) ? new LiveHistory(history, span) : null;
             }),
           );
-        return this.page.ticks(refreshIntervalMs(span)).pipe(
-          exhaustMap(() =>
-            defer(() => {
-              const to = nowSeconds();
-              const kept = live;
-              const since = kept?.since() ?? null;
-              const whole = reads++ % FULL_READ_EVERY === 0;
-              if (!kept || since === null || whole) {
-                return readAll(to);
-              }
-              // The backend needs a range of at least a second.
-              const until = Math.max(to, since + 1);
-              return this.metrics.history(since, until, device).pipe(
-                switchMap((update) => {
-                  const history = kept.add(update);
-                  return history ? of(history) : readAll(to);
-                }),
-              );
-            }).pipe(
-              catchError(() => {
-                live = null;
-                return of(null);
+        return this.page.poll(refreshIntervalMs(span), () =>
+          defer(() => {
+            const to = nowSeconds();
+            const kept = live;
+            const since = kept?.since() ?? null;
+            const whole = reads++ % FULL_READ_EVERY === 0;
+            if (!kept || since === null || whole) {
+              return readAll(to);
+            }
+            // The backend needs a range of at least a second.
+            const until = Math.max(to, since + 1);
+            return this.metrics.history(since, until, device).pipe(
+              switchMap((update) => {
+                const history = kept.add(update);
+                return history ? of(history) : readAll(to);
               }),
-            ),
+            );
+          }).pipe(
+            catchError(() => {
+              live = null;
+              return of(null);
+            }),
           ),
         );
       }),

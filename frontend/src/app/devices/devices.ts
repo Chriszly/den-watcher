@@ -1,16 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import {
-  EMPTY,
-  Observable,
-  catchError,
-  exhaustMap,
-  from,
-  map,
-  switchMap,
-  tap,
-  throwError,
-} from 'rxjs';
+import { EMPTY, Observable, catchError, from, map, switchMap, tap, throwError } from 'rxjs';
 
 import { Alert } from '../alerts/alert';
 import { I18n } from '../i18n/i18n';
@@ -188,9 +178,11 @@ export class DeviceService {
    * Reads the list again and again while it is subscribed to, slowly while the page is hidden;
    * without the list only this device is shown. A failed read is skipped.
    */
-  readonly polling = inject(PageVisibility)
-    .ticks(DEVICES_REFRESH_MS, DEVICES_HIDDEN_REFRESH_MS)
-    .pipe(exhaustMap(() => this.load().pipe(catchError(() => EMPTY))));
+  readonly polling = inject(PageVisibility).poll(
+    DEVICES_REFRESH_MS,
+    () => this.load().pipe(catchError(() => EMPTY)),
+    DEVICES_HIDDEN_REFRESH_MS,
+  );
 
   /** Reads the list of devices from the backend. */
   load(): Observable<DeviceList> {

@@ -1,7 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { Observable, catchError, exhaustMap, forkJoin, map, of, switchMap } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { AlertLevel } from '../alerts/alert';
 import { AlertIcon } from '../alerts/alert-icon';
@@ -226,9 +226,9 @@ export class Compare {
     toObservable(computed(() => ({ range: this.range(), devices: this.charted() })))
       .pipe(
         switchMap(({ range, devices }) =>
-          this.page
-            .ticks(refreshIntervalMs(range.seconds))
-            .pipe(exhaustMap(() => this.readHistories(range.seconds, devices))),
+          this.page.poll(refreshIntervalMs(range.seconds), () =>
+            this.readHistories(range.seconds, devices),
+          ),
         ),
         takeUntilDestroyed(),
       )

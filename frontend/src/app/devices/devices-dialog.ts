@@ -36,9 +36,9 @@ import {
   tap,
 } from 'rxjs';
 
+import { saveFile } from '../browser';
 import { I18n } from '../i18n/i18n';
 import {
-  Backup,
   DEVICE_KINDS,
   Device,
   DeviceKind,
@@ -189,19 +189,10 @@ export class DevicesDialog {
   /** Asks for the password and downloads a copy of the hub's database. */
   protected backup(): void {
     this.change({ action: 'backup', deviceName: '' }, (result) =>
-      this.devices.backup(result.password).pipe(tap((backup) => this.save(backup))),
+      this.devices
+        .backup(result.password)
+        .pipe(tap((backup) => saveFile(this.document, backup.file, backup.name))),
     ).subscribe();
-  }
-
-  /** Hands the backup to the browser, which saves it like any download. */
-  private save(backup: Backup): void {
-    const url = URL.createObjectURL(backup.file);
-    const link = this.document.createElement('a');
-    link.href = url;
-    link.download = backup.name;
-    link.click();
-    // Some browsers read the file only after the click has returned.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
   /**

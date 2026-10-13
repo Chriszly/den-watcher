@@ -1,7 +1,7 @@
 import { Injector, runInInjectionContext } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { mediaMatches, observeWidth, readStored, store } from './browser';
+import { mediaMatches, observeWidth, readStored, saveFile, store } from './browser';
 
 describe('readStored and store', () => {
   afterEach(() => {
@@ -34,6 +34,34 @@ describe('readStored and store', () => {
   it('read nothing without a window', () => {
     expect(readStored(null, 'test')).toBeNull();
     expect(() => store(null, 'test', 'kept')).not.toThrow();
+  });
+});
+
+describe('saveFile', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('downloads the file under its name and lets its URL go a minute later', () => {
+    vi.useFakeTimers();
+    const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:file');
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const file = new Blob(['time,cpu\r\n']);
+
+    saveFile(document, file, 'nas.csv');
+
+    expect(create).toHaveBeenCalledWith(file);
+    const link = click.mock.contexts[0] as HTMLAnchorElement;
+    expect(link.download).toBe('nas.csv');
+    expect(link.href).toBe('blob:file');
+    vi.advanceTimersByTime(59_999);
+    expect(revoke).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(revoke).toHaveBeenCalledWith('blob:file');
   });
 });
 

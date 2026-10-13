@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, catchError, exhaustMap, map, of, share, tap } from 'rxjs';
+import { Observable, catchError, map, of, share, tap } from 'rxjs';
 
 import { MetricsService } from '../metrics/metrics';
 import { Summary, summarize } from '../metrics/summary';
@@ -23,9 +23,8 @@ export class FleetValues {
 
   /** Reads the values while it is subscribed to; any number of watchers share one read. */
   readonly watch: Observable<unknown> = inject(PageVisibility)
-    .ticks(FLEET_REFRESH_MS)
+    .poll(FLEET_REFRESH_MS, () => this.read())
     .pipe(
-      exhaustMap(() => this.read()),
       tap((summaries) => this.summaries.set(summaries)),
       share(),
     );

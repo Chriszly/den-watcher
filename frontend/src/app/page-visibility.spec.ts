@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
+import { Subject } from 'rxjs';
+
 import { PageVisibility } from './page-visibility';
 
 describe('PageVisibility', () => {
@@ -80,5 +82,25 @@ describe('PageVisibility', () => {
     vi.advanceTimersByTime(500);
 
     expect(ticks).toEqual([0, 1, 2]);
+  });
+
+  it('polls only once the previous read has answered', () => {
+    let reads = 0;
+    const answer = new Subject<string>();
+    const answers: string[] = [];
+    TestBed.inject(PageVisibility)
+      .poll(1000, () => {
+        reads++;
+        return answer;
+      })
+      .subscribe((value) => answers.push(value));
+    vi.advanceTimersByTime(2500);
+    expect(reads).toBe(1);
+
+    answer.next('read');
+    answer.complete();
+    vi.advanceTimersByTime(500);
+    expect(answers).toEqual(['read']);
+    expect(reads).toBe(2);
   });
 });

@@ -22,6 +22,19 @@ export function store(view: Window | null, key: string, value: string): void {
 }
 
 /**
+ * Hands a file to the browser, which saves it under name as for any download. The file's URL is
+ * let go a minute later, as some browsers read the file only after the click has returned.
+ */
+export function saveFile(document: Document, file: Blob, name: string): void {
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
  * Whether the media query matches, following its changes until the component or service that
  * calls it is destroyed; fallback where the browser cannot tell. Called where inject() works.
  */

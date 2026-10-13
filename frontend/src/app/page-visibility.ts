@@ -3,6 +3,7 @@ import {
   EMPTY,
   Observable,
   distinctUntilChanged,
+  exhaustMap,
   fromEvent,
   map,
   startWith,
@@ -41,5 +42,14 @@ export class PageVisibility {
             : EMPTY,
       ),
     );
+  }
+
+  /**
+   * Reads at once and then every intervalMs while the page is shown, as ticks does. A tick while
+   * the previous read is still on its way is skipped, so a slow backend is not asked again and
+   * again for what it has not answered.
+   */
+  poll<T>(intervalMs: number, read: () => Observable<T>, hiddenIntervalMs?: number): Observable<T> {
+    return this.ticks(intervalMs, hiddenIntervalMs).pipe(exhaustMap(read));
   }
 }

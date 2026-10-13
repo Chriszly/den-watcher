@@ -11,7 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { EMPTY, catchError, exhaustMap, of, switchMap, tap } from 'rxjs';
+import { EMPTY, catchError, of, switchMap, tap } from 'rxjs';
 
 import { AlertKind, AlertLevel } from '../alerts/alert';
 import { AlertChips } from '../alerts/alert-chips';
@@ -492,18 +492,12 @@ export class Dashboard {
           this.snapshot.set(null);
           this.problem.set(null);
         }),
-        // A tick while the previous reading is still on its way is skipped, so a
-        // slow backend is not asked again and again for what it has not answered.
         switchMap((device) =>
-          this.page
-            .ticks(REFRESH_INTERVAL_MS)
-            .pipe(
-              exhaustMap(() =>
-                this.metrics
-                  .current(device)
-                  .pipe(catchError((error: unknown) => of(problemOf(error, device)))),
-              ),
-            ),
+          this.page.poll(REFRESH_INTERVAL_MS, () =>
+            this.metrics
+              .current(device)
+              .pipe(catchError((error: unknown) => of(problemOf(error, device)))),
+          ),
         ),
         takeUntilDestroyed(),
       )
@@ -522,11 +516,9 @@ export class Dashboard {
         switchMap((device) =>
           device === LOCAL_DEVICE.id
             ? EMPTY
-            : this.page
-                .ticks(AVAILABILITY_REFRESH_MS)
-                .pipe(
-                  exhaustMap(() => this.devices.availability(device).pipe(catchError(() => EMPTY))),
-                ),
+            : this.page.poll(AVAILABILITY_REFRESH_MS, () =>
+                this.devices.availability(device).pipe(catchError(() => EMPTY)),
+              ),
         ),
         takeUntilDestroyed(),
       )

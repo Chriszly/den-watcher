@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { Component, DestroyRef, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+import { saveFile } from '../browser';
 import { DeviceService } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
 import { MetricsService } from '../metrics/metrics';
@@ -111,7 +112,11 @@ export class CsvDownload {
         next: (response) => {
           this.busy.set(false);
           if (response.body) {
-            this.save(response.body, fileNameOf(response.headers.get('Content-Disposition')));
+            saveFile(
+              this.document,
+              response.body,
+              fileNameOf(response.headers.get('Content-Disposition')),
+            );
           }
         },
         error: () => {
@@ -119,16 +124,5 @@ export class CsvDownload {
           this.failed.set(true);
         },
       });
-  }
-
-  /** Hands the file to the browser, which saves it under name as for any download. */
-  private save(file: Blob, name: string): void {
-    const url = URL.createObjectURL(file);
-    const link = this.document.createElement('a');
-    link.href = url;
-    link.download = name;
-    link.click();
-    // The browser has started the download by now; the file is not needed any longer.
-    setTimeout(() => URL.revokeObjectURL(url));
   }
 }

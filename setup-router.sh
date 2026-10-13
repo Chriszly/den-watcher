@@ -26,6 +26,13 @@ if [[ ! -t 0 ]]; then
   echo "Run this in a terminal; it asks for the router." >&2
   exit 1
 fi
+# A device that only serves its usage to a hub (DATA_ONLY) shows no routers
+# and would not start with one.
+data_only="$(sed -n 's/^DATA_ONLY=//p' "$env_file" 2> /dev/null | tail -n 1 | tr -d '[:space:]"'\''' || true)"
+if [[ "$data_only" =~ ^(1|t|T|true|TRUE|True)$ ]]; then
+  echo "This device only serves its usage to a hub (DATA_ONLY in .env), which shows no router. Set up the router on the hub instead." >&2
+  exit 1
+fi
 
 echo "den-watcher can show your router as a device: its internet traffic, and depending on the"
 echo "router its line, ports, clients, CPU, memory and temperatures."
@@ -78,8 +85,8 @@ if [[ "$kind" != 6 ]]; then
       esac
       read -r -p "The user $what${default_user:+ [default $default_user]} " user
       user="${user:-$default_user}"
-      if [[ ! "$user" =~ ^[^[:space:]@=,:]{1,64}$ ]]; then
-        echo "The user must be given, without spaces, @, =, , or :." >&2
+      if [[ ! "$user" =~ ^[^[:space:]@=,:\']{1,64}$ ]]; then
+        echo "The user must be given, without spaces, @, =, , : or '." >&2
         exit 1
       fi
       IFS= read -r -s -p "Its password (not shown): " password
@@ -111,11 +118,12 @@ if [[ ! -f "$env_file" ]]; then
   # Owned by whoever ran sudo, so it can be edited without it.
   chown "${SUDO_UID:-0}:${SUDO_GID:-0}" "$env_file"
 fi
+# In single quotes, so Compose takes a user with $, " or \ as it is.
 if grep -q '^HUB_ROUTERS=' "$env_file"; then
   escaped="$(printf '%s' "$entry" | sed 's/[\\&|]/\\&/g')"
-  sed -i "s|^HUB_ROUTERS=.*|HUB_ROUTERS=$escaped|" "$env_file"
+  sed -i "s|^HUB_ROUTERS=.*|HUB_ROUTERS='$escaped'|" "$env_file"
 else
-  printf '\nHUB_ROUTERS=%s\n' "$entry" >> "$env_file"
+  printf "\nHUB_ROUTERS='%s'\n" "$entry" >> "$env_file"
 fi
 
 rm -f "$secrets/router-passwords"

@@ -273,7 +273,7 @@ The router shows as *Router* in the *Devices* dialog and is removed only where i
 
 ## 6. Check other things on the network
 
-Things that cannot run den-watcher, such as a printer, a NAS, an IP camera or a smart TV, can still show on the hub as devices of their own: the hub checks every 15 seconds whether each one answers, and how long the answer took. The page shows the response time with its chart, and the time it did not answer as outages in its availability, like any device. Set a thing that is switched off when not in use, such as a TV, to *PC or laptop* in the *Devices* dialog, so that time counts as not in use instead.
+Things that cannot run den-watcher, such as a printer, a NAS, an IP camera or a smart TV, can still show on the hub as devices of their own: the hub checks every 15 seconds whether each one answers, and how long the answer took. The page shows the response time with its chart, and the time it did not answer as outages in its availability, like any device. A thing that is pinged gets 5 pings per check, 200 milliseconds apart, so the page also shows the packet loss, the share of them that got no answer, and the jitter, how much the response times varied, each with its chart: a Wi-Fi camera that loses pings now and then shows it there before it drops out. It counts as not answering only when none of the 5 is answered. Set a thing that is switched off when not in use, such as a TV, to *PC or laptop* in the *Devices* dialog, so that time counts as not in use instead.
 
 List them in `HUB_CHECKS`, each as `name=address:port` to connect to a TCP port, or `name=address` to ping:
 

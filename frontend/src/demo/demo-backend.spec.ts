@@ -124,6 +124,16 @@ describe('DemoBackend', () => {
     expect(s.extras?.[0].items[0].value).toBeGreaterThan(0);
   });
 
+  it('shows the packet loss and jitter of a check by ping', async () => {
+    const camera = FLEET.find((m) => m.checked && m.device.address === '192.168.1.60')!;
+    const s = await firstValueFrom(metrics.current(camera.device.id));
+    const items = s.extras?.[0].items ?? [];
+    expect(items.map((i) => i.id)).toEqual(['response-time', 'packet-loss', 'jitter', 'method']);
+    expect([0, 20, 40]).toContain(items[1].value);
+    expect(items[2].value).toBeGreaterThan(0);
+    expect(s.extras?.[0].description).toContain('pings it 5 times');
+  });
+
   it('reports the version the demo was built from, like the backend', async () => {
     // A test build sets neither a release nor a commit.
     expect((await firstValueFrom(metrics.current(LOCAL_DEVICE.id))).version).toBe('dev');

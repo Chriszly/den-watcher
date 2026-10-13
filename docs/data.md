@@ -86,7 +86,7 @@ A router read over UPnP reports one network card, *WAN*, with its traffic and th
 
 ## Checks
 
-A thing in `HUB_CHECKS`, such as a printer, reports only the extras *Reachability*: the response time in milliseconds, with its history (`extra:reachability/response-time`), and how it is checked, a TCP port or a ping. It reports no CPU, memory, disks, network cards, temperatures, time or uptime, and the page leaves those cards out. See [Check other things on the network](setup.md#6-check-other-things-on-the-network).
+A thing in `HUB_CHECKS`, such as a printer, reports only the extras *Reachability*: the response time in milliseconds, with its history (`extra:reachability/response-time`), and how it is checked, a TCP port or a ping. A check by ping also reports, each with its history, the packet loss in percent (`extra:reachability/packet-loss`), the share of the 5 pings of a check that got no answer, and the jitter in milliseconds (`extra:reachability/jitter`), the mean difference between the response times of answers one after the other; the jitter is left out when only one ping was answered. The response time of a check by ping is the mean of its answers. It reports no CPU, memory, disks, network cards, temperatures, time or uptime, and the page leaves those cards out. See [Check other things on the network](setup.md#6-check-other-things-on-the-network).
 
 ## GPUs
 

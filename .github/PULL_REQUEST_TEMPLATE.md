@@ -23,7 +23,7 @@
 
 <!-- How was this verified? Include the exact commands/script you ran. -->
 
-- [ ] Ran `bash ci/check-no-secrets.sh`
+- [ ] Ran `gitleaks git`
 - [ ] Ran the project's tests and linters
 - [ ] Opened the website and checked the changed part by hand (if the UI changed)
 

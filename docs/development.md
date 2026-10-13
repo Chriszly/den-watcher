@@ -77,7 +77,7 @@ To change a table, append a migration to `migrations` in `backend/internal/histo
 Run before opening a pull request:
 
 ```bash
-bash ci/check-no-secrets.sh
+gitleaks git
 bash ci/check-no-ai-links.sh
 bash ci/check-demo-covers-addons.sh
 (cd backend && gofmt -l . && golangci-lint run && go test ./... && go mod tidy -diff && go tool govulncheck ./...)

@@ -190,7 +190,7 @@ func (f *fetcher) fetch(ctx context.Context, minute time.Time) bool {
 	var answer MinutesAnswer
 	for range maxAnswersPerFetch {
 		answer = MinutesAnswer{}
-		err := f.agent.get(ctx, fmt.Sprintf("%s?after=%d&values=%d", f.agent.minutesURL, f.after, f.pageValues()), maxMinutesBytes, &answer)
+		_, err := f.agent.get(ctx, fmt.Sprintf("%s?after=%d&values=%d", f.agent.minutesURL, f.after, f.pageValues()), maxMinutesBytes, &answer)
 		var status *statusError
 		if errors.As(err, &status) && status.Code == http.StatusNotFound {
 			if f.tooOld.IsZero() {

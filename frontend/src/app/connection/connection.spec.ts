@@ -5,6 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DeviceService } from '../devices/devices';
 import {
   ANSWER_TIMEOUT_MS,
+  BACKUP_TIMEOUT_MS,
   CHANGE_TIMEOUT_MS,
   HubConnection,
   hubConnectionInterceptor,
@@ -117,6 +118,41 @@ describe('HubConnection', () => {
       expect(connection.lost()).toBe(false);
 
       vi.advanceTimersByTime(1);
+      expect(request.cancelled).toBe(true);
+      expect(connection.lost()).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives a backup as long as the hub gives itself, and a minute more', () => {
+    vi.useFakeTimers();
+    try {
+      client.post('/api/backup', {}).subscribe({ error: () => undefined });
+      const request = http.expectOne('/api/backup');
+
+      vi.advanceTimersByTime(10 * 60_000);
+      expect(request.cancelled).toBe(false);
+      expect(connection.lost()).toBe(false);
+      request.flush({});
+      expect(connection.lost()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives up on a backup the hub never sends', () => {
+    vi.useFakeTimers();
+    try {
+      let failed: unknown = null;
+      client.post('/api/backup', {}).subscribe({ error: (error: unknown) => (failed = error) });
+      const request = http.expectOne('/api/backup');
+
+      vi.advanceTimersByTime(BACKUP_TIMEOUT_MS - 1);
+      expect(request.cancelled).toBe(false);
+
+      vi.advanceTimersByTime(1);
+      expect(failed).not.toBeNull();
       expect(request.cancelled).toBe(true);
       expect(connection.lost()).toBe(true);
     } finally {

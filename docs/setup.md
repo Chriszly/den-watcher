@@ -75,7 +75,7 @@ The page answers when opened by an IP address, `localhost`, the machine's hostna
 ALLOWED_HOSTS=raspberrypi,pi.fritz.box
 ```
 
-Other names are refused with `421 Misdirected Request` ([why](architecture.md#local-network-only)).
+Other names are refused with `421 Misdirected Request` ([why](architecture.md#local-network-only)). List the names alone, with a port at most: an entry such as `http://pi.lan` is left out, and the log warns about it by name.
 
 ### Add the page to a phone's home screen
 
@@ -83,7 +83,7 @@ The page can be put on the home screen of a phone or tablet, with its name and t
 
 ### Show the page on a wall display
 
-Add `?kiosk` to the page's address, such as `http://raspberrypi.local:9393/?kiosk`, for a screen on the wall: the page leaves out the list of devices and every button for arranging the cards, picking the range, the language or the theme, shows its text larger, always shows the cards, also where that browser was switched to the timeline, and shows the alerts of every device above them, each with its device's name. On a hub it shows each device in turn for 30 seconds, those with an alert or that do not answer first; a PC or laptop that is switched off is skipped. `?kiosk=60` shows each for 60 seconds (10 at least). The page takes no clicks or keys then, so nothing on it changes by accident; it follows the screen's light or dark mode, and shows the language last picked in that browser, or else the browser's own. Open it in the browser's own full-screen or kiosk mode, such as `chromium --kiosk "http://raspberrypi.local:9393/?kiosk"`. The demo shows it too, with `?kiosk` added to its address.
+Add `?kiosk` to the page's address, such as `http://raspberrypi.local:9393/?kiosk`, for a screen on the wall: the page leaves out the list of devices and every button for arranging the cards, picking the range, the language or the theme, shows its text larger, always shows the cards, also where that browser was switched to the timeline, and shows the alerts of every device above them, each with its device's name. On a hub it shows each device in turn for 30 seconds, those with an alert or that do not answer first; a PC or laptop that is switched off is skipped. `?kiosk=60` shows each for 60 seconds (10 at least, a day at most). The page takes no clicks or keys then, so nothing on it changes by accident; it follows the screen's light or dark mode, and shows the language last picked in that browser, or else the browser's own. Open it in the browser's own full-screen or kiosk mode, such as `chromium --kiosk "http://raspberrypi.local:9393/?kiosk"`. The demo shows it too, with `?kiosk` added to its address.
 
 ## Or: set up a Linux machine without Docker
 
@@ -233,7 +233,7 @@ msiexec /i den-watcher-<version>-x64.msi REINSTALL=ALL REINSTALLMODE=m
 
 **Download backup** at the bottom of the dialog saves a copy of the hub's database, with the history and the devices, after asking for the password; see [Backups](database.md#backups).
 
-Removing a device deletes its history, availability and kind too, unless *Keep its history* is ticked; adding a device with the same name within `RETENTION_DAYS` then continues them, and the *since* date of its availability moves on by the time it was removed. The history is kept under the device's name, so renaming a device (removing it and adding it under a new name) starts a new history.
+Removing a device deletes its history, availability and kind too, and its alerts, reboots and updates, unless *Keep its history* is ticked; adding a device with the same name within `RETENTION_DAYS` then continues them, and the *since* date of its availability moves on by the time it was removed. The history is kept under the device's name, so renaming a device (removing it and adding it under a new name) starts a new history.
 
 Instead of the dialog, devices can be listed on the hub in `HUB_DEVICES`, each as `name=address:port`, separated by commas. They show as *Set in .env* and are removed only there:
 

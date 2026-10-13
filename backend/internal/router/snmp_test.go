@@ -623,3 +623,25 @@ func TestSNMPSkipsAnUnusableRAMRow(t *testing.T) {
 		}
 	}
 }
+
+func TestSNMPReadsTheFirstOfMoreRAMRows(t *testing.T) {
+	mib := routerMIB(100, 100, 100)
+	// More usable RAM rows than one, after the one in routerMIB.
+	for row := 2; row <= 9; row++ {
+		mib[fmt.Sprintf("1.3.6.1.2.1.25.2.3.1.2.%d", row)] = objectID(oidStorageTypeRAM)
+		mib[fmt.Sprintf("1.3.6.1.2.1.25.2.3.1.4.%d", row)] = integer(1024)
+		mib[fmt.Sprintf("1.3.6.1.2.1.25.2.3.1.5.%d", row)] = integer(int64(row) * 1000)
+		mib[fmt.Sprintf("1.3.6.1.2.1.25.2.3.1.6.%d", row)] = integer(500)
+	}
+	agent := newFakeSNMPAgent(t, mib)
+	reader := newTestSNMP(t, agent, false, "", "public")
+	for range 5 {
+		snapshot, err := reader.Collect(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if snapshot.Memory.TotalBytes != 262144*1024 {
+			t.Fatalf("got %d bytes of memory, want %d of the first row", snapshot.Memory.TotalBytes, 262144*1024)
+		}
+	}
+}

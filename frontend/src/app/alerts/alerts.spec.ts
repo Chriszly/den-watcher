@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { DeviceService, LOCAL_DEVICE } from '../devices/devices';
 import { I18n, LANGUAGE_STORAGE_KEY } from '../i18n/i18n';
+import { MissingParts } from '../update/missing-part';
 import { Alert } from './alert';
 import { AlertsButton } from './alerts-button';
 import { AlertService, alertDeviceName, alertText, worstLevel } from './alerts';
@@ -102,5 +103,24 @@ describe('AlertsButton', () => {
     expect(button?.querySelector('app-alert-icon')).not.toBeNull();
     TestBed.inject(HttpTestingController).verify();
     localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+  });
+
+  it('loads the log through MissingParts, so one that is missing is not just ignored', async () => {
+    TestBed.configureTestingModule({
+      imports: [AlertsButton],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const openAlertsDialog = vi.fn();
+    const load = vi
+      .spyOn(TestBed.inject(MissingParts), 'load')
+      .mockResolvedValue({ openAlertsDialog } as never);
+    const fixture = TestBed.createComponent(AlertsButton);
+    fixture.detectChanges();
+
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button')!.click();
+    await fixture.whenStable();
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(openAlertsDialog).toHaveBeenCalledTimes(1);
   });
 });

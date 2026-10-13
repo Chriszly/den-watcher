@@ -32,6 +32,10 @@ const (
 	// upnpSearchBackoff is how long a router that was not found is not
 	// searched for again.
 	upnpSearchBackoff = time.Minute
+	// upnpReadFailures is how many readings in a row must fail before the
+	// router's services are looked for again: one lost answer is not a
+	// router that restarted with its services elsewhere.
+	upnpReadFailures = 3
 )
 
 // The UPnP services that are read; the version after the last colon varies.
@@ -64,6 +68,7 @@ type UPnPReader struct {
 	// search goes to every device on the local network.
 	notFoundAt           time.Time
 	notFound             error
+	readFailures         int
 	received, sent       counter
 	connectionUptime     uint64
 	connectionUptimeRead bool
@@ -91,14 +96,19 @@ func (u *UPnPReader) Collect(ctx context.Context) (metrics.Snapshot, error) {
 	}
 	snapshot, err := u.read(ctx)
 	if err != nil {
-		// The router may have restarted with its services elsewhere, so
-		// they are looked for again, but not before upnpSearchBackoff: a
-		// router whose actions keep failing is not searched for with every
-		// reading.
-		u.common, u.connection = upnpService{}, upnpService{}
-		u.notFoundAt, u.notFound = time.Now(), err
+		// After readings that keep failing, the router may have restarted
+		// with its services elsewhere, so they are looked for again, but
+		// not before upnpSearchBackoff: a router whose actions keep failing
+		// is not searched for with every reading.
+		u.readFailures++
+		if u.readFailures >= upnpReadFailures {
+			u.common, u.connection = upnpService{}, upnpService{}
+			u.notFoundAt, u.notFound = time.Now(), err
+			u.readFailures = 0
+		}
 		return metrics.Snapshot{}, err
 	}
+	u.readFailures = 0
 	return snapshot, nil
 }
 

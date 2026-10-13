@@ -82,11 +82,11 @@ func forget(ctx context.Context, db *sql.DB, device string) error {
 	return nil
 }
 
-// forgetOthers deletes the availability and kind of every device but the kept ones:
-// the devices dropped from HUB_DEVICES without being added on the page, and
-// the ones removed on the page without keeping their history.
-func forgetOthers(ctx context.Context, db *sql.DB, kept []string) error {
-	rows, err := db.QueryContext(ctx, `SELECT device FROM hub_watched UNION SELECT device FROM hub_outages UNION SELECT device FROM hub_device_kinds`)
+// forgetOthers forgets every device but the kept ones: the devices dropped
+// from HUB_DEVICES without being added on the page, and the ones removed on
+// the page without keeping their history whose forgetting did not finish.
+func (h *Hub) forgetOthers(ctx context.Context, kept []string) error {
+	rows, err := h.store.DB().QueryContext(ctx, `SELECT device FROM hub_watched UNION SELECT device FROM hub_outages UNION SELECT device FROM hub_device_kinds`)
 	if err != nil {
 		return err
 	}
@@ -105,10 +105,10 @@ func forgetOthers(ctx context.Context, db *sql.DB, kept []string) error {
 		return err
 	}
 	for _, device := range gone {
-		if err := forget(ctx, db, device); err != nil {
+		if err := h.forgetDevice(ctx, device); err != nil {
 			return err
 		}
-		slog.Info("forgot the availability of a device no longer collected from", "device", device)
+		slog.Info("forgot a device no longer collected from", "device", device)
 	}
 	return nil
 }
@@ -151,9 +151,9 @@ func readAvailability(ctx context.Context, db *sql.DB, device string) (Availabil
 const outagesLimit = 500
 
 // readOutages returns the outages of device that lasted at some time from
-// from to to, oldest first.
+// from to to, oldest first: the newest outagesLimit of them.
 func readOutages(ctx context.Context, db *sql.DB, device string, from, to time.Time) ([]Outage, error) {
-	rows, err := db.QueryContext(ctx, `SELECT started, ended FROM hub_outages WHERE device = ? AND started <= ? AND ended >= ? ORDER BY started LIMIT ?`,
+	rows, err := db.QueryContext(ctx, `SELECT started, ended FROM hub_outages WHERE device = ? AND started <= ? AND ended >= ? ORDER BY started DESC LIMIT ?`,
 		device, to.UnixMilli(), from.UnixMilli(), outagesLimit)
 	if err != nil {
 		return nil, err
@@ -167,6 +167,7 @@ func readOutages(ctx context.Context, db *sql.DB, device string, from, to time.T
 		}
 		outages = append(outages, Outage{Start: time.UnixMilli(started).UTC(), End: time.UnixMilli(ended).UTC()})
 	}
+	slices.Reverse(outages)
 	return outages, rows.Err()
 }
 

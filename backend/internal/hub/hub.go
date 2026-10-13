@@ -89,6 +89,10 @@ type Hub struct {
 	owned         bool
 	ownGeneration uint64
 
+	// forgetters delete what is kept elsewhere about a device that is gone;
+	// see Forgetter.
+	forgetters []Forgetter
+
 	// mu guards remotes and removing.
 	mu      sync.Mutex
 	remotes []*Remote
@@ -96,6 +100,14 @@ type Hub struct {
 	// run or whose data is still being deleted, closed once that is done.
 	removing map[string]chan struct{}
 }
+
+// Forgetter deletes what is kept outside the hub about a device that is gone
+// for good, such as its alerts and events, so a device added later under the
+// same name does not take it over. The hub calls it whenever it forgets a
+// device: one removed on the page without its history, one dropped from
+// HUB_DEVICES, HUB_ROUTERS or HUB_CHECKS, and one removed with its history
+// kept longer than the retention ago.
+type Forgetter func(ctx context.Context, id string) error
 
 // Remote is another device the hub collects from.
 type Remote struct {
@@ -128,15 +140,19 @@ type Usage interface {
 // historyEntries disks, sensors, network cards and GPUs each of a device, for
 // retention. Every device is told pagePort, the port the hub's page is
 // reachable on. local reads the hub's own usage: a device added on the page
-// is not collected from at an address of its network cards either.
-func New(ctx context.Context, store *history.Store, fixed []Device, historyEntries int, retention time.Duration, pagePort string, local Usage) (*Hub, error) {
-	return newHub(ctx, store, fixed, historyEntries, retention, pagePort, local, false)
+// is not collected from at an address of its network cards either. The
+// forgetters are called for every device the hub forgets, also for the ones
+// it forgets while it starts. complete says fixed holds every device of the
+// settings; when one of them was left out for an error, it is false and the
+// devices missing from fixed are not forgotten at this start.
+func New(ctx context.Context, store *history.Store, fixed []Device, complete bool, historyEntries int, retention time.Duration, pagePort string, local Usage, forgetters ...Forgetter) (*Hub, error) {
+	return newHub(ctx, store, fixed, complete, historyEntries, retention, pagePort, local, false, forgetters...)
 }
 
 // newHub is New, with allowLoopback set before any device is collected from,
 // for tests.
-func newHub(ctx context.Context, store *history.Store, fixed []Device, historyEntries int, retention time.Duration, pagePort string, local Usage, allowLoopback bool) (*Hub, error) {
-	h := &Hub{store: store, historyEntries: historyEntries, retention: retention, pagePort: pagePort, suggester: defaultSuggester(), ctx: ctx, local: local, allowLoopback: allowLoopback}
+func newHub(ctx context.Context, store *history.Store, fixed []Device, complete bool, historyEntries int, retention time.Duration, pagePort string, local Usage, allowLoopback bool, forgetters ...Forgetter) (*Hub, error) {
+	h := &Hub{store: store, historyEntries: historyEntries, retention: retention, pagePort: pagePort, suggester: defaultSuggester(), ctx: ctx, local: local, allowLoopback: allowLoopback, forgetters: forgetters}
 	for _, schema := range []string{savedSchema, availabilitySchema, kindSchema, idSchema} {
 		if _, err := store.DB().ExecContext(ctx, schema); err != nil {
 			return nil, err
@@ -171,8 +187,12 @@ func newHub(ctx context.Context, store *history.Store, fixed []Device, historyEn
 	for _, device := range slices.Concat(fixed, saved) {
 		kept = append(kept, device.ID)
 	}
-	if err := forgetOthers(ctx, store.DB(), kept); err != nil {
-		return nil, err
+	if complete {
+		if err := h.forgetOthers(ctx, kept); err != nil {
+			return nil, err
+		}
+	} else {
+		slog.Warn("a setting of the devices to collect from has an error, so no device missing from them is forgotten at this start")
 	}
 	for _, device := range fixed {
 		h.start(device, true, nil)
@@ -587,11 +607,11 @@ func (h *Hub) unsave(ctx context.Context, id string, keepHistory bool) error {
 	return tx.Commit()
 }
 
-// forgetExpired forgets the availability and kind of the devices removed with
-// their history kept longer than the retention before now, as their history
-// is gone by then too.
+// forgetExpired forgets the devices removed with their history kept longer
+// than the retention before now, as their history is gone by then too.
 func (h *Hub) forgetExpired(ctx context.Context, now time.Time) error {
-	// Held so a device is not added again while it is forgotten.
+	// Held so a device is not added again while it is forgotten. The
+	// forgetters run under it too: they never wait for the hub.
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	rows, err := h.store.DB().QueryContext(ctx, `SELECT device FROM hub_kept WHERE removed < ?`, now.Add(-h.retention).Unix())
@@ -618,10 +638,10 @@ func (h *Hub) forgetExpired(ctx context.Context, now time.Time) error {
 			}
 			continue
 		}
-		if err := forget(ctx, h.store.DB(), device); err != nil {
+		if err := h.forgetDevice(ctx, device); err != nil {
 			return err
 		}
-		slog.Info("forgot the availability of a device removed longer than the retention ago", "device", device)
+		slog.Info("forgot a device removed longer than the retention ago", "device", device)
 	}
 	return nil
 }
@@ -644,14 +664,27 @@ func (h *Hub) keptHistory(ctx context.Context) ([]string, error) {
 	return kept, rows.Err()
 }
 
-// deleteData deletes the availability, kind and history of a removed device.
-// When the program stops meanwhile, what is left of its history ages out
-// with the retention.
+// forgetDevice deletes what the forgetters keep about device, then its
+// availability and kind. Those go last, so a device whose forgetting stopped
+// halfway, as the program stopped, is forgotten again at the next start (see
+// forgetOthers).
+func (h *Hub) forgetDevice(ctx context.Context, device string) error {
+	for _, forgetter := range h.forgetters {
+		if err := forgetter(ctx, device); err != nil {
+			return err
+		}
+	}
+	return forget(ctx, h.store.DB(), device)
+}
+
+// deleteData forgets a removed device and deletes its history. When the
+// program stops meanwhile, what is left of its history ages out with the
+// retention.
 func (h *Hub) deleteData(remote *Remote) {
 	if h.beforeDelete != nil {
 		h.beforeDelete(remote.ID)
 	}
-	err := forget(h.ctx, h.store.DB(), remote.ID)
+	err := h.forgetDevice(h.ctx, remote.ID)
 	if err == nil {
 		err = h.store.DeleteDevice(h.ctx, remote.ID)
 	}

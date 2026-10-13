@@ -18,6 +18,7 @@ import { LanguageSwitcher } from './language/language-switcher';
 import { Sidebar, SidebarState } from './layout/sidebar';
 import { Mascot } from './mascot/mascot';
 import { ThemeToggle } from './theme/theme-toggle';
+import { MissingPart, MissingParts } from './update/missing-part';
 import { UpdateNotice } from './update/update-notice';
 
 @Component({
@@ -32,6 +33,7 @@ import { UpdateNotice } from './update/update-notice';
     LanguageSwitcher,
     ManageButton,
     Mascot,
+    MissingPart,
     Sidebar,
     ThemeToggle,
     UpdateNotice,
@@ -45,6 +47,7 @@ export class App {
   protected readonly i18n = inject(I18n);
   protected readonly timeline = inject(TimelineMode);
   protected readonly kiosk = inject(KioskMode);
+  protected readonly parts = inject(MissingParts);
 
   /** The name of the device shown, which a wall display shows in the header instead of a list. */
   protected readonly selectedName = computed(() => deviceName(this.devices.selected(), this.i18n));

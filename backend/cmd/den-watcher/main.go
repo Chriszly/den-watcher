@@ -47,7 +47,8 @@
 //	                are shown as extras (default none: no add-ons)
 //	ALLOWED_HOSTS   comma-separated names this device answers to besides its
 //	                IP addresses, localhost, its hostname and .local names,
-//	                such as a name from the router's DNS (default none)
+//	                such as a name from the router's DNS, without http://;
+//	                another entry is left out with a warning (default none)
 //	PROMETHEUS      true to serve GET /metrics, the usage of this device and
 //	                of every device it collects from in the Prometheus text
 //	                format, for Prometheus and Grafana (default false)
@@ -65,6 +66,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -141,12 +143,16 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("check HUB_DEVICES: %w", err)
 	}
+	// complete is false when HUB_ROUTERS or HUB_CHECKS is left out for an
+	// error: the hub then forgets none of the devices it misses at this start.
+	complete := true
 	routers, err := routerDevices()
 	if err != nil {
 		// A wrong router setting must not stop this device's own
 		// monitoring: it runs without the routers, and the log says why.
 		slog.Error("the routers in HUB_ROUTERS are left out", "error", err)
 		routers = nil
+		complete = false
 	}
 	remotes = append(remotes, routers...)
 	checks, err := checkDevices()
@@ -154,6 +160,7 @@ func run(ctx context.Context) error {
 		// As with the routers, this device's own monitoring runs on.
 		slog.Error("the checks in HUB_CHECKS are left out", "error", err)
 		checks = nil
+		complete = false
 	}
 	remotes = append(remotes, checks...)
 	if err := hub.CheckFixed(remotes); err != nil {
@@ -195,6 +202,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 	defer func() { _ = listener.Close() }()
+	hosts := allowedHosts()
 
 	collector, err := metrics.NewCollector(context.Background(), diskPaths())
 	if err != nil {
@@ -227,7 +235,7 @@ func run(ctx context.Context) error {
 	if dataOnly {
 		minutes, wait := withBuffer(ctx, sampler, databasePath, bufferSpan, historyEntries)
 		waitForRecorders = wait
-		handler = server.NewDataOnly(sampler, minutes, listSetting("ALLOWED_HOSTS"))
+		handler = server.NewDataOnly(sampler, minutes, hosts)
 		slog.Info("serving only the usage data, for a hub; the website is turned off", "bufferHours", int(bufferSpan/time.Hour))
 	} else {
 		store, err := history.Open(context.Background(), databasePath)
@@ -235,11 +243,12 @@ func run(ctx context.Context) error {
 			return fmt.Errorf("open the history database %s: %w; set DATABASE_PATH to a writable file", databasePath, err)
 		}
 		defer func() { _ = store.Close() }()
-		site, wait, err := withHistory(ctx, sampler, store, remotes, retention, historyEntries, port, checkUpdates)
+		site, wait, err := withHistory(ctx, sampler, store, remotes, complete, retention, historyEntries, port, checkUpdates)
 		if err != nil {
 			return err
 		}
 		waitForRecorders = wait
+		site.AllowedHosts = hosts
 		site.Prometheus = prometheus
 		if prometheus {
 			slog.Info("serving the usage for Prometheus at /metrics")
@@ -293,7 +302,7 @@ func run(ctx context.Context) error {
 // function waits until they have stopped. Of each device's disks, sensors,
 // network cards and GPUs, the first historyEntries are kept. With
 // checkUpdates, a release asks GitHub for a newer one.
-func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.Store, fixed []hub.Device, retention time.Duration, historyEntries int, pagePort string, checkUpdates bool) (server.Site, func(), error) {
+func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.Store, fixed []hub.Device, complete bool, retention time.Duration, historyEntries int, pagePort string, checkUpdates bool) (server.Site, func(), error) {
 	devicesPassword, err := password.Open(ctx, store.DB())
 	if err != nil {
 		return server.Site{}, nil, err
@@ -309,11 +318,10 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		slog.Warn("RESET_PASSWORD deleted the password for changing devices; the next change chooses a new one. Unset RESET_PASSWORD again.")
 	}
 
-	others, err := hub.New(ctx, store, fixed, historyEntries, retention, pagePort, sampler.Reusing(reuseFor))
-	if err != nil {
-		return server.Site{}, nil, err
-	}
-
+	// The alerts and events are opened before the hub, which deletes them for
+	// every device it forgets, also while it starts. They look at the hub's
+	// devices only once they run.
+	var others *hub.Hub
 	localName := strings.TrimSpace(os.Getenv("DEVICE_NAME"))
 	watcher, err := alerts.Open(ctx, store.DB(), func() []alerts.Target {
 		return alertTargets(localName, sampler.Reusing(reuseFor), others)
@@ -325,6 +333,11 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 	happenings, err := events.Open(ctx, store.DB(), func() []events.Target {
 		return eventTargets(sampler.Reusing(reuseFor), others)
 	}, retention)
+	if err != nil {
+		return server.Site{}, nil, err
+	}
+
+	others, err = hub.New(ctx, store, fixed, complete, historyEntries, retention, pagePort, sampler.Reusing(reuseFor), watcher.Forget, happenings.Forget)
 	if err != nil {
 		return server.Site{}, nil, err
 	}
@@ -360,12 +373,11 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		Files:     web.Files(),
 		Update:    func() update.Status { return update.Status{Current: version.Version} },
 
-		AllowedHosts: listSetting("ALLOWED_HOSTS"),
-		Minutes:      history.Reader{Store: store, Recent: recent, Device: history.LocalDevice},
-		Alerts:       watcher,
-		Layout:       pageLayout,
-		Backups:      store,
-		Events:       happenings,
+		Minutes: history.Reader{Store: store, Recent: recent, Device: history.LocalDevice},
+		Alerts:  watcher,
+		Layout:  pageLayout,
+		Backups: store,
+		Events:  happenings,
 	}
 	if checker := update.NewChecker(version.Version); checker != nil && checkUpdates {
 		site.Update = checker.Status
@@ -607,10 +619,28 @@ func diskPathsHint(goos string, container bool) string {
 	}
 }
 
-// diskPaths returns the paths from DISK_PATHS, or the system disk when it is
-// not set.
+// allowedHosts returns the entries of ALLOWED_HOSTS that are names or IP
+// addresses. Each other one, such as http://pi.lan, is left out with a
+// warning instead of stopping the start, so an install that has one keeps
+// running after an update rather than restarting over and over in Docker or
+// failing to start as a Windows service.
+func allowedHosts() []string {
+	valid, invalid := server.SplitAllowedHosts(listSetting("ALLOWED_HOSTS"))
+	for _, entry := range invalid {
+		slog.Warn("an entry of ALLOWED_HOSTS is not a name or IP address and is left out; give the name alone, such as pi.lan, without http:// or a path", "entry", entry)
+	}
+	return valid
+}
+
+// diskPaths returns the paths from DISK_PATHS, each once, or the system disk
+// when it is not set.
 func diskPaths() []string {
-	paths := listSetting("DISK_PATHS")
+	var paths []string
+	for _, path := range listSetting("DISK_PATHS") {
+		if !slices.Contains(paths, path) {
+			paths = append(paths, path)
+		}
+	}
 	if len(paths) == 0 {
 		return []string{systemDisk()}
 	}

@@ -53,6 +53,10 @@ COPY --from=backend --chown=65532:65532 /out/data /data
 # The file keeps its name from before the rename, so a volume from then keeps
 # its history.
 ENV DATABASE_PATH=/data/usage-control.db
+# The folder SQLite sorts in when a sort outgrows its memory, such as for a
+# long history range. compose.yaml makes the rest of the container read-only,
+# where SQLite would find no folder it may write to and fail.
+ENV SQLITE_TMPDIR=/data
 VOLUME /data
 EXPOSE 9393
 ENTRYPOINT ["/den-watcher"]

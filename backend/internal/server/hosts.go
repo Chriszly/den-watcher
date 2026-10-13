@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/netip"
 	"os"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -54,6 +56,34 @@ func (k knownHosts) allows(hostHeader string) bool {
 		return true
 	}
 	return slices.Contains(k.allowed, host)
+}
+
+// hostName matches a host name as normalizeHost returns it.
+var hostName = regexp.MustCompile(`^[a-z0-9_-]+(\.[a-z0-9_-]+)*$`)
+
+// SplitAllowedHosts splits the entries of ALLOWED_HOSTS into the valid
+// ones, host names and IP addresses with an optional port, and the others,
+// such as a URL: http://pi.lan would otherwise allow the name http, and the
+// 421 would ask for a name that is already listed.
+func SplitAllowedHosts(names []string) (valid, invalid []string) {
+	for _, name := range names {
+		host := normalizeHost(name)
+		ok := hostName.MatchString(host)
+		if _, err := netip.ParseAddr(host); err == nil {
+			ok = true
+		}
+		if _, port, err := net.SplitHostPort(strings.TrimSpace(name)); err == nil {
+			if _, err := strconv.ParseUint(port, 10, 16); err != nil {
+				ok = false
+			}
+		}
+		if ok {
+			valid = append(valid, name)
+		} else {
+			invalid = append(invalid, name)
+		}
+	}
+	return valid, invalid
 }
 
 // normalizeHost returns the name or address in a Host header or an

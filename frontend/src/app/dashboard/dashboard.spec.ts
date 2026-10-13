@@ -1048,6 +1048,18 @@ describe('Dashboard', () => {
     expect(text()).toContain('Earlier since start: Throttled');
   });
 
+  it('names a throttling condition the page does not know by its own name', () => {
+    respond({
+      ...snapshot,
+      throttling: {
+        now: ['overcurrent' as never],
+        sinceBoot: ['overcurrent' as never, 'throttled'],
+      },
+    });
+    expect(text()).toContain('Now: overcurrent');
+    expect(text()).toContain('Earlier since start: Throttled');
+  });
+
   it('says "core" for a single core', () => {
     respond({ ...snapshot, cpu: { usagePercent: 3, cores: 1 } });
 

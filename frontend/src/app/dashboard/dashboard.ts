@@ -15,7 +15,7 @@ import { EMPTY, catchError, exhaustMap, of, switchMap, tap } from 'rxjs';
 
 import { Alert, AlertKind, AlertLevel } from '../alerts/alert';
 import { AlertIcon } from '../alerts/alert-icon';
-import { alertText, worstLevel } from '../alerts/alerts';
+import { alertText, throttlingText, worstLevel } from '../alerts/alerts';
 import { HubConnection } from '../connection/connection';
 import { CardCharts } from '../history/card-charts';
 import { CategoryCharts } from '../history/category-charts';
@@ -497,6 +497,10 @@ export class Dashboard {
         takeUntilDestroyed(),
       )
       .subscribe((availability) => this.availability.set(availability));
+
+    // A device that does not answer has no cards, but charts up to its last reading. On a wall
+    // display, without the range picker, nothing else on the page reads the history for them.
+    this.history.watch.pipe(takeUntilDestroyed()).subscribe();
   }
 
   /** The cards the device's values fill, in the order the page shows them within a category. */
@@ -813,7 +817,7 @@ export class Dashboard {
   }
 
   protected conditionList(conditions: ThrottlingCondition[]): string {
-    return conditions.map((c) => this.i18n.t(`dashboard.throttling.${c}`)).join(', ');
+    return conditions.map((c) => throttlingText(c, this.i18n)).join(', ');
   }
 
   /** The time of a reading as the device's own clock shows it, in the device's time zone. */

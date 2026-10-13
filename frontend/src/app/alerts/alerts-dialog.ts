@@ -1,8 +1,8 @@
 import { formatDate } from '@angular/common';
-import { Component, Injector, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, Injector, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatCheckboxChange, MatCheckboxModule } from '@angular/material/checkbox';
 import {
   MatDialog,
   MatDialogActions,
@@ -37,6 +37,7 @@ export class AlertsDialog {
   protected readonly i18n = inject(I18n);
   protected readonly notifications = inject(AlertNotifications);
   private readonly devices = inject(DeviceService);
+  private readonly changes = inject(ChangeDetectorRef);
 
   /** Null while the log is read. */
   protected readonly log = signal<Alert[] | null>(null);
@@ -52,6 +53,17 @@ export class AlertsDialog {
           this.log.set([...list.filter((a) => !a.ended), ...list.filter((a) => a.ended)]),
         error: () => this.failed.set(true),
       });
+  }
+
+  /**
+   * Switches notifications on or off. A box ticked for notifications the browser then refuses is
+   * unticked again here: they stay off, so its binding does not change and would leave it ticked.
+   */
+  protected async notify(change: MatCheckboxChange): Promise<void> {
+    // The box is drawn ticked first, so that taking the tick away again is drawn too.
+    this.changes.detectChanges();
+    await this.notifications.set(change.checked ? 'started' : 'off');
+    change.source.checked = this.notifications.on();
   }
 
   protected text(alert: Alert): string {

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -23,6 +25,7 @@ func TestDiskPaths(t *testing.T) {
 		{"", []string{systemDisk()}},
 		{"/", []string{"/"}},
 		{" /, /mnt/usb ,", []string{"/", "/mnt/usb"}},
+		{"/,/mnt/usb, /", []string{"/", "/mnt/usb"}},
 	}
 	for _, tt := range tests {
 		t.Setenv("DISK_PATHS", tt.value)
@@ -277,6 +280,21 @@ func TestRunStopsBeforeTheSetupWhenUpdateCheckIsInvalid(t *testing.T) {
 	}
 }
 
+func TestAllowedHostsLeavesOutAndNamesWrongEntries(t *testing.T) {
+	var logged bytes.Buffer
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Setenv("ALLOWED_HOSTS", "pi.fritz.box,http://pi.lan, pi.lan/ ,192.168.1.9")
+
+	if got, want := allowedHosts(), []string{"pi.fritz.box", "192.168.1.9"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("allowedHosts() = %q, want %q", got, want)
+	}
+	text := logged.String()
+	if strings.Count(text, "level=WARN") != 2 || !strings.Contains(text, "entry=http://pi.lan") || !strings.Contains(text, "entry=pi.lan/") {
+		t.Errorf("log = %q, want a warning naming each wrong entry", text)
+	}
+}
+
 func TestRunRefusesPrometheusWithDataOnly(t *testing.T) {
 	database := setUpRun(t, "127.0.0.1:0")
 	t.Setenv("DATA_ONLY", "true")
@@ -316,6 +334,8 @@ func TestRunServesUntilStopped(t *testing.T) {
 	addr := free.Addr().String()
 	_ = free.Close()
 	setUpRun(t, addr)
+	// A wrong entry in ALLOWED_HOSTS is left out; the device still starts.
+	t.Setenv("ALLOWED_HOSTS", "http://pi.lan")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	stopped := make(chan error, 1)

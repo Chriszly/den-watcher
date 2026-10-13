@@ -101,3 +101,10 @@ func CleanSystem(s *System) *System {
 	}
 	return &clean
 }
+
+// CleanText returns a text another device reported, such as its version, cut
+// to MaxTextLength characters with invalid UTF-8 replaced, as a hub shows and
+// stores it.
+func CleanText(text string) string {
+	return cut(text)
+}

@@ -51,8 +51,14 @@
     <!-- Loaded only on a wall display, so the page loads fast elsewhere. -->
     @defer {
       <app-kiosk-alerts />
+    } @error {
+      <app-missing-part />
     }
   } @else {
+    <!-- A dialog that could not be loaded, where the page was not reloaded for it. -->
+    @if (parts.missing()) {
+      <p class="missing-part" role="alert">{{ i18n.t('update.partMissing') }}</p>
+    }
     <app-update-notice />
     @if (!several) {
       <app-manage-button />
@@ -62,6 +68,8 @@
     <!-- The comparison is loaded only when it is opened, so the page loads fast. -->
     @defer {
       <app-compare />
+    } @error {
+      <app-missing-part />
     }
   } @else {
     <app-dashboard />

@@ -11,6 +11,12 @@ export const KIOSK_SECONDS = 30;
 /** The shortest time a device is shown, so a screen does not flicker from one to the next. */
 export const MIN_KIOSK_SECONDS = 10;
 
+/**
+ * The longest time a device is shown: a day. A browser fires a timer of more than about 24.8 days
+ * at once, so a longer time would show the next device at once, over and over.
+ */
+export const MAX_KIOSK_SECONDS = 86_400;
+
 /** The query string of the page's address; a token so tests can replace it. */
 export const PAGE_SEARCH = new InjectionToken<string>('page search', {
   factory: () => inject(DOCUMENT).location?.search ?? '',
@@ -18,7 +24,7 @@ export const PAGE_SEARCH = new InjectionToken<string>('page search', {
 
 /**
  * How many seconds a wall display shows each device, from `?kiosk` or `?kiosk=60` in the page's
- * address; null when the page is not shown on a wall display.
+ * address, from 10 seconds to a day; null when the page is not shown on a wall display.
  */
 export function kioskSeconds(search: string): number | null {
   const value = new URLSearchParams(search).get('kiosk');
@@ -29,7 +35,7 @@ export function kioskSeconds(search: string): number | null {
   if (value.trim() === '' || !Number.isFinite(seconds)) {
     return KIOSK_SECONDS;
   }
-  return Math.max(MIN_KIOSK_SECONDS, Math.round(seconds));
+  return Math.min(MAX_KIOSK_SECONDS, Math.max(MIN_KIOSK_SECONDS, Math.round(seconds)));
 }
 
 /** Whether a device has a problem: an alert, or it does not answer. */

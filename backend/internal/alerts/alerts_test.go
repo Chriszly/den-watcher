@@ -350,3 +350,122 @@ func TestBetweenReturnsTheAlertsOfADeviceThatLastedInTheRange(t *testing.T) {
 		t.Errorf("the lasting alert: %+v, %v", got, err)
 	}
 }
+
+func TestBetweenKeepsTheNewestAlerts(t *testing.T) {
+	ctx := context.Background()
+	targets := []Target{}
+	w, store := openTest(t, &targets)
+	start := time.Unix(1_800_000_000, 0)
+	for i := range BetweenLimit + 10 {
+		at := start.Add(time.Duration(i) * time.Minute)
+		if _, err := store.DB().ExecContext(ctx, `
+			INSERT INTO alerts (device, device_name, kind, subject, level, started, ended)
+			VALUES ('nas', 'NAS', 'cpu', '', 'warning', ?, ?)`, at.UnixMilli(), at.Add(30*time.Second).UnixMilli()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := w.Between(ctx, "nas", start, start.Add(24*time.Hour))
+	if err != nil || len(got) != BetweenLimit {
+		t.Fatalf("Between() = %d alerts, %v; want %d", len(got), err, BetweenLimit)
+	}
+	// The oldest are left out, so the newest are marked; still oldest first.
+	if first, last := got[0].Started, got[len(got)-1].Started; !first.Equal(start.Add(10*time.Minute)) || !last.Equal(start.Add((BetweenLimit+9)*time.Minute)) {
+		t.Errorf("alerts from %v to %v, want the newest %d", first, last, BetweenLimit)
+	}
+}
+
+func TestAnAlertWhoseEndCannotBeWrittenEndsLater(t *testing.T) {
+	ctx := context.Background()
+	u := &usage{snapshot: disk(99)}
+	targets := []Target{{ID: "nas", Name: "NAS", Usage: u}}
+	w, store := openTest(t, &targets)
+	now := time.Unix(1_800_000_000, 0)
+	w.Check(ctx, now)
+	if _, err := store.DB().ExecContext(ctx, `
+		CREATE TRIGGER fail_end BEFORE UPDATE OF ended ON alerts
+		BEGIN SELECT RAISE(FAIL, 'disk full'); END`); err != nil {
+		t.Fatal(err)
+	}
+
+	u.snapshot = disk(10)
+	w.Check(ctx, now.Add(Interval))
+	if got := w.Active("nas"); len(got) != 1 {
+		t.Fatalf("while its end cannot be written: %+v, want it to last", got)
+	}
+	if _, err := store.DB().ExecContext(ctx, `DROP TRIGGER fail_end`); err != nil {
+		t.Fatal(err)
+	}
+	w.Check(ctx, now.Add(2*Interval))
+	if got := w.Active("nas"); len(got) != 0 {
+		t.Fatalf("once its end can be written: %+v", got)
+	}
+	if log, err := w.Log(ctx); err != nil || len(log) != 1 || log[0].Ended == nil {
+		t.Errorf("log = %+v, %v; want the alert ended", log, err)
+	}
+}
+
+func TestForgetDeletesTheAlertsOfADevice(t *testing.T) {
+	ctx := context.Background()
+	nas := &usage{snapshot: disk(99)}
+	targets := []Target{{ID: "nas", Name: "NAS", Usage: nas}, {ID: "pi", Name: "Pi", Usage: &usage{snapshot: disk(99)}}}
+	w, _ := openTest(t, &targets)
+	now := time.Unix(1_800_000_000, 0)
+	w.Check(ctx, now)
+	nas.snapshot = disk(10)
+	w.Check(ctx, now.Add(Interval))
+	nas.snapshot = disk(99)
+	w.Check(ctx, now.Add(2*Interval))
+
+	// Removed without its history.
+	targets = targets[1:]
+	if err := w.Forget(ctx, "nas"); err != nil {
+		t.Fatalf("Forget() error = %v", err)
+	}
+	w.Check(ctx, now.Add(3*Interval))
+	if got := w.Active("nas"); len(got) != 0 {
+		t.Errorf("active = %+v, want none", got)
+	}
+	if got, err := w.Between(ctx, "nas", now, now.Add(time.Hour)); err != nil || len(got) != 0 {
+		t.Errorf("Between() = %+v, %v; want none", got, err)
+	}
+	if log, err := w.Log(ctx); err != nil || len(log) != 1 || log[0].Device != "pi" {
+		t.Errorf("log = %+v, %v; want only the Pi's alert", log, err)
+	}
+}
+
+// removedWhileRead is a device that is removed while its usage is read, so
+// its alerts are forgotten before the check ends.
+type removedWhileRead struct {
+	usage
+	w *Watcher
+}
+
+func (r *removedWhileRead) Collect(ctx context.Context) (metrics.Snapshot, error) {
+	if err := r.w.Forget(ctx, "nas"); err != nil {
+		return metrics.Snapshot{}, err
+	}
+	return r.usage.Collect(ctx)
+}
+
+func TestACheckDoesNotBringBackADeviceForgottenMeanwhile(t *testing.T) {
+	ctx := context.Background()
+	targets := []Target{{ID: "nas", Name: "NAS"}}
+	w, _ := openTest(t, &targets)
+	targets[0].Usage = &removedWhileRead{usage: usage{snapshot: disk(99)}, w: w}
+	now := time.Unix(1_800_000_000, 0)
+
+	w.Check(ctx, now)
+	if got := w.Active("nas"); len(got) != 0 {
+		t.Fatalf("active = %+v, want none of the forgotten device", got)
+	}
+	if log, err := w.Log(ctx); err != nil || len(log) != 0 {
+		t.Fatalf("log = %+v, %v; want none", log, err)
+	}
+
+	// Added again under the same name, the device has alerts again.
+	targets[0].Usage = &usage{snapshot: disk(99)}
+	w.Check(ctx, now.Add(Interval))
+	if got := w.Active("nas"); len(got) != 1 {
+		t.Errorf("active of the device added again = %+v, want its disk", got)
+	}
+}

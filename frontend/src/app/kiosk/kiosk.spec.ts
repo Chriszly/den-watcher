@@ -1,12 +1,14 @@
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { DeferBlockState, TestBed } from '@angular/core/testing';
 
 import { Alert } from '../alerts/alert';
 import { App } from '../app';
+import { Dashboard } from '../dashboard/dashboard';
 import { Device, DeviceService, LOCAL_DEVICE } from '../devices/devices';
 import { TIMELINE_STORAGE_KEY } from '../history/timeline';
 import { I18n, LANGUAGE_STORAGE_KEY } from '../i18n/i18n';
+import { PAGE_RELOAD } from '../update/missing-part';
 import { KioskMode, PAGE_SEARCH, kioskOrder, kioskSeconds, nextKioskDevice } from './kiosk';
 
 const disk: Alert = {
@@ -29,7 +31,7 @@ const fleet: Device[] = [
 ];
 
 describe('kiosk', () => {
-  it('reads the seconds from the address, at least 10', () => {
+  it('reads the seconds from the address, at least 10 and at most a day', () => {
     expect(kioskSeconds('')).toBeNull();
     expect(kioskSeconds('?device=pi')).toBeNull();
     expect(kioskSeconds('?kiosk')).toBe(30);
@@ -37,6 +39,8 @@ describe('kiosk', () => {
     expect(kioskSeconds('?kiosk=60')).toBe(60);
     expect(kioskSeconds('?kiosk=3')).toBe(10);
     expect(kioskSeconds('?kiosk=soon')).toBe(30);
+    expect(kioskSeconds('?kiosk=86400')).toBe(86400);
+    expect(kioskSeconds('?kiosk=3000000')).toBe(86400);
   });
 
   it('shows the devices with a problem first and leaves out a PC that is switched off', () => {
@@ -135,6 +139,27 @@ describe('App on a wall display', () => {
     expect(element.querySelector('main')?.hasAttribute('inert')).toBe(true);
   });
 
+  it('stands in for the alerts when they cannot be loaded', async () => {
+    TestBed.configureTestingModule({
+      imports: [App],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PAGE_SEARCH, useValue: '?kiosk' },
+        { provide: PAGE_RELOAD, useValue: vi.fn() },
+      ],
+    });
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    for (const block of await fixture.getDeferBlocks()) {
+      await block.render(DeferBlockState.Error);
+    }
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('app-kiosk-alerts')).toBeNull();
+    expect(element.querySelector('app-missing-part')).not.toBeNull();
+  });
+
   it('shows the cards, not the timeline picked in this browser, and keeps that choice', () => {
     localStorage.setItem(TIMELINE_STORAGE_KEY, 'true');
     try {
@@ -155,6 +180,30 @@ describe('App on a wall display', () => {
       expect(localStorage.getItem(TIMELINE_STORAGE_KEY)).toBe('true');
     } finally {
       localStorage.removeItem(TIMELINE_STORAGE_KEY);
+    }
+  });
+
+  it('reads the history of a device that does not answer, for its charts without cards', () => {
+    vi.useFakeTimers();
+    try {
+      TestBed.configureTestingModule({
+        imports: [Dashboard],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: PAGE_SEARCH, useValue: '?kiosk' },
+        ],
+      });
+      const http = TestBed.inject(HttpTestingController);
+      const fixture = TestBed.createComponent(Dashboard);
+      fixture.detectChanges();
+      vi.advanceTimersByTime(0);
+      http.expectOne('/api/metrics').flush('down', { status: 502, statusText: 'Bad Gateway' });
+      fixture.detectChanges();
+
+      expect(http.match((r) => r.url === '/api/history').length).toBe(1);
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

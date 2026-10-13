@@ -223,10 +223,12 @@ router_password=""
 router_name=""
 router_remove=""
 kind=""
-data_only="$(sed -n 's/^DATA_ONLY=//p' "$settings" 2> /dev/null | tail -n 1 | tr -d '[:space:]' || true)"
+data_only="$(sed -n 's/^DATA_ONLY=//p' "$settings" 2> /dev/null | tail -n 1 | tr -d '[:space:]"'\''' || true)"
 if [[ -t 0 && "${1:-}" != --addons=* && ! "$data_only" =~ ^(1|t|T|true|TRUE|True)$ ]]; then
   # No settings file yet on a first install.
   current="$(sed -n 's/^HUB_ROUTERS=//p' "$settings" 2> /dev/null | tail -n 1 || true)"
+  current="${current#\'}"
+  current="${current%\'}"
   echo
   echo "den-watcher can also show your router: its internet traffic, and depending on the router"
   echo "its line, ports, clients, CPU, memory and temperatures."
@@ -285,8 +287,8 @@ if [[ -t 0 && "${1:-}" != --addons=* && ! "$data_only" =~ ^(1|t|T|true|TRUE|True
         esac
         read -r -p "The user $what${default_user:+ [default $default_user]} " user
         user="${user:-$default_user}"
-        if [[ ! "$user" =~ ^[^[:space:]@=,:]{1,64}$ ]]; then
-          echo "The user must be given, without spaces, @, =, , or :." >&2
+        if [[ ! "$user" =~ ^[^[:space:]@=,:\']{1,64}$ ]]; then
+          echo "The user must be given, without spaces, @, =, , : or '." >&2
           exit 1
         fi
         IFS= read -r -s -p "Its password (not shown): " router_password
@@ -337,12 +339,13 @@ for addon in "${!addon_descriptions[@]}"; do
   fi
 done
 if [[ -n "$router_entry" || -n "$router_remove" ]]; then
-  # Settings files from before routers have no HUB_ROUTERS line yet.
+  # Settings files from before routers have no HUB_ROUTERS line yet. In
+  # single quotes, so systemd takes a user with \ or quotes as it is.
   if grep -q '^HUB_ROUTERS=' "$settings"; then
     escaped="$(printf '%s' "$router_entry" | sed 's/[\\&|]/\\&/g')"
-    sed -i "s|^HUB_ROUTERS=.*|HUB_ROUTERS=$escaped|" "$settings"
+    sed -i "s|^HUB_ROUTERS=.*|HUB_ROUTERS='$escaped'|" "$settings"
   else
-    printf '\nHUB_ROUTERS=%s\n' "$router_entry" >> "$settings"
+    printf "\nHUB_ROUTERS='%s'\n" "$router_entry" >> "$settings"
   fi
   rm -f "$router_passwords" "$router_dropin"
   if [[ -n "$router_password" ]]; then

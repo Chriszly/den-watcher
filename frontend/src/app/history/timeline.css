@@ -74,6 +74,16 @@ app-timeline-overview {
   color: var(--mat-sys-on-surface-variant);
 }
 
+/* In place of the rows, for a stretch zoomed into without a reading. */
+.nothing {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 1rem 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+  text-align: center;
+}
+
 /* The start, the time under the pointer and the end of the range, over the strips. */
 .axis {
   position: relative;

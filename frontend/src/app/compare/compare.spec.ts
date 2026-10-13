@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DeviceService } from '../devices/devices';
 import { History, Snapshot } from '../metrics/metrics';
 import { summarize } from '../metrics/summary';
-import { Compare, Row, largest, metric, sortRows } from './compare';
+import { Compare, Row, largest, metric, sortRows, within } from './compare';
 
 const snapshot: Snapshot = {
   time: '2026-10-02T17:00:00Z',
@@ -141,16 +141,29 @@ describe('metric', () => {
   });
 });
 
+describe('within', () => {
+  it('keeps the steps within the range, the one the range starts in too', () => {
+    const points = [0, 60, 120, 180, 240].map((time) => ({ time, value: 1 }));
+    expect(within(points, { from: 100, to: 240, step: 60 }).map((p) => p.time)).toEqual([
+      60, 120, 180,
+    ]);
+  });
+
+  it('drops a history that ends before the range, as of a device asleep', () => {
+    expect(within([{ time: 60, value: 1 }], { from: 3600, to: 7200, step: 60 })).toEqual([]);
+  });
+});
+
 describe('Compare', () => {
   let fixture: ComponentFixture<Compare>;
   let http: HttpTestingController;
 
-  const history = (cpu: number): History => ({
-    from: 0,
-    to: 3600,
+  const history = (cpu: number, time: number): History => ({
+    from: time - 60,
+    to: time + 3600,
     stepSeconds: 60,
     retentionDays: 30,
-    series: [{ metric: 'cpu', points: [{ time: 60, value: cpu }] }],
+    series: [{ metric: 'cpu', points: [{ time, value: cpu }] }],
   });
 
   beforeEach(() => {
@@ -184,7 +197,8 @@ describe('Compare', () => {
     vi.unstubAllGlobals();
   });
 
-  function answer(): void {
+  /** Answers the reads; the PC's history ends a day before the range when it is `asleep`. */
+  function answer(asleep = false): void {
     // The printer's usage could not be read.
     http.expectOne('/api/devices/metrics').flush({ local: snapshot, router });
     const cpu: Record<string, number> = { local: 40, router: 0, pc: 70 };
@@ -195,7 +209,9 @@ describe('Compare', () => {
       'pc',
     ]);
     for (const r of requests) {
-      r.flush(history(cpu[r.request.params.get('device') ?? 'local']));
+      const device = r.request.params.get('device') ?? 'local';
+      const from = Number(r.request.params.get('from'));
+      r.flush(history(cpu[device], device === 'pc' && asleep ? from - 86400 : from + 60));
     }
     fixture.detectChanges();
   }
@@ -223,7 +239,7 @@ describe('Compare', () => {
       ],
       ['Router', '–', '–', '–', '–', '↓ 1.0 KiB/s↑ 200 B/s', '–', '–'],
       ['Office PC', 'Not in use', '–'],
-      ['Printer', 'Not reachable', '–'],
+      ['Printer', 'No values right now', '–'],
     ]);
   });
 
@@ -278,7 +294,21 @@ describe('Compare', () => {
       (h) => h.textContent!.trim(),
     );
     expect(titles).toEqual(['CPU']);
+    expect(legend()).toEqual(['Hub', 'Office PC']);
   });
+
+  it('leaves out the line of a device whose history ends before the range', () => {
+    answer(true);
+    // With one line left, the chart needs no legend.
+    expect(legend()).toEqual([]);
+  });
+
+  function legend(): string[] {
+    return Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.charts .legend li'),
+      (li) => li.textContent!.trim(),
+    );
+  }
 
   it('shows a device on its own when its name is picked', () => {
     answer();

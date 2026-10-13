@@ -259,6 +259,7 @@ export const fr: Messages = {
   'timeline.wholeRange': 'Toute la période',
   'timeline.zoomHint': 'Faites glisser sur une ligne pour zoomer',
   'timeline.back': 'Retour',
+  'timeline.nothingRecorded': 'Rien n’a été enregistré sur cette période.',
   'events.ended': 'Terminé : {text}',
   'events.outage': "N'a pas répondu",
   'events.off': 'Éteint',
@@ -275,6 +276,8 @@ export const fr: Messages = {
   'bytes.unit.tib': 'Tio',
   'update.available': 'La version {latest} est disponible (cet appareil a la {current}).',
   'update.whatsNew': 'Nouveautés',
+  'update.partMissing':
+    'Cette partie de la page n’a pas pu être chargée. Rechargez la page pour réessayer.',
   'format.time': 'HH:mm',
   'format.timeSeconds': 'HH:mm:ss',
   'format.weekdayTime': 'EEE HH:mm',
@@ -391,6 +394,7 @@ export const fr: Messages = {
   'compare.alerts': 'Alertes',
   'compare.sortBy': 'Trier par cette colonne, la plus grande valeur en premier',
   'compare.open': 'Afficher cet appareil',
+  'compare.noValues': 'Aucune valeur pour le moment',
   'compare.overTime': 'Au fil du temps',
   'compare.system': 'Système',
   'compare.systemIntro':

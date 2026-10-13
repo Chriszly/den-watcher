@@ -136,6 +136,20 @@ func (s *SNMPReader) column(ctx context.Context, oid string) (map[string]snmpVal
 	return rows, nil
 }
 
+// sortedRows returns the row indexes of a column in their order.
+func sortedRows(column map[string]snmpValue) []string {
+	var rows []string
+	for row := range column {
+		rows = append(rows, row)
+	}
+	slices.SortFunc(rows, func(a, b string) int {
+		x, _ := strconv.Atoi(a)
+		y, _ := strconv.Atoi(b)
+		return x - y
+	})
+	return rows
+}
+
 // network turns the interface table into the traffic of each interface
 // that is up, by its name, measured since the reading before.
 func (s *SNMPReader) network(columns map[string]map[string]snmpValue, now time.Time, restarted bool) []metrics.NetworkInterface {
@@ -145,15 +159,7 @@ func (s *SNMPReader) network(columns map[string]map[string]snmpValue, now time.T
 	number := func(column, row string) (uint64, bool) {
 		return columns[column][row].numeric()
 	}
-	var rows []string
-	for row := range columns[oidIfOperStatus] {
-		rows = append(rows, row)
-	}
-	slices.SortFunc(rows, func(a, b string) int {
-		x, _ := strconv.Atoi(a)
-		y, _ := strconv.Atoi(b)
-		return x - y
-	})
+	rows := sortedRows(columns[oidIfOperStatus])
 	var interfaces []metrics.NetworkInterface
 	seen := map[string]bool{}
 	for _, row := range rows {
@@ -261,8 +267,10 @@ func (s *SNMPReader) memory(ctx context.Context) (metrics.Memory, error) {
 	if err != nil {
 		return metrics.Memory{}, err
 	}
-	for row, kind := range types {
-		if kind.text != oidStorageTypeRAM {
+	// The rows in their order, so a router with more usable RAM rows than
+	// one tells the same at every reading.
+	for _, row := range sortedRows(types) {
+		if types[row].text != oidStorageTypeRAM {
 			continue
 		}
 		binds, err := s.client.get(ctx, oidStorageUnits+"."+row, oidStorageSize+"."+row, oidStorageUsed+"."+row)

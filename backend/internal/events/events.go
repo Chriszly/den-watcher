@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"sync"
 	"time"
 
@@ -93,6 +94,10 @@ type Log struct {
 
 	mu   sync.Mutex
 	seen map[string]seen
+	// forgotten has, for each device Forget deleted, what forgets was then.
+	// forgets counts the calls to Forget.
+	forgotten map[string]uint64
+	forgets   uint64
 }
 
 // Open prepares the events tables in db. devices lists the devices to look
@@ -101,7 +106,7 @@ func Open(ctx context.Context, db *sql.DB, devices func() []Target, retention ti
 	if _, err := db.ExecContext(ctx, schema); err != nil {
 		return nil, fmt.Errorf("create the events tables: %w", err)
 	}
-	l := &Log{db: db, devices: devices, retention: retention, seen: map[string]seen{}}
+	l := &Log{db: db, devices: devices, retention: retention, seen: map[string]seen{}, forgotten: map[string]uint64{}}
 	rows, err := db.QueryContext(ctx, `SELECT device, uptime, version, written FROM events_seen`)
 	if err != nil {
 		return nil, fmt.Errorf("read the devices last seen: %w", err)
@@ -146,19 +151,31 @@ func (l *Log) Run(ctx context.Context) {
 // such as a printer, has no reboots, and one that tells no version, such as
 // a router, no updates.
 func (l *Log) Check(ctx context.Context, now time.Time) {
+	l.mu.Lock()
+	forgets := l.forgets
+	l.mu.Unlock()
 	for _, target := range l.devices() {
 		snapshot, err := target.Usage.Collect(ctx)
 		if err != nil {
 			continue
 		}
-		l.note(ctx, target.ID, snapshot.UptimeSeconds, snapshot.Version, now)
+		l.note(ctx, target.ID, snapshot.UptimeSeconds, snapshot.Version, now, forgets)
 	}
 }
 
-// note compares what a device is like now with its reading before.
-func (l *Log) note(ctx context.Context, device string, uptime uint64, version string, now time.Time) {
+// note compares what a device is like now with its reading before. forgets
+// is what l.forgets was before the devices were listed: a device forgotten
+// since was listed before it was removed, and is left out, so its last
+// reading is not written back; one forgotten before was added again.
+func (l *Log) note(ctx context.Context, device string, uptime uint64, version string, now time.Time, forgets uint64) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if at, ok := l.forgotten[device]; ok {
+		if at > forgets {
+			return
+		}
+		delete(l.forgotten, device)
+	}
 	before, known := l.seen[device]
 	if version == "" {
 		version = before.version
@@ -197,10 +214,14 @@ func (l *Log) note(ctx context.Context, device string, uptime uint64, version st
 	l.seen[device] = s
 }
 
-// Between returns the events of device from from to to, oldest first.
+// BetweenLimit is how many events Between returns at most.
+const BetweenLimit = 500
+
+// Between returns the events of device from from to to, oldest first: the
+// newest BetweenLimit of them.
 func (l *Log) Between(ctx context.Context, device string, from, to time.Time) ([]Event, error) {
-	rows, err := l.db.QueryContext(ctx, `SELECT time, kind, detail FROM events WHERE device = ? AND time >= ? AND time <= ? ORDER BY time`,
-		device, from.UnixMilli(), to.UnixMilli())
+	rows, err := l.db.QueryContext(ctx, `SELECT time, kind, detail FROM events WHERE device = ? AND time >= ? AND time <= ? ORDER BY time DESC, kind DESC LIMIT ?`,
+		device, from.UnixMilli(), to.UnixMilli(), BetweenLimit)
 	if err != nil {
 		return nil, fmt.Errorf("read the events: %w", err)
 	}
@@ -215,7 +236,29 @@ func (l *Log) Between(ctx context.Context, device string, from, to time.Time) ([
 		e.Time = time.UnixMilli(t)
 		list = append(list, e)
 	}
+	slices.Reverse(list)
 	return list, rows.Err()
+}
+
+// Forget deletes the events of a device the hub forgot, such as one removed
+// without its history, and how it was last seen, so a device added later
+// under the same name starts anew. A check that listed the devices before
+// does not write it back.
+func (l *Log) Forget(ctx context.Context, device string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.seen, device)
+	l.forgets++
+	l.forgotten[device] = l.forgets
+	for _, query := range []string{
+		`DELETE FROM events WHERE device = ?`,
+		`DELETE FROM events_seen WHERE device = ?`,
+	} {
+		if _, err := l.db.ExecContext(ctx, query, device); err != nil {
+			return fmt.Errorf("delete the events of a removed device: %w", err)
+		}
+	}
+	return nil
 }
 
 // prune deletes the events older than the retention.

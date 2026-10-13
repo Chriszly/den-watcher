@@ -63,12 +63,20 @@ export function alertText(alert: Alert, i18n: I18n): string {
   if (alert.kind === 'throttling') {
     subject = subject
       .split(',')
-      .map((c) =>
-        THROTTLING_CONDITIONS.includes(c) ? i18n.t(`dashboard.throttling.${c}` as MessageKey) : c,
-      )
+      .map((c) => throttlingText(c, i18n))
       .join(', ');
   }
   return i18n.t(`alerts.kind.${alert.kind}` as MessageKey, { subject, value });
+}
+
+/**
+ * A condition of a Raspberry Pi's power supply and cooling by its name on the page; one the page
+ * does not know, which a newer backend may send, by its own name.
+ */
+export function throttlingText(condition: string, i18n: I18n): string {
+  return THROTTLING_CONDITIONS.includes(condition)
+    ? i18n.t(`dashboard.throttling.${condition}` as MessageKey)
+    : condition;
 }
 
 /** The name of the device of an alert, as the page names it now where it still exists. */

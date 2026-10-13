@@ -218,6 +218,29 @@ func TestASUSKeepsTheTokenAfterAFailedPage(t *testing.T) {
 	}
 }
 
+func TestASUSDoesNotLogInAgainForAnAnswerThatDoesNotParse(t *testing.T) {
+	router := newFakeASUSRouter(t)
+	good := router.appGet
+	router.appGet = `{"cpu_usage":`
+	reader := router.reader("right")
+	for range 3 {
+		if _, err := reader.Collect(t.Context()); err == nil {
+			t.Fatal("read an answer that does not parse")
+		}
+	}
+	router.mu.Lock()
+	router.appGet = good
+	router.mu.Unlock()
+	if _, err := reader.Collect(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	router.mu.Lock()
+	defer router.mu.Unlock()
+	if router.logins != 1 {
+		t.Errorf("logged in %d times, want once with the token kept", router.logins)
+	}
+}
+
 func TestASUSDoesNotRetryAWrongPasswordAtOnce(t *testing.T) {
 	router := newFakeASUSRouter(t)
 	reader := router.reader("wrong")

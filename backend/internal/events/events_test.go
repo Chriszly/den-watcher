@@ -117,10 +117,10 @@ func TestBetweenAndPruneKeepToTheirTime(t *testing.T) {
 	l := openTest(t, filepath.Join(t.TempDir(), "events.db"), &targets)
 	old := time.Now().Add(-48 * time.Hour).Truncate(time.Second)
 	recent := time.Now().Add(-time.Hour).Truncate(time.Second)
-	l.note(ctx, "pc", 1000, "1.0.0", old)
-	l.note(ctx, "pc", 10, "1.0.0", old.Add(time.Minute))
-	l.note(ctx, "pc", 1000, "1.0.0", recent)
-	l.note(ctx, "pc", 10, "1.0.0", recent.Add(time.Minute))
+	l.note(ctx, "pc", 1000, "1.0.0", old, 0)
+	l.note(ctx, "pc", 10, "1.0.0", old.Add(time.Minute), 0)
+	l.note(ctx, "pc", 1000, "1.0.0", recent, 0)
+	l.note(ctx, "pc", 10, "1.0.0", recent.Add(time.Minute), 0)
 
 	got, err := l.Between(ctx, "pc", recent.Add(-time.Minute), time.Now())
 	if err != nil {
@@ -136,5 +136,104 @@ func TestBetweenAndPruneKeepToTheirTime(t *testing.T) {
 	l.prune(ctx)
 	if got := between(t, l, "pc"); len(got) != 1 {
 		t.Fatalf("after pruning: %+v, want only the recent reboot", got)
+	}
+}
+
+func TestBetweenKeepsTheNewestEvents(t *testing.T) {
+	ctx := context.Background()
+	targets := []Target{}
+	l := openTest(t, filepath.Join(t.TempDir(), "events.db"), &targets)
+	start := time.Unix(1_800_000_000, 0)
+	for i := range BetweenLimit + 10 {
+		if _, err := l.db.ExecContext(ctx, `INSERT INTO events (device, time, kind, detail) VALUES ('pc', ?, 'reboot', '')`,
+			start.Add(time.Duration(i)*time.Minute).UnixMilli()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := between(t, l, "pc")
+	if len(got) != BetweenLimit {
+		t.Fatalf("Between() = %d events, want %d", len(got), BetweenLimit)
+	}
+	// The oldest are left out, so the newest are marked; still oldest first.
+	if first, last := got[0].Time, got[len(got)-1].Time; !first.Equal(start.Add(10*time.Minute)) || !last.Equal(start.Add((BetweenLimit+9)*time.Minute)) {
+		t.Errorf("events from %v to %v, want the newest %d", first, last, BetweenLimit)
+	}
+}
+
+func TestForgetStartsADeviceAnew(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "events.db")
+	u := &usage{snapshot: reading(86400, "1.4.0")}
+	targets := []Target{{ID: "nas", Usage: u}}
+	l := openTest(t, path, &targets)
+	now := time.Unix(1_800_000_000, 0)
+	l.Check(ctx, now)
+	u.snapshot = reading(10, "1.4.0")
+	l.Check(ctx, now.Add(Interval))
+	u.snapshot = reading(86400, "1.4.0")
+	l.Check(ctx, now.Add(2*Interval))
+
+	// Removed without its history, then another device is added under the
+	// same name, with a lower uptime and an older version.
+	if err := l.Forget(ctx, "nas"); err != nil {
+		t.Fatalf("Forget() error = %v", err)
+	}
+	if got := between(t, l, "nas"); len(got) != 0 {
+		t.Fatalf("events after Forget = %+v, want none", got)
+	}
+	u.snapshot = reading(60, "1.3.0")
+	l.Check(ctx, now.Add(time.Hour))
+	if got := between(t, l, "nas"); len(got) != 0 {
+		t.Errorf("events of the new device = %+v, want no reboot or update", got)
+	}
+	// Also after a restart: how the old one was last seen is gone.
+	if err := l.Forget(ctx, "nas"); err != nil {
+		t.Fatal(err)
+	}
+	u.snapshot = reading(30, "1.2.0")
+	again := openTest(t, path, &targets)
+	again.Check(ctx, now.Add(2*time.Hour))
+	if got := between(t, again, "nas"); len(got) != 0 {
+		t.Errorf("events after a restart = %+v, want none", got)
+	}
+}
+
+// removedWhileRead is a device that is removed while its usage is read, so
+// its events are forgotten before the reading is noted.
+type removedWhileRead struct {
+	usage
+	l *Log
+}
+
+func (r *removedWhileRead) Collect(ctx context.Context) (metrics.Snapshot, error) {
+	if err := r.l.Forget(ctx, "nas"); err != nil {
+		return metrics.Snapshot{}, err
+	}
+	return r.usage.Collect(ctx)
+}
+
+func TestACheckDoesNotBringBackADeviceForgottenMeanwhile(t *testing.T) {
+	ctx := context.Background()
+	u := &usage{snapshot: reading(86400, "1.4.0")}
+	targets := []Target{{ID: "nas", Usage: u}}
+	l := openTest(t, filepath.Join(t.TempDir(), "events.db"), &targets)
+	now := time.Unix(1_800_000_000, 0)
+	l.Check(ctx, now)
+
+	targets[0].Usage = &removedWhileRead{usage: usage{snapshot: reading(86460, "1.4.0")}, l: l}
+	l.Check(ctx, now.Add(Interval))
+	var rows int
+	if err := l.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM events_seen WHERE device = 'nas'`).Scan(&rows); err != nil || rows != 0 {
+		t.Fatalf("events_seen rows of the forgotten device = %d, %v; want none", rows, err)
+	}
+
+	// Added again under the same name, the newer device is looked at anew.
+	targets[0].Usage = u
+	u.snapshot = reading(60, "1.3.0")
+	l.Check(ctx, now.Add(time.Hour))
+	u.snapshot = reading(10, "1.3.0")
+	l.Check(ctx, now.Add(time.Hour+Interval))
+	if got := between(t, l, "nas"); len(got) != 1 || got[0].Kind != KindReboot {
+		t.Errorf("events of the device added again = %+v, want only its reboot", got)
 	}
 }

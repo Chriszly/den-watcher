@@ -56,7 +56,7 @@ export class TimelineMode {
   template: `
     @if (whole(); as w) {
       @if (shown(); as h) {
-        @if (lines().length > 0) {
+        @if (wholeLines().length > 0) {
           <nav class="trail" [attr.aria-label]="i18n.t('timeline.trail')">
             <button
               type="button"
@@ -136,6 +136,8 @@ export class TimelineMode {
                 [cursor]="shownCursor()"
                 (hover)="cursor.set($event)"
               />
+            } @empty {
+              <p class="nothing" role="listitem">{{ i18n.t('timeline.nothingRecorded') }}</p>
             }
           </div>
         }
@@ -189,10 +191,14 @@ export class Timeline {
    */
   protected readonly lines = computed(() => linesOf(this.deviceCharts.categoriesOf(this.shown())));
 
+  /**
+   * The lines over the whole range. While it has any, the timeline shows with its trail, also for a
+   * stretch zoomed into that has none, such as a night a PC was switched off.
+   */
+  protected readonly wholeLines = computed(() => linesOf(this.deviceCharts.byCategory()));
+
   /** The first value over the whole range, usually the CPU, for the strip above the rows. */
-  protected readonly overviewLine = computed(
-    (): TimelineLine | undefined => linesOf(this.deviceCharts.byCategory())[0],
-  );
+  protected readonly overviewLine = computed((): TimelineLine | undefined => this.wholeLines()[0]);
 
   /**
    * The step under the pointer while it is a step of the shown history; one left from before the

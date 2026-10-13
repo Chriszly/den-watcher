@@ -26,27 +26,69 @@ if [[ ! -t 0 ]]; then
   echo "Run this in a terminal; it asks for the router." >&2
   exit 1
 fi
+# The value of a setting in .env, without quotes and without a comment after
+# it, which Compose leaves out too.
+setting() {
+  sed -n "s/^$1=//p" "$env_file" 2> /dev/null | tail -n 1 | sed 's/[[:space:]]#.*//' | tr -d '[:space:]"'\''' || true
+}
 
-echo "den-watcher can show your router as a device: its internet traffic, and depending on the"
-echo "router its line, ports, clients, CPU, memory and temperatures."
-echo "Read from the router over the local network only. No data is sent to any server;"
-echo "everything stays on your own devices, and a router password is stored encrypted where"
-echo "the system allows it."
-echo "Which router is it? A login is only asked for where the router needs one."
-echo "  1) Any router with UPnP (Technicolor, most internet providers' boxes): internet traffic,"
-echo "     no login; UPnP must be switched on in the router's settings"
-echo "  2) ASUS, with its login: CPU, memory, ports, Wi-Fi, clients and temperatures"
-echo "  3) FRITZ!Box, with a FRITZ!Box user: internet traffic, line, noise margin and clients;"
-echo "     allow access for applications in Home Network > Network > Network Settings"
-echo "  4) A router with SNMP v2c (MikroTik, OpenWrt, Ubiquiti, business routers): traffic"
-echo "     of every port, CPU and memory, with its community"
-echo "  5) A router with SNMPv3: the same, with a user and password"
-echo "  6) none: stop showing a router"
-read -r -p "[1-6, default 1] " kind
-kind="${kind:-1}"
-if [[ ! "$kind" =~ ^[1-6]$ ]]; then
-  echo "Choose one of 1 to 6." >&2
-  exit 1
+kind=""
+# The other settings in .env DATA_ONLY does not start with, comma-separated:
+# without the router, the device still does not start while one is set.
+still_set=""
+# A device that only serves its usage to a hub (DATA_ONLY) shows no routers
+# and would not start with one; one that has a router all the same can only
+# stop showing it.
+if [[ "$(setting DATA_ONLY)" =~ ^(1|t|T|true|TRUE|True)$ ]]; then
+  if [[ -z "$(setting HUB_ROUTERS)" ]]; then
+    echo "This device only serves its usage to a hub (DATA_ONLY in .env), which shows no router. Set up the router on the hub instead." >&2
+    exit 1
+  fi
+  for other in HUB_DEVICES HUB_CHECKS; do
+    if [[ -n "$(setting "$other")" ]]; then
+      still_set="${still_set:+$still_set, }$other"
+    fi
+  done
+  if [[ "$(setting PROMETHEUS)" =~ ^(1|t|T|true|TRUE|True)$ ]]; then
+    still_set="${still_set:+$still_set, }PROMETHEUS"
+  fi
+  echo "This device only serves its usage to a hub (DATA_ONLY in .env), which shows no router,"
+  echo "and does not start while HUB_ROUTERS in .env names one. Set up the router on the hub instead."
+  if [[ -n "$still_set" ]]; then
+    echo "Nor does it start with $still_set in .env, which this does not change."
+    read -r -p "Stop showing a router here? [y/n, default y] " answer
+  else
+    read -r -p "Stop showing a router here, so it starts again? [y/n, default y] " answer
+  fi
+  if [[ "${answer:-y}" != [yY]* ]]; then
+    echo "Nothing changed. Remove HUB_ROUTERS${still_set:+, $still_set} from .env, or DATA_ONLY to give this device its own page." >&2
+    exit 1
+  fi
+  kind=6
+fi
+
+if [[ -z "$kind" ]]; then
+  echo "den-watcher can show your router as a device: its internet traffic, and depending on the"
+  echo "router its line, ports, clients, CPU, memory and temperatures."
+  echo "Read from the router over the local network only. No data is sent to any server;"
+  echo "everything stays on your own devices, and a router password is stored encrypted where"
+  echo "the system allows it."
+  echo "Which router is it? A login is only asked for where the router needs one."
+  echo "  1) Any router with UPnP (Technicolor, most internet providers' boxes): internet traffic,"
+  echo "     no login; UPnP must be switched on in the router's settings"
+  echo "  2) ASUS, with its login: CPU, memory, ports, Wi-Fi, clients and temperatures"
+  echo "  3) FRITZ!Box, with a FRITZ!Box user: internet traffic, line, noise margin and clients;"
+  echo "     allow access for applications in Home Network > Network > Network Settings"
+  echo "  4) A router with SNMP v2c (MikroTik, OpenWrt, Ubiquiti, business routers): traffic"
+  echo "     of every port, CPU and memory, with its community"
+  echo "  5) A router with SNMPv3: the same, with a user and password"
+  echo "  6) none: stop showing a router"
+  read -r -p "[1-6, default 1] " kind
+  kind="${kind:-1}"
+  if [[ ! "$kind" =~ ^[1-6]$ ]]; then
+    echo "Choose one of 1 to 6." >&2
+    exit 1
+  fi
 fi
 
 entry=""
@@ -78,8 +120,8 @@ if [[ "$kind" != 6 ]]; then
       esac
       read -r -p "The user $what${default_user:+ [default $default_user]} " user
       user="${user:-$default_user}"
-      if [[ ! "$user" =~ ^[^[:space:]@=,:]{1,64}$ ]]; then
-        echo "The user must be given, without spaces, @, =, , or :." >&2
+      if [[ ! "$user" =~ ^[^[:space:]@=,:\']{1,64}$ ]]; then
+        echo "The user must be given, without spaces, @, =, , : or '." >&2
         exit 1
       fi
       IFS= read -r -s -p "Its password (not shown): " password
@@ -111,11 +153,12 @@ if [[ ! -f "$env_file" ]]; then
   # Owned by whoever ran sudo, so it can be edited without it.
   chown "${SUDO_UID:-0}:${SUDO_GID:-0}" "$env_file"
 fi
+# In single quotes, so Compose takes a user with $, " or \ as it is.
 if grep -q '^HUB_ROUTERS=' "$env_file"; then
   escaped="$(printf '%s' "$entry" | sed 's/[\\&|]/\\&/g')"
-  sed -i "s|^HUB_ROUTERS=.*|HUB_ROUTERS=$escaped|" "$env_file"
+  sed -i "s|^HUB_ROUTERS=.*|HUB_ROUTERS='$escaped'|" "$env_file"
 else
-  printf '\nHUB_ROUTERS=%s\n' "$entry" >> "$env_file"
+  printf "\nHUB_ROUTERS='%s'\n" "$entry" >> "$env_file"
 fi
 
 rm -f "$secrets/router-passwords"
@@ -129,6 +172,10 @@ fi
 
 if [[ -n "$entry" ]]; then
   echo "Router: $name. Start it with: docker compose up -d"
+elif [[ -n "$still_set" ]]; then
+  echo "No router is shown any more, but with DATA_ONLY the device still does not start while"
+  echo ".env sets $still_set: remove $still_set, or DATA_ONLY to give this device its own page,"
+  echo "then apply it with: docker compose up -d"
 else
   echo "No router is shown any more. Apply it with: docker compose up -d"
 fi

@@ -1145,11 +1145,12 @@ const piHub: DemoMachine = {
       swap: vary(t, step, 3, 4, [[2, 86400]]),
       'temperature:cpu_thermal': 44 + cpu * 0.35 + vary(t, step, 4, 0, [[2, 300]], -5, 5),
       'disk:/': vary(t, step, 5, 21, [[0.3, 86400 * 5]]),
-      'disk:/mnt/usb': vary(t, step, 6, 46, [[1, 86400 * 9]]),
+      // Recordings fill the USB disk by about 1.6 % (15 GB) a day, so it is full in under two weeks.
+      'disk:/mnt/usb': vary(t, step, 6, 79 + (1.6 * (t - openedAt)) / 86400, [[0.3, 86400]]),
       'disk.read:/': vary(t, step, 7, 40e3, [[35e3, 60]], 0, 1e9),
       'disk.write:/': vary(t, step, 8, 180e3, [[150e3, 30]], 0, 1e9),
       'disk.read:/mnt/usb': vary(t, step, 9, 5e3, [[5e3, 120]], 0, 1e9),
-      'disk.write:/mnt/usb': vary(t, step, 10, 60e3, [[55e3, 90]], 0, 1e9),
+      'disk.write:/mnt/usb': vary(t, step, 10, 175e3, [[55e3, 90]], 0, 1e9),
       'network.receive:eth0': vary(
         t,
         step,
@@ -1562,7 +1563,8 @@ const linuxNas: DemoMachine = {
         Math.floor((smartReadAt(t) - openedAt) / 3600) + 21_395,
       'extra:smart/zrt0abcd-reallocated': t < openedAt - 9 * 86400 ? 0 : 8,
       'disk:/': vary(t, step, 95, 31, [[0.3, 86400 * 5]]),
-      'disk:/srv/data': vary(t, step, 96, 71, [[1.5, 86400 * 12]]),
+      // The photos and videos fill the data disk slowly, so it is full in about a month.
+      'disk:/srv/data': vary(t, step, 96, 71 + (0.9 * (t - openedAt)) / 86400, [[0.3, 86400]]),
       'disk:/srv/backup': vary(t, step, 97, 96.5, [[1.2, 86400 * 6]]),
       'disk.read:/': vary(t, step, 98, 20e3, [[20e3, 60]], 0, 1e9),
       'disk.write:/': vary(t, step, 99, 60e3, [[50e3, 30]], 0, 1e9),

@@ -369,6 +369,7 @@
                                     })
                                   }}
                                 </p>
+                                <app-disk-forecast [path]="d.path" [percent]="d.usedPercent" />
                               </div>
                             } @empty {
                               <p class="detail">{{ i18n.t('dashboard.noDisk') }}</p>

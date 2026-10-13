@@ -2,6 +2,7 @@ import {
   HttpBackend,
   HttpErrorResponse,
   HttpEvent,
+  HttpHeaders,
   HttpRequest,
   HttpResponse,
 } from '@angular/common/http';
@@ -97,6 +98,19 @@ export class DemoBackend implements HttpBackend {
             now,
           ),
         );
+      case '/api/history.csv': {
+        const h = historyEndingAtLastReading(
+          machine,
+          Number(url.searchParams.get('from')),
+          Number(url.searchParams.get('to')),
+          now,
+        );
+        return respondWithFile(
+          request,
+          new Blob([historyCsv(h.series)], { type: 'text/csv;charset=utf-8' }),
+          csvFileName(machine.device.name, h.from, h.to),
+        );
+      }
       case '/api/availability':
         return respond(request, availability(machine, now));
       default:
@@ -252,6 +266,60 @@ function availability(machine: DemoMachine, now: number): Availability {
 
 function iso(t: number): string {
   return new Date(t * 1000).toISOString();
+}
+
+/**
+ * The history as GET /api/history.csv answers it: a header with "time" and each metric, then a
+ * row for each time, in ISO 8601 UTC, with an empty cell where a metric has no value then.
+ */
+export function historyCsv(series: Series[]): string {
+  const values = series.map((s) => new Map(s.points.map((p) => [p.time, p.value])));
+  const times = [...new Set(series.flatMap((s) => s.points.map((p) => p.time)))].sort(
+    (a, b) => a - b,
+  );
+  const rows = [
+    ['time', ...series.map((s) => textCell(s.metric))],
+    ...times.map((t) => [
+      new Date(t * 1000).toISOString().replace('.000Z', 'Z'),
+      ...values.map((v) => (v.has(t) ? String(v.get(t)) : '')),
+    ]),
+  ];
+  return rows.map((row) => row.map(quoted).join(',') + '\r\n').join('');
+}
+
+/** A text cell a spreadsheet does not take for a formula, like the backend writes it. */
+function textCell(text: string): string {
+  return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+}
+
+function quoted(cell: string): string {
+  return /[",\r\n]/.test(cell) || cell.startsWith(' ') ? `"${cell.replaceAll('"', '""')}"` : cell;
+}
+
+/** The name the backend gives the file, such as "Linux-NAS-20261013T120000Z-20261013T130000Z.csv". */
+export function csvFileName(name: string, from: number, to: number): string {
+  const clean =
+    name.replace(/[^\p{L}\p{N}._-]+/gu, '-').replace(/^[-.]+|[-.]+$/g, '') || 'den-watcher';
+  const stamp = (t: number) =>
+    new Date(t * 1000)
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d+Z$/, 'Z');
+  return `${clean}-${stamp(from)}-${stamp(to)}.csv`;
+}
+
+function respondWithFile(
+  request: HttpRequest<unknown>,
+  file: Blob,
+  name: string,
+): Observable<HttpEvent<Blob>> {
+  const headers = new HttpHeaders({
+    'Content-Type': file.type,
+    'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+  });
+  return of(new HttpResponse({ body: file, headers, status: 200, url: request.url })).pipe(
+    delay(LATENCY_MS),
+  );
 }
 
 function respond<T>(request: HttpRequest<unknown>, body: T): Observable<HttpEvent<T>> {

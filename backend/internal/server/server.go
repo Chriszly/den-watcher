@@ -140,6 +140,9 @@ func New(site Site) http.Handler {
 	mux.HandleFunc("GET /api/history", forDevice(site.Devices, func(d Device) http.HandlerFunc {
 		return historyHandler(d, site.Retention)
 	}))
+	mux.HandleFunc("GET /api/history.csv", forDevice(site.Devices, func(d Device) http.HandlerFunc {
+		return historyCSVHandler(d, site.Retention)
+	}))
 	mux.HandleFunc("GET /api/availability", forDevice(site.Devices, availabilityHandler))
 	if site.Minutes != nil {
 		mux.HandleFunc("GET "+hub.MinutesPath, minutesHandler(site.Minutes))

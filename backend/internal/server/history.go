@@ -41,60 +41,70 @@ type historyResponse struct {
 // that ends after its newest reading is moved back to end there, keeping its
 // length, so the page shows the last data there is instead of nothing.
 func historyHandler(d Device, retention time.Duration) http.HandlerFunc {
-	reader := d.History
 	return func(w http.ResponseWriter, r *http.Request) {
-		from, fromErr := strconv.ParseInt(r.URL.Query().Get("from"), 10, 64)
-		to, toErr := strconv.ParseInt(r.URL.Query().Get("to"), 10, 64)
-		if fromErr != nil || toErr != nil || from >= to {
-			http.Error(w, "from and to must be Unix times in seconds, with from before to", http.StatusBadRequest)
-			return
+		response, ok := readHistory(w, r, d, retention)
+		if ok {
+			writeJSON(w, http.StatusOK, response)
 		}
-		now := time.Now()
-		from = min(max(from, now.Add(-retention).Unix()), now.Unix())
-		to = min(max(to, from+1), now.Unix()+1)
-
-		var lastReading int64
-		if d.Unreachable {
-			newest, ok, err := reader.Newest(r.Context())
-			if err != nil {
-				slog.Error("read the newest reading", "device", d.ID, "error", err)
-				http.Error(w, "could not read the history", http.StatusInternalServerError)
-				return
-			}
-			if ok {
-				lastReading = newest.Unix()
-				if lastReading+1 < to {
-					span := to - from
-					to = lastReading + 1
-					from = min(max(to-span, now.Add(-retention).Unix()), to-1)
-				}
-			}
-		}
-
-		series, step, err := reader.Range(r.Context(), time.Unix(from, 0), time.Unix(to, 0))
-		if err != nil {
-			slog.Error("read history", "error", err)
-			http.Error(w, "could not read the history", http.StatusInternalServerError)
-			return
-		}
-
-		series, extras, err := extrasOf(r.Context(), reader, series)
-		if err != nil {
-			slog.Error("read how the extras are described", "device", d.ID, "error", err)
-			http.Error(w, "could not read the history", http.StatusInternalServerError)
-			return
-		}
-
-		writeJSON(w, http.StatusOK, historyResponse{
-			From:          from,
-			To:            to,
-			StepSeconds:   int64(step / time.Second),
-			RetentionDays: int(retention / (24 * time.Hour)),
-			Series:        series,
-			LastReading:   lastReading,
-			Extras:        extras,
-		})
 	}
+}
+
+// readHistory reads the history GET /api/history and GET /api/history.csv
+// answer with. When it cannot, it answers the request with the error and
+// returns false.
+func readHistory(w http.ResponseWriter, r *http.Request, d Device, retention time.Duration) (historyResponse, bool) {
+	reader := d.History
+	from, fromErr := strconv.ParseInt(r.URL.Query().Get("from"), 10, 64)
+	to, toErr := strconv.ParseInt(r.URL.Query().Get("to"), 10, 64)
+	if fromErr != nil || toErr != nil || from >= to {
+		http.Error(w, "from and to must be Unix times in seconds, with from before to", http.StatusBadRequest)
+		return historyResponse{}, false
+	}
+	now := time.Now()
+	from = min(max(from, now.Add(-retention).Unix()), now.Unix())
+	to = min(max(to, from+1), now.Unix()+1)
+
+	var lastReading int64
+	if d.Unreachable {
+		newest, ok, err := reader.Newest(r.Context())
+		if err != nil {
+			slog.Error("read the newest reading", "device", d.ID, "error", err)
+			http.Error(w, "could not read the history", http.StatusInternalServerError)
+			return historyResponse{}, false
+		}
+		if ok {
+			lastReading = newest.Unix()
+			if lastReading+1 < to {
+				span := to - from
+				to = lastReading + 1
+				from = min(max(to-span, now.Add(-retention).Unix()), to-1)
+			}
+		}
+	}
+
+	series, step, err := reader.Range(r.Context(), time.Unix(from, 0), time.Unix(to, 0))
+	if err != nil {
+		slog.Error("read history", "error", err)
+		http.Error(w, "could not read the history", http.StatusInternalServerError)
+		return historyResponse{}, false
+	}
+
+	series, extras, err := extrasOf(r.Context(), reader, series)
+	if err != nil {
+		slog.Error("read how the extras are described", "device", d.ID, "error", err)
+		http.Error(w, "could not read the history", http.StatusInternalServerError)
+		return historyResponse{}, false
+	}
+
+	return historyResponse{
+		From:          from,
+		To:            to,
+		StepSeconds:   int64(step / time.Second),
+		RetentionDays: int(retention / (24 * time.Hour)),
+		Series:        series,
+		LastReading:   lastReading,
+		Extras:        extras,
+	}, true
 }
 
 // extrasOf returns the descriptions of the extras among series, or nil when

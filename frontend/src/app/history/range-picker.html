@@ -27,12 +27,17 @@
     }
   }
 
-  <p class="period">
+  <div class="shown">
+    <p class="period">
+      @if (store.history(); as h) {
+        {{ h.from * 1000 | date: dateFormat() : undefined : i18n.language() }} –
+        {{ h.to * 1000 | date: dateFormat() : undefined : i18n.language() }}
+      }
+    </p>
     @if (store.history(); as h) {
-      {{ h.from * 1000 | date: dateFormat() : undefined : i18n.language() }} –
-      {{ h.to * 1000 | date: dateFormat() : undefined : i18n.language() }}
+      <app-csv-download [from]="h.from" [to]="h.to" />
     }
-  </p>
+  </div>
 </div>
 
 @if (store.unreachable() && !connection.lost()) {

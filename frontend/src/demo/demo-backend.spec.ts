@@ -6,8 +6,15 @@ import { AlertService } from '../app/alerts/alerts';
 import { EMPTY_LAYOUT } from '../app/dashboard/page-layout';
 import { DeviceService, LOCAL_DEVICE, problemMessage } from '../app/devices/devices';
 import { I18n } from '../app/i18n/i18n';
+import { fileNameOf } from '../app/history/csv-download';
 import { MetricsService } from '../app/metrics/metrics';
-import { DEMO_RETENTION_DAYS, DemoBackend, LAYOUT_STORAGE_KEY } from './demo-backend';
+import {
+  DEMO_RETENTION_DAYS,
+  DemoBackend,
+  LAYOUT_STORAGE_KEY,
+  csvFileName,
+  historyCsv,
+} from './demo-backend';
 import { demoVersion } from './demo-build';
 import { FLEET } from './fleet';
 
@@ -52,6 +59,28 @@ describe('DemoBackend', () => {
         .flatMap((d) => d.alerts ?? [])
         .map((a) => a.id);
     expect(await ids()).toEqual(await ids());
+  });
+
+  it('offers the history as a CSV file, like the backend', async () => {
+    const to = Math.floor(Date.now() / 1000);
+    const response = await firstValueFrom(metrics.historyCsv(to - 3600, to, 'linux-nas'));
+    expect(fileNameOf(response.headers.get('Content-Disposition'))).toMatch(
+      /^Linux-NAS-\d{8}T\d{6}Z-\d{8}T\d{6}Z\.csv$/,
+    );
+    const lines = (await response.body!.text()).split('\r\n');
+    expect(lines[0]).toMatch(/^time,cpu,/);
+    expect(lines[1]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z,\d/);
+  });
+
+  it('writes CSV cells as the backend does', () => {
+    const csv = historyCsv([
+      { metric: 'cpu', points: [{ time: 0, value: 1.5 }] },
+      { metric: '=evil, "x"', points: [{ time: 60, value: -2 }] },
+    ]);
+    expect(csv).toBe(
+      `time,cpu,"'=evil, ""x"""\r\n1970-01-01T00:00:00Z,1.5,\r\n1970-01-01T00:01:00Z,,-2\r\n`,
+    );
+    expect(csvFileName('Büro / PC', 0, 3600)).toBe('Büro-PC-19700101T000000Z-19700101T010000Z.csv');
   });
 
   it('lists Windows and Linux devices, one of them asleep', async () => {

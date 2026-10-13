@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { HubConnection } from '../connection/connection';
 import { I18n } from '../i18n/i18n';
+import { CsvDownload } from './csv-download';
 import { DeviceCharts } from './history';
 import { HistoryStore } from './history-store';
 import { dateTimeFormat, needsYear } from './line-chart';
@@ -16,7 +17,7 @@ import { dateTimeFormat, needsYear } from './line-chart';
  */
 @Component({
   selector: 'app-range-picker',
-  imports: [DatePipe],
+  imports: [CsvDownload, DatePipe],
   templateUrl: './range-picker.html',
   styleUrl: './range-picker.css',
 })

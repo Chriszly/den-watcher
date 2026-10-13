@@ -145,7 +145,7 @@ describe('Timeline', () => {
   }
 
   function trail(): string[] {
-    return Array.from(host().querySelectorAll('.trail button'), (b) => b.textContent!.trim());
+    return Array.from(host().querySelectorAll('.trail > button'), (b) => b.textContent!.trim());
   }
 
   function zoomedRequest(): Record<string, string | null> {
@@ -172,6 +172,8 @@ describe('Timeline', () => {
     expect(rows()).toEqual(['CPU: 90 %', 'Memory: 45 %']);
     expect(trail().length).toBe(3);
     expect(trail().at(-1)).toContain('Back');
+    // The stretch zoomed into can be downloaded; the whole range is, next to the range picker.
+    expect(host().querySelector('.trail app-csv-download')!.textContent).toContain('Download CSV');
     const window = host().querySelector<HTMLElement>('app-timeline-overview .window')!;
     expect(window.style.left).toBe('20%');
     expect(window.style.width).toBe('40%');
@@ -180,6 +182,7 @@ describe('Timeline', () => {
     fixture.detectChanges();
     expect(rows()).toEqual(['CPU: 20 %', 'Memory: 40 %', 'Disks: 30 %']);
     expect(trail()).toEqual(['Whole range']);
+    expect(host().querySelector('app-csv-download')).toBeNull();
   });
 
   it('goes back from a stretch it could not read', () => {

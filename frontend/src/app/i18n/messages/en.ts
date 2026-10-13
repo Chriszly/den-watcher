@@ -196,6 +196,10 @@ export const en = {
   'history.notLive':
     'Not live: this device has not answered since {time}. The charts show the last data recorded up to then.',
   'history.empty': 'No usage recorded for this time yet.',
+  'history.downloadCsv': 'Download CSV',
+  'history.downloadCsvHint':
+    'The values of the time shown as a CSV file for a spreadsheet: a column for each value and a row for each time, in UTC',
+  'history.downloadFailed': 'Could not download the file.',
   'history.unreachable': 'The history cannot be read.',
   'history.loading': 'Loading…',
   'history.unitMinutes': 'Minutes',

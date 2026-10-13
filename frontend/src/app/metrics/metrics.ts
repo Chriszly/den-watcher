@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -208,6 +208,15 @@ export class MetricsService {
   history(from: number, to: number, device = LOCAL_DEVICE.id): Observable<History> {
     return this.http.get<History>('/api/history', {
       params: { from, to, ...deviceParam(device) },
+    });
+  }
+
+  /** The usage from `from` to `to` as a CSV file, with the name the backend gives it. */
+  historyCsv(from: number, to: number, device = LOCAL_DEVICE.id): Observable<HttpResponse<Blob>> {
+    return this.http.get('/api/history.csv', {
+      params: { from, to, ...deviceParam(device) },
+      responseType: 'blob',
+      observe: 'response',
     });
   }
 }

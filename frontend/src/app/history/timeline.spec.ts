@@ -1,8 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
 import { History } from '../metrics/metrics';
+import { ChartCanvas } from './chart-canvas';
 import { HistoryStore } from './history-store';
 import { TIMELINE_STORAGE_KEY, Timeline, TimelineMode } from './timeline';
 
@@ -119,7 +121,16 @@ describe('Timeline', () => {
     show();
     point(0, 0.5);
     vi.advanceTimersByTime(5_000);
-    http.expectOne((r) => r.url === '/api/history').flush({ ...HISTORY, from: 1000, to: 1300 });
+    // The next read is of the newest steps only, which move the range on to now.
+    const now = Math.floor(Date.now() / 1000);
+    http
+      .expectOne((r) => r.url === '/api/history')
+      .flush({
+        ...HISTORY,
+        from: 200,
+        to: now,
+        series: [{ metric: 'cpu', points: [{ time: now - 100, value: 20 }] }],
+      });
     fixture.detectChanges();
     expect(rows()[0]).toBe('CPU: 20 %');
     expect((fixture.nativeElement as HTMLElement).style.getPropertyValue('--cursor-display')).toBe(
@@ -135,10 +146,10 @@ describe('Timeline', () => {
         points: [{ time: 0, value: 40 }],
       })),
     });
-    const strips = (fixture.nativeElement as HTMLElement).querySelectorAll(
-      'app-timeline-row app-sparkline',
-    );
-    expect(strips[8].classList).toContain('series-0');
+    const series = fixture.debugElement
+      .queryAll(By.css('app-timeline-row app-sparkline canvas'))
+      .map((canvas) => canvas.injector.get(ChartCanvas).lines()[0].series);
+    expect(series[8]).toBe(0);
   });
 
   const ZOOMED: History = {

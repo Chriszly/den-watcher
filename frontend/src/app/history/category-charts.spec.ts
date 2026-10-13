@@ -31,14 +31,18 @@ describe('CategoryCharts', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     // jsdom has no ResizeObserver, which the chart grid uses to keep its rows even; tests report
-    // the grid's width by hand.
+    // the grid's width by hand. The charts' canvases are left without a size.
     vi.stubGlobal(
       'ResizeObserver',
       class {
-        constructor(callback: (entries: { contentRect: { width: number } }[]) => void) {
-          reportWidth = (width) => callback([{ contentRect: { width } }]);
-        }
-        observe = vi.fn();
+        constructor(
+          private readonly callback: (entries: { contentRect: { width: number } }[]) => void,
+        ) {}
+        observe = (element: Element) => {
+          if (!(element instanceof HTMLCanvasElement)) {
+            reportWidth = (width) => this.callback([{ contentRect: { width } }]);
+          }
+        };
         disconnect = vi.fn();
       },
     );

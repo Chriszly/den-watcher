@@ -255,9 +255,10 @@ describe('RangePicker', () => {
 
     vi.advanceTimersByTime(5_000);
     const last = NOW_SECONDS - 3 * 3600;
-    http
-      .expectOne((r) => r.url === '/api/history')
-      .flush({ ...historyFor(last + 1 - 30 * 60, last + 1, 30), lastReading: last });
+    const unanswered = { ...historyFor(last + 1 - 30 * 60, last + 1, 30), lastReading: last };
+    http.expectOne((r) => r.url === '/api/history').flush(unanswered);
+    // The read of the newest steps found the device not answering, so the whole range is read.
+    http.expectOne((r) => r.url === '/api/history').flush(unanswered);
     fixture.detectChanges();
 
     expect(element().querySelector('[role=status]')?.textContent).toContain('Not live');

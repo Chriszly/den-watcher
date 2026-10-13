@@ -16,19 +16,12 @@
   </div>
 
   <div class="plot" (pointermove)="onPointerMove($event)" (pointerleave)="onPointerLeave()">
-    <svg
-      [attr.viewBox]="'0 0 ' + width + ' ' + height"
-      preserveAspectRatio="none"
+    <canvas
+      [appChartCanvas]="canvasLines()"
+      [grid]="true"
       role="img"
       [attr.aria-label]="summary()"
-    >
-      <line class="grid" x1="0" [attr.x2]="width" y1="0" y2="0" />
-      <line class="grid" x1="0" [attr.x2]="width" [attr.y1]="height / 2" [attr.y2]="height / 2" />
-      <line class="baseline" x1="0" [attr.x2]="width" [attr.y1]="height" [attr.y2]="height" />
-      @for (path of paths(); track $index) {
-        <path [attr.d]="path" [class]="'line ' + seriesClass($index)" />
-      }
-    </svg>
+    ></canvas>
 
     @if (markers().length > 0) {
       <app-chart-markers [markers]="markers()" [from]="from()" [to]="to()" />

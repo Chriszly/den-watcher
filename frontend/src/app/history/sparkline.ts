@@ -1,7 +1,8 @@
 import { Component, computed, input } from '@angular/core';
 
 import { Point } from '../metrics/metrics';
-import { ChartUnit, chartTop, linePath } from './line-chart';
+import { CanvasLine, ChartCanvas } from './chart-canvas';
+import { ChartUnit, chartTop, lineSegments } from './line-chart';
 
 /**
  * A small chart of one value over time, without axes or labels, from `from` to `to` (Unix seconds)
@@ -10,34 +11,22 @@ import { ChartUnit, chartTop, linePath } from './line-chart';
  */
 @Component({
   selector: 'app-sparkline',
-  template: `
-    <svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
-      <path [attr.d]="path()" />
-    </svg>
-  `,
+  imports: [ChartCanvas],
+  // The area keeps the canvas inside the padding a page may give the sparkline.
+  template: `<div class="area">
+    <canvas [appChartCanvas]="lines()" aria-hidden="true"></canvas>
+  </div>`,
   styles: `
     :host {
       display: block;
       height: 3rem;
     }
 
-    svg {
-      display: block;
-      width: 100%;
+    .area {
+      position: relative;
       height: 100%;
-      overflow: visible;
-    }
-
-    path {
-      fill: none;
-      stroke: var(--color);
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      vector-effect: non-scaling-stroke;
     }
   `,
-  host: { '[class]': "'series-' + series()" },
 })
 export class Sparkline {
   readonly points = input.required<Point[]>();
@@ -50,9 +39,15 @@ export class Sparkline {
   /** The color of the line, by its place in the palette. */
   readonly series = input(0);
 
-  protected readonly path = computed(() => {
+  protected readonly lines = computed((): CanvasLine[] => {
     const points = this.points();
     const top = chartTop([{ label: '', points }], this.unit(), this.max());
-    return linePath(points, this.from(), this.to(), this.step(), top);
+    return [
+      {
+        segments: lineSegments(points, this.from(), this.to(), this.step(), top),
+        series: this.series(),
+        dashed: false,
+      },
+    ];
   });
 }

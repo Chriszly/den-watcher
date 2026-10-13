@@ -1,8 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
 import { DeviceService } from '../devices/devices';
+import { ChartCanvas } from '../history/chart-canvas';
 import { History, Snapshot } from '../metrics/metrics';
 import { Glance } from './glance';
 
@@ -193,14 +195,18 @@ describe('Glance', () => {
       ],
     });
 
-    const paths = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('app-sparkline path'),
-      (p) => p.getAttribute('d'),
-    );
-    expect(paths[0]).toBe('M50.0 50.0h0L150.0 0.0');
-    expect(paths[1]).toBe('');
+    const lines = fixture.debugElement
+      .queryAll(By.css('app-sparkline canvas'))
+      .map((canvas) => canvas.injector.get(ChartCanvas).lines()[0].segments);
+    expect(lines[0]).toEqual([
+      [
+        { x: 0.05, y: 0.5 },
+        { x: 0.15, y: 0 },
+      ],
+    ]);
+    expect(lines[1]).toEqual([]);
     // Both cards together, 2 KiB/s, at the top of a 2 KiB/s chart.
-    expect(paths[4]).toBe('M50.0 0.0h0');
+    expect(lines[4]).toEqual([[{ x: 0.05, y: 0 }]]);
   });
 });
 

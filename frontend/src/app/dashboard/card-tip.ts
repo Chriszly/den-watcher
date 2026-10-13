@@ -1,4 +1,8 @@
-import { Directive, ElementRef, inject, signal } from '@angular/core';
+import { Directive, ElementRef, inject, input, signal } from '@angular/core';
+
+import { I18n } from '../i18n/i18n';
+
+let nextId = 0;
 
 /**
  * A sign at a card's title with a text about the card: shown while the mouse points at the sign,
@@ -15,6 +19,13 @@ import { Directive, ElementRef, inject, signal } from '@angular/core';
   },
 })
 export abstract class CardTip {
+  /** The text the sign tells. */
+  readonly text = input.required<string>();
+
+  protected readonly i18n = inject(I18n);
+  /** The text's id, which names it as the description of the sign. */
+  protected readonly id = `card-tip-${nextId++}`;
+
   /** Whether a tap or click opened the text, which then stays without the mouse on the sign. */
   protected readonly open = signal(false);
   /**

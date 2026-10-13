@@ -178,6 +178,12 @@ export class DeviceService {
     () => this.devices().find((d) => d.id === this.selectedId()) ?? LOCAL_DEVICE,
   );
 
+  /** Shows the device on its own, also when the devices were being compared. */
+  show(id: string): void {
+    this.selectedId.set(id);
+    this.comparing.set(false);
+  }
+
   /**
    * Reads the list again and again while it is subscribed to, slowly while the page is hidden;
    * without the list only this device is shown. A failed read is skipped.

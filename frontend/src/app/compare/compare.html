@@ -144,3 +144,47 @@
     <p>{{ i18n.t('history.loading') }}</p>
   }
 </section>
+
+@if (systems().length > 0) {
+  <section aria-labelledby="compare-system">
+    <h2 id="compare-system">{{ i18n.t('compare.system') }}</h2>
+    <p class="detail">{{ i18n.t('compare.systemIntro') }}</p>
+    <div class="table">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{{ i18n.t('compare.device') }}</th>
+            @for (label of factLabels; track label) {
+              <th scope="col">{{ i18n.t(label) }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of systems(); track row.device.id) {
+            <tr>
+              <th scope="row">
+                <button
+                  type="button"
+                  class="device"
+                  [title]="i18n.t('compare.open')"
+                  (click)="open(row.device)"
+                >
+                  {{ deviceName(row.device) }}
+                </button>
+              </th>
+              @for (value of row.values; track $index) {
+                <td>
+                  @if (value) {
+                    <span class="fact" [title]="value">{{ value }}</span>
+                  } @else {
+                    <span class="none">–</span>
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}

@@ -71,6 +71,14 @@ progress {
   font-size: inherit;
 }
 
+/* A long fact, such as the operating system, is cut; the whole of it shows on hover. */
+.fact {
+  display: block;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .none {
   color: var(--mat-sys-on-surface-variant);
 }

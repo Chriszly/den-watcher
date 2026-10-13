@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { LOCAL_DEVICE } from '../devices/devices';
 import { Extra, ExtraInfo } from './extras';
+import { System } from './system';
 
 /** The usage of the machine at one point in time, as served by GET /api/metrics. */
 export interface Snapshot {
@@ -56,6 +57,8 @@ export interface Snapshot {
   fans?: Fan[];
   /** Values beyond the ones above, which the device describes itself; missing when it has none. */
   extras?: Extra[];
+  /** What the machine is, read once at start; missing on versions from before it was reported. */
+  system?: System;
 }
 
 export interface Fan {

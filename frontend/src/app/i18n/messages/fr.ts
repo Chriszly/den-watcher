@@ -49,6 +49,7 @@ export const fr: Messages = {
   'dashboard.noTemperature': 'Non disponible sur cette machine',
   'dashboard.time': 'Heure',
   'dashboard.uptime': 'Temps de fonctionnement',
+  'dashboard.system': 'Système',
   'dashboard.loading': 'Chargement…',
   'dashboard.uptimeDays': '{days} j {hours} h',
   'dashboard.uptimeHours': '{hours} h {minutes} min',
@@ -281,6 +282,8 @@ export const fr: Messages = {
   'dashboard.info.power':
     "Si le Raspberry Pi a manqué d'alimentation ou a trop chauffé et s'est ralenti, maintenant ou depuis son démarrage.",
   'dashboard.info.time': "L'heure de l'horloge de l'appareil, dans son fuseau horaire.",
+  'dashboard.info.system':
+    "Ce qu'est l'appareil : son modèle, son système d'exploitation, son noyau, son architecture et son processeur, lus au démarrage de Den-Watcher, et la version de Den-Watcher installée.",
   'dashboard.info.uptime':
     "Depuis combien de temps l'appareil fonctionne depuis son dernier démarrage, et la version de Den-Watcher qu'il utilise.",
   'dashboard.info.availability':
@@ -324,7 +327,7 @@ export const fr: Messages = {
   'categories.temperature': 'Température et alimentation',
   'categories.programs': 'Programmes et conteneurs',
   'categories.other': 'Autres',
-  'categories.device': 'Heure et fonctionnement',
+  'categories.device': 'Appareil',
   'categories.all': 'Toutes les cartes',
   'categories.cards.one': '{count} carte',
   'categories.cards.other': '{count} cartes',
@@ -364,4 +367,13 @@ export const fr: Messages = {
   'compare.sortBy': 'Trier par cette colonne, la plus grande valeur en premier',
   'compare.open': 'Afficher cet appareil',
   'compare.overTime': 'Au fil du temps',
+  'compare.system': 'Système',
+  'compare.systemIntro':
+    "Ce qu'est chaque appareil, tel qu'il l'a indiqué au démarrage de Den-Watcher.",
+  'system.model': 'Modèle',
+  'system.os': "Système d'exploitation",
+  'system.kernel': 'Noyau',
+  'system.architecture': 'Architecture',
+  'system.cpu': 'Processeur',
+  'system.version': 'Den-Watcher',
 };

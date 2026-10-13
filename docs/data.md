@@ -44,6 +44,7 @@ When the network counters cannot be read, as when Windows loses an adapter durin
 | `battery` | `percent`, `pluggedIn`, `watts`, `healthPercent` |
 | `fans` | per fan: `name`, `rpm` |
 | `extras` | values beyond the fields above, which the device describes itself; see [Extras](#extras) |
+| `system` | what the machine is, read once at start: `os` (name and version), `kernel`, `architecture`, `cpu` (model), `maker` and `model` of the board or PC; each left out where unknown, and the whole field by devices from before it was reported. Never serial numbers or network card addresses |
 
 Sensors and GPUs that share a name are numbered (`coretemp 1`, `coretemp 2`), so every name stands for one sensor in the history.
 
@@ -75,6 +76,8 @@ Sensors and GPUs that share a name are numbered (`coretemp 1`, `coretemp 2`), so
 | Battery power (W) and health | where the battery reports them | no | no |
 | Time and time zone | yes; in Docker, the host's zone when `/etc/localtime` is mounted (as in `compose.yaml`), else UTC | yes | no |
 | Uptime | yes | yes | no |
+| System: OS, kernel, architecture, CPU model | yes; the OS from `/etc/os-release`, in Docker the host's when it is mounted at `HOST_ETC` (as in `compose.yaml`), else left out | yes | no |
+| System: board or PC maker and model | the device tree's model, as on a Raspberry Pi, else the PC's firmware (`/sys/class/dmi/id`: `sys_vendor`, `product_name`), without placeholders such as "To Be Filled By O.E.M." | the firmware's, from the registry (`HARDWARE\DESCRIPTION\System\BIOS`) | no |
 
 ## Routers
 

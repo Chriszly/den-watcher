@@ -189,6 +189,41 @@ describe('Dashboard', () => {
     expect(text()).toContain('Friday, October 2, 2026 · UTC');
   });
 
+  it('shows what the device is in the System card, and no card for an older version', () => {
+    respond({
+      ...snapshot,
+      version: '1.2.3',
+      system: {
+        os: 'Debian GNU/Linux 13 (trixie)',
+        kernel: '6.12.47+rpt-rpi-2712',
+        architecture: 'aarch64',
+        cpu: 'Cortex-A76',
+        model: 'Raspberry Pi 5 Model B Rev 1.0',
+      },
+    });
+    const element = fixture.nativeElement as HTMLElement;
+    const card = [...element.querySelectorAll('.card')].find(
+      (c) => shown(c.querySelector('h3')!).trim() === 'System',
+    )!;
+    expect(
+      [...card.querySelectorAll('.fact')].map((row) =>
+        [...row.children].map((cell) => cell.textContent!.trim()).join(': '),
+      ),
+    ).toEqual([
+      'Model: Raspberry Pi 5 Model B Rev 1.0',
+      'Operating system: Debian GNU/Linux 13 (trixie)',
+      'Kernel: 6.12.47+rpt-rpi-2712',
+      'Architecture: aarch64',
+      'Processor: Cortex-A76',
+      'Den-Watcher: 1.2.3',
+    ]);
+
+    vi.advanceTimersByTime(REFRESH_INTERVAL_MS);
+    http.expectOne('/api/metrics').flush(snapshot);
+    fixture.detectChanges();
+    expect(element.querySelector('.fact')).toBeNull();
+  });
+
   it('leaves out the time when the device runs an older version', () => {
     respond(snapshot);
     expect(text()).not.toContain('Friday');
@@ -604,7 +639,7 @@ describe('Dashboard', () => {
       ['Temperature and power', ['Temperature']],
       ['Programs and containers', ['Containers: CPU']],
       ['More', ['Weather']],
-      ['Time and uptime', ['Time', 'Uptime']],
+      ['Device', ['Time', 'Uptime']],
     ]);
   });
 
@@ -651,7 +686,7 @@ describe('Dashboard', () => {
       'System',
       'Storage',
       'Temperature and power',
-      'Time and uptime',
+      'Device',
     ]);
     expect(layoutWrites().at(-1)).toEqual({
       ...EMPTY_LAYOUT,
@@ -707,7 +742,7 @@ describe('Dashboard', () => {
 
     // A category whose cards are all hidden shows only while arranging, for its chips.
     const time = () =>
-      [...element.querySelectorAll('.category h2')].some((h) => h.textContent!.includes('Time'));
+      [...element.querySelectorAll('.category h2')].some((h) => h.textContent!.includes('Device'));
     layoutWrites();
     TestBed.inject(Arrangement).hide('time');
     TestBed.inject(Arrangement).hide('uptime');

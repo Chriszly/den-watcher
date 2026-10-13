@@ -45,7 +45,7 @@ This runs the published image `ghcr.io/chriszly/den-watcher` for arm64 and amd64
 What `compose.yaml` sets up:
 
 - the host's `/proc` and `/sys` mounted read-only, so the container measures the Pi, not itself
-- `/etc/localtime` mounted read-only, so the page shows the Pi's time zone
+- `/etc/localtime` mounted read-only, so the page shows the Pi's time zone, and `/etc/os-release` at `/host/etc/os-release` (`HOST_ETC` points to `/host/etc`), so the System card names the Pi's system instead of leaving it out
 - a `data` volume for the [database](database.md), kept across updates
 - a read-only container running as a non-root user, with every capability dropped and `no-new-privileges`
 - the port published over IPv4 only, so the program sees each client's real address. A browser that tries IPv6 first falls back to IPv4 by itself
@@ -341,6 +341,7 @@ Settings are environment variables. In Docker they go in `.env` next to `compose
 | `DOCKER_DIR` | `/var/lib/docker` | for the containers add-on: Docker's data folder, as `docker info` shows it under *Docker Root Dir*, from which it reads the containers' names. The Linux service cannot read folders below `/home`, so rootless Docker's names show only with the container. The inodes add-on leaves out the containers' layers mounted below it |
 | `ADDONS_DIR` | `/run/den-watcher-addons` for the Linux service; else none | the folder add-ons write their values to, which are shown as extras. Fixed for the Linux service, whose add-ons always write to `/run/den-watcher-addons`: leave it out of `/etc/den-watcher.env` |
 | `HOST_PROC`, `HOST_SYS` | set by `compose.yaml` | where the host's `/proc` and `/sys` are mounted in a container |
+| `HOST_ETC` | set by `compose.yaml` | where the host's `os-release` is mounted in a container, for the System card; without it, the card leaves the system out there |
 
 ## Updating
 

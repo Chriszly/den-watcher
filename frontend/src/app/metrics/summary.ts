@@ -1,4 +1,5 @@
 import { Snapshot } from './metrics';
+import { System } from './system';
 
 /** The main values of one device, to compare them or show them in the list of devices; a value the device does not report is missing. */
 export interface Summary {
@@ -11,6 +12,9 @@ export interface Summary {
   /** All network cards together, in bytes per second. */
   network?: { receive: number; send: number };
   uptimeSeconds?: number;
+  /** What the machine is; missing from devices that run an older version. */
+  system?: System;
+  version?: string;
 }
 
 /** The main values of a snapshot. A router or a check reports only some, the others are missing. */
@@ -30,5 +34,7 @@ export function summarize(s: Snapshot): Summary {
           }
         : undefined,
     uptimeSeconds: s.uptimeSeconds > 0 ? s.uptimeSeconds : undefined,
+    system: s.system,
+    version: s.version,
   };
 }

@@ -227,6 +227,35 @@ describe('Compare', () => {
     ]);
   });
 
+  it('lists what each device is that tells it', () => {
+    http.expectOne('/api/devices/metrics').flush({
+      local: {
+        ...snapshot,
+        version: '1.2.3',
+        system: { os: 'Debian GNU/Linux 13 (trixie)', maker: 'Dell Inc.', model: 'OptiPlex 7010' },
+      },
+      router,
+    });
+    http.match((r) => r.url === '/api/history');
+    fixture.detectChanges();
+    const section = (fixture.nativeElement as HTMLElement).querySelector(
+      'section[aria-labelledby="compare-system"]',
+    )!;
+    expect(
+      Array.from(section.querySelectorAll('tr'), (tr) =>
+        Array.from(tr.querySelectorAll('th, td'), (cell) => cell.textContent!.trim()),
+      ),
+    ).toEqual([
+      ['Device', 'Model', 'Operating system', 'Kernel', 'Architecture', 'Processor', 'Den-Watcher'],
+      ['Hub', 'Dell Inc. OptiPlex 7010', 'Debian GNU/Linux 13 (trixie)', '–', '–', '–', '1.2.3'],
+    ]);
+  });
+
+  it('leaves out the table of what the devices are when none tells it', () => {
+    answer();
+    expect((fixture.nativeElement as HTMLElement).querySelector('#compare-system')).toBeNull();
+  });
+
   it('sorts by a column, largest first, and back', () => {
     answer();
     const header = (name: string) =>

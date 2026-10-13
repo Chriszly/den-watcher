@@ -187,6 +187,7 @@ func (a *Agent) ask(ctx context.Context) (metrics.Snapshot, error) {
 	// The extras are shown and stored as the device describes them, so they
 	// are cut down to what is safe for that first.
 	snapshot.Extras = metrics.CleanExtras(snapshot.Extras, a.maxEntries)
+	snapshot.System = metrics.CleanSystem(snapshot.System)
 	return snapshot, nil
 }
 

@@ -4,7 +4,7 @@ import { Component, input } from '@angular/core';
 @Component({
   selector: 'app-width-icon',
   template: `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
       @if (narrower()) {
         <path d="M4 14h6v6M20 10h-6V4M14 10l6.5-6.5M10 14l-6.5 6.5" />
       } @else {
@@ -20,11 +20,6 @@ import { Component, input } from '@angular/core';
     svg {
       width: var(--width-icon, 1.125rem);
       height: var(--width-icon, 1.125rem);
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
     }
   `,
 })

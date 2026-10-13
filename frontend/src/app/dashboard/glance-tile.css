@@ -10,16 +10,12 @@
 
 :host(.warning),
 :host(.alert) {
-  outline: 1px solid var(--alert-color);
+  outline: 1px solid var(--alert-level);
   outline-offset: -1px;
 }
 
 :host(.warning) {
-  --alert-color: light-dark(#b26a00, #f0a030);
-}
-
-:host(.alert) {
-  --alert-color: light-dark(#c62828, #f85149);
+  outline-color: var(--warning-level);
 }
 
 /* Where the label leaves no room, the detail moves to its own line. */

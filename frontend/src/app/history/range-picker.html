@@ -41,11 +41,11 @@
 </div>
 
 @if (store.unreachable() && !connection.lost()) {
-  <p class="warning" role="alert">
+  <p class="notice warning" role="alert">
     {{ i18n.t(store.history() ? 'history.unreachableStale' : 'history.unreachable') }}
   </p>
 } @else if (lastReading(); as time) {
-  <p class="warning" role="status">{{ i18n.t('history.notLive', { time }) }}</p>
+  <p class="notice warning" role="status">{{ i18n.t('history.notLive', { time }) }}</p>
 } @else if (store.history() && charts().size === 0) {
   <p class="detail">{{ i18n.t('history.empty') }}</p>
 }

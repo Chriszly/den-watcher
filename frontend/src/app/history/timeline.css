@@ -69,8 +69,7 @@ app-timeline-overview {
   border-radius: var(--mat-sys-corner-full);
 }
 
-.next,
-.hint {
+.next {
   color: var(--mat-sys-on-surface-variant);
 }
 

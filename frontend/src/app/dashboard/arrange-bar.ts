@@ -38,7 +38,7 @@ import { Arrangement } from './arrangement';
       </div>
     } @else {
       <button type="button" class="start" (click)="arrangement.arranging.set(true)">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
+        <svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" />
         </svg>
         {{ i18n.t('arrange.start') }}

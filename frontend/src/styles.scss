@@ -25,6 +25,14 @@ html {
   --mascot-dark: #{map.get($palette, 10)};
   // light-dark() follows the color scheme, also when it is switched on the page.
   --warning-surface: light-dark(#fff1c2, #4b3a0b);
+  // The two levels of an alert, red and yellow: the color of its sign, line or frame, and of a box
+  // that tells it, with the text on that box.
+  --alert-level: light-dark(#c62828, #f85149);
+  --alert-level-surface: light-dark(#fdecea, #3a1210);
+  --on-alert-level-surface: light-dark(#8e1c1c, #ffb4ab);
+  --warning-level: light-dark(#b26a00, #f0a030);
+  --warning-level-surface: light-dark(#fff4e0, #33240a);
+  --on-warning-level-surface: light-dark(#6d4100, #ffd28a);
 }
 
 // A wall display, with ?kiosk in the address, is read from across the room.
@@ -58,6 +66,140 @@ body {
     padding: 0 0.25rem;
     background: var(--mat-sys-surface);
   }
+
+  > h3 {
+    margin: 0 0 0.5rem;
+    font: var(--mat-sys-title-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+// Line charts in cards side by side, as wide as they fit. appEvenColumns reads --min-card and sets
+// --columns so the rows stay even.
+.charts {
+  --min-card: 26rem;
+  display: grid;
+  grid-template-columns: repeat(var(--columns, auto-fit), minmax(min(100%, var(--min-card)), 1fr));
+  column-gap: 1rem;
+
+  // Cards side by side share their rows for title, legend and plot, so the plots line up even
+  // when only some cards have a legend or it wraps.
+  > .card {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0;
+    // A margin instead of a row gap, which would also open inside each card.
+    margin-bottom: 1rem;
+  }
+
+  app-line-chart {
+    grid-row: span 2;
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// A box with a message above the page's content: news, a warning, or a quiet note.
+.notice {
+  padding: 0.75rem 1rem;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+
+  &.warning {
+    background: var(--warning-surface);
+    color: inherit;
+  }
+
+  &.quiet {
+    background: var(--mat-sys-surface-container-high);
+    color: inherit;
+  }
+}
+
+// The alerts of a device in a row, big enough to see from across the room.
+.alert-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+
+  > li {
+    --alert-icon-size: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 1rem 0.5rem 0.5rem;
+    border: 2px solid var(--alert-level);
+    border-radius: var(--mat-sys-corner-medium);
+    background: var(--alert-level-surface);
+    color: var(--on-alert-level-surface);
+    font: var(--mat-sys-title-medium);
+
+    &.warning {
+      border-color: var(--warning-level);
+      background: var(--warning-level-surface);
+      color: var(--on-warning-level-surface);
+    }
+  }
+}
+
+// A heading as a button that folds away what it heads, with a chevron that points down while it is
+// open, and, after the title, how many things it holds.
+.fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: -0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: var(--mat-sys-corner-small);
+  background: none;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mat-sys-surface-container-high);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+  }
+
+  > .chevron::before {
+    content: '';
+    display: block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-25%) rotate(45deg);
+    transition: transform 0.15s;
+  }
+
+  &[aria-expanded='false'] > .chevron::before {
+    transform: rotate(-45deg);
+  }
+
+  > .count {
+    font: var(--mat-sys-body-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+// An icon drawn with lines, in the color of the text; the button it is in sets its size.
+.line-icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 // A bar filled to a share, as Material's progress bar.
@@ -152,6 +294,20 @@ progress::-moz-progress-bar {
 }
 .series-7 {
   --color: light-dark(#e34948, #e66767);
+}
+
+// A hint to what is shown, less prominent than the text it goes with.
+.hint {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.error {
+  color: var(--mat-sys-error);
+}
+
+// Faded while the hub does not answer: the values are from before it stopped.
+.stale {
+  opacity: 0.55;
 }
 
 // Hides text on screen but keeps it for screen readers.

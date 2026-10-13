@@ -36,7 +36,7 @@ func startDevice(t *testing.T) string {
 func openTestHub(t *testing.T, store *history.Store, fixed []Device, forgetters ...Forgetter) *Hub {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
-	h, err := newHub(ctx, store, fixed, history.DefaultMaxEntries, 30*24*time.Hour, "9393", nil, true, forgetters...)
+	h, err := newHub(ctx, store, fixed, true, history.DefaultMaxEntries, 30*24*time.Hour, "9393", nil, true, forgetters...)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -256,7 +256,7 @@ func TestCollectingRefusesTheSameOwnAddressesAsAdding(t *testing.T) {
 	// In Docker, the machine's network cards are not the container's; its
 	// usage lists them.
 	usage := &countingUsage{addresses: []string{"192.168.1.20"}}
-	h, err := newHub(ctx, openTestStore(t), nil, history.DefaultMaxEntries, 30*24*time.Hour, "9393", usage, false)
+	h, err := newHub(ctx, openTestStore(t), nil, true, history.DefaultMaxEntries, 30*24*time.Hour, "9393", usage, false)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -675,7 +675,7 @@ func TestDevicesAddedOnThePageAreNotCollectedFromAtTheHubsOwnAddress(t *testing.
 	defer slog.SetDefault(slog.Default())
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
 	running, stop := context.WithCancel(ctx)
-	h, err := newHub(running, store, []Device{{ID: "vm", Name: "VM", Address: fixed}}, history.DefaultMaxEntries, 30*24*time.Hour, "9393", nil, false)
+	h, err := newHub(running, store, []Device{{ID: "vm", Name: "VM", Address: fixed}}, true, history.DefaultMaxEntries, 30*24*time.Hour, "9393", nil, false)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -857,7 +857,7 @@ func TestNoChangesOnceTheHubStops(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t)
 	running, stop := context.WithCancel(ctx)
-	h, err := newHub(running, store, nil, history.DefaultMaxEntries, 30*24*time.Hour, "9393", nil, true)
+	h, err := newHub(running, store, nil, true, history.DefaultMaxEntries, 30*24*time.Hour, "9393", nil, true)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -884,7 +884,7 @@ func TestNewForgetsTheAvailabilityOfDevicesNoLongerCollectedFrom(t *testing.T) {
 	pi := Device{ID: "pi", Name: "Pi", Address: startDevice(t)}
 	nas := Device{ID: "nas", Name: "NAS", Address: startDevice(t)}
 	first, cancel := context.WithCancel(ctx)
-	h, err := newHub(first, store, []Device{pi, nas}, 0, 30*24*time.Hour, "9393", nil, true)
+	h, err := newHub(first, store, []Device{pi, nas}, true, 0, 30*24*time.Hour, "9393", nil, true)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -922,6 +922,47 @@ func TestNewForgetsTheAvailabilityOfDevicesNoLongerCollectedFrom(t *testing.T) {
 		if series, err := store.Range(ctx, id, now.Add(-time.Minute), now.Add(time.Minute), time.Minute); err != nil || len(series) != 1 {
 			t.Errorf("history of %s = %+v, %v; want it kept", id, series, err)
 		}
+	}
+}
+
+func TestNewForgetsNoDeviceWhenASettingHasAnError(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t)
+	pi := Device{ID: "pi", Name: "Pi", Address: startDevice(t)}
+	router := Device{ID: "router", Name: "Router", Address: startDevice(t)}
+	first, cancel := context.WithCancel(ctx)
+	h, err := newHub(first, store, []Device{pi, router}, true, 0, 30*24*time.Hour, "9393", nil, true)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	now := time.Now()
+	if _, err := store.DB().Exec(`INSERT INTO hub_outages (device, started, ended) VALUES ('router', ?1, ?1)`, now.UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	h.Wait()
+
+	// HUB_ROUTERS has an error at this start, so the router is left out of
+	// the fixed devices but must not be forgotten.
+	ctx2, cancel2 := context.WithCancel(ctx)
+	alerts := &forgotten{}
+	h, err = newHub(ctx2, store, []Device{pi}, false, 0, 30*24*time.Hour, "9393", nil, true, alerts.forget)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	t.Cleanup(func() {
+		cancel2()
+		h.Wait()
+	})
+	if got := alerts.list(); len(got) != 0 {
+		t.Errorf("forgotten = %q, want none", got)
+	}
+	var outages int
+	if err := store.DB().QueryRow(`SELECT COUNT(*) FROM hub_outages WHERE device = 'router'`).Scan(&outages); err != nil {
+		t.Fatal(err)
+	}
+	if outages != 1 {
+		t.Errorf("outages of the router = %d, want 1", outages)
 	}
 }
 

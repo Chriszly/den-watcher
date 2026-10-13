@@ -142,14 +142,16 @@ type Usage interface {
 // reachable on. local reads the hub's own usage: a device added on the page
 // is not collected from at an address of its network cards either. The
 // forgetters are called for every device the hub forgets, also for the ones
-// it forgets while it starts.
-func New(ctx context.Context, store *history.Store, fixed []Device, historyEntries int, retention time.Duration, pagePort string, local Usage, forgetters ...Forgetter) (*Hub, error) {
-	return newHub(ctx, store, fixed, historyEntries, retention, pagePort, local, false, forgetters...)
+// it forgets while it starts. complete says fixed holds every device of the
+// settings; when one of them was left out for an error, it is false and the
+// devices missing from fixed are not forgotten at this start.
+func New(ctx context.Context, store *history.Store, fixed []Device, complete bool, historyEntries int, retention time.Duration, pagePort string, local Usage, forgetters ...Forgetter) (*Hub, error) {
+	return newHub(ctx, store, fixed, complete, historyEntries, retention, pagePort, local, false, forgetters...)
 }
 
 // newHub is New, with allowLoopback set before any device is collected from,
 // for tests.
-func newHub(ctx context.Context, store *history.Store, fixed []Device, historyEntries int, retention time.Duration, pagePort string, local Usage, allowLoopback bool, forgetters ...Forgetter) (*Hub, error) {
+func newHub(ctx context.Context, store *history.Store, fixed []Device, complete bool, historyEntries int, retention time.Duration, pagePort string, local Usage, allowLoopback bool, forgetters ...Forgetter) (*Hub, error) {
 	h := &Hub{store: store, historyEntries: historyEntries, retention: retention, pagePort: pagePort, suggester: defaultSuggester(), ctx: ctx, local: local, allowLoopback: allowLoopback, forgetters: forgetters}
 	for _, schema := range []string{savedSchema, availabilitySchema, kindSchema, idSchema} {
 		if _, err := store.DB().ExecContext(ctx, schema); err != nil {
@@ -185,8 +187,12 @@ func newHub(ctx context.Context, store *history.Store, fixed []Device, historyEn
 	for _, device := range slices.Concat(fixed, saved) {
 		kept = append(kept, device.ID)
 	}
-	if err := h.forgetOthers(ctx, kept); err != nil {
-		return nil, err
+	if complete {
+		if err := h.forgetOthers(ctx, kept); err != nil {
+			return nil, err
+		}
+	} else {
+		slog.Warn("a setting of the devices to collect from has an error, so no device missing from them is forgotten at this start")
 	}
 	for _, device := range fixed {
 		h.start(device, true, nil)

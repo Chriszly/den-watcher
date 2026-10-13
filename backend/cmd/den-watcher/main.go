@@ -143,12 +143,16 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("check HUB_DEVICES: %w", err)
 	}
+	// complete is false when HUB_ROUTERS or HUB_CHECKS is left out for an
+	// error: the hub then forgets none of the devices it misses at this start.
+	complete := true
 	routers, err := routerDevices()
 	if err != nil {
 		// A wrong router setting must not stop this device's own
 		// monitoring: it runs without the routers, and the log says why.
 		slog.Error("the routers in HUB_ROUTERS are left out", "error", err)
 		routers = nil
+		complete = false
 	}
 	remotes = append(remotes, routers...)
 	checks, err := checkDevices()
@@ -156,6 +160,7 @@ func run(ctx context.Context) error {
 		// As with the routers, this device's own monitoring runs on.
 		slog.Error("the checks in HUB_CHECKS are left out", "error", err)
 		checks = nil
+		complete = false
 	}
 	remotes = append(remotes, checks...)
 	if err := hub.CheckFixed(remotes); err != nil {
@@ -238,7 +243,7 @@ func run(ctx context.Context) error {
 			return fmt.Errorf("open the history database %s: %w; set DATABASE_PATH to a writable file", databasePath, err)
 		}
 		defer func() { _ = store.Close() }()
-		site, wait, err := withHistory(ctx, sampler, store, remotes, retention, historyEntries, port, checkUpdates)
+		site, wait, err := withHistory(ctx, sampler, store, remotes, complete, retention, historyEntries, port, checkUpdates)
 		if err != nil {
 			return err
 		}
@@ -297,7 +302,7 @@ func run(ctx context.Context) error {
 // function waits until they have stopped. Of each device's disks, sensors,
 // network cards and GPUs, the first historyEntries are kept. With
 // checkUpdates, a release asks GitHub for a newer one.
-func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.Store, fixed []hub.Device, retention time.Duration, historyEntries int, pagePort string, checkUpdates bool) (server.Site, func(), error) {
+func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.Store, fixed []hub.Device, complete bool, retention time.Duration, historyEntries int, pagePort string, checkUpdates bool) (server.Site, func(), error) {
 	devicesPassword, err := password.Open(ctx, store.DB())
 	if err != nil {
 		return server.Site{}, nil, err
@@ -332,7 +337,7 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 		return server.Site{}, nil, err
 	}
 
-	others, err = hub.New(ctx, store, fixed, historyEntries, retention, pagePort, sampler.Reusing(reuseFor), watcher.Forget, happenings.Forget)
+	others, err = hub.New(ctx, store, fixed, complete, historyEntries, retention, pagePort, sampler.Reusing(reuseFor), watcher.Forget, happenings.Forget)
 	if err != nil {
 		return server.Site{}, nil, err
 	}

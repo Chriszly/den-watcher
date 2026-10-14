@@ -38,6 +38,7 @@ describe('MissingParts', () => {
 
   afterEach(() => {
     http.verify();
+    vi.restoreAllMocks();
     sessionStorage.removeItem(RELOAD_STORAGE_KEY);
     vi.useRealTimers();
   });
@@ -135,6 +136,19 @@ describe('MissingParts', () => {
       .flush('', { status: 404, statusText: 'Not Found' });
     await expect(loading).rejects.toThrow(TypeError);
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('builds where the browser blocks site data, and does not reload as it cannot tell', async () => {
+    vi.spyOn(window, 'sessionStorage', 'get').mockImplementation(() => {
+      throw new DOMException('The operation is insecure.', 'SecurityError');
+    });
+    const parts = TestBed.inject(MissingParts);
+
+    await expect(parts.load(missing)).rejects.toThrow(TypeError);
+    expect(reload).not.toHaveBeenCalled();
+    expect(parts.missing()).toBe(true);
+    await expect(parts.load(() => Promise.resolve('dialog'))).resolves.toBe('dialog');
+    expect(parts.missing()).toBe(false);
   });
 
   it('stops saying a part is missing once one loads', async () => {

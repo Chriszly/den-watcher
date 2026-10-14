@@ -207,15 +207,6 @@ func Extras(values map[string]float64) []metrics.Extra {
 	return extras
 }
 
-// HostProc returns where /proc is: HOST_PROC in a container that mounts the
-// host's /proc there, else /proc.
-func HostProc() string {
-	if dir := os.Getenv("HOST_PROC"); dir != "" {
-		return dir
-	}
-	return "/proc"
-}
-
 // readText reads a file under /proc, or returns "" when it cannot be read;
 // a failure other than a missing file is logged once. Its path is the /proc
 // folder from the settings and names the kernel gives its files.

@@ -7,8 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 	"github.com/shirou/gopsutil/v4/sensors"
+
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 // readSensors reads the temperature sensors in /sys/class/hwmon as gopsutil
@@ -22,7 +23,7 @@ import (
 // hwmon sensors, as on older Raspberry Pi kernels, gopsutil reads the
 // thermal zones.
 func readSensors(ctx context.Context) ([]sensors.TemperatureStat, []bool) {
-	hwmon := filepath.Join(hostPath("HOST_SYS", "/sys"), "class", "hwmon")
+	hwmon := filepath.Join(sysfile.HostSys(), "class", "hwmon")
 	files, _ := filepath.Glob(filepath.Join(hwmon, "hwmon*", "temp*_input"))
 	if len(files) == 0 {
 		// Some kernels keep the sensors in the device folder.

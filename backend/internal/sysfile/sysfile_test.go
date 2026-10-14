@@ -34,3 +34,14 @@ func TestTextAndUint(t *testing.T) {
 		}
 	}
 }
+
+func TestHostDirs(t *testing.T) {
+	t.Setenv("HOST_PROC", "")
+	t.Setenv("HOST_SYS", "/host/sys")
+	if got := HostProc(); got != "/proc" {
+		t.Errorf("HostProc() = %q, want /proc", got)
+	}
+	if got := HostSys(); got != "/host/sys" {
+		t.Errorf("HostSys() = %q, want /host/sys", got)
+	}
+}

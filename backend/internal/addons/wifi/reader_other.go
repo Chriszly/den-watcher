@@ -2,12 +2,16 @@
 
 package wifi
 
-import "context"
+import (
+	"context"
+
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
+)
 
 // NewReader returns what reads each connected wireless interface: from the
 // host's /proc/net/wireless, which only Linux has; elsewhere it reads
 // nothing.
 func NewReader() func(context.Context) []Reading {
-	file := File(HostProc())
+	file := File(sysfile.HostProc())
 	return func(context.Context) []Reading { return Read(file) }
 }

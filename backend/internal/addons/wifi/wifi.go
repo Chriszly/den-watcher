@@ -172,15 +172,6 @@ func label(name, what string) string {
 // adapter of the same model, such as " #2".
 var windowsNumber = regexp.MustCompile(` #[0-9]+$`)
 
-// HostProc returns where /proc is: HOST_PROC in a container that mounts the
-// host's /proc there, else /proc.
-func HostProc() string {
-	if dir := os.Getenv("HOST_PROC"); dir != "" {
-		return dir
-	}
-	return "/proc"
-}
-
 var notInID = regexp.MustCompile(`[^a-z0-9]+`)
 
 // idOf turns an interface's key into an id for an extra that ends in suffix

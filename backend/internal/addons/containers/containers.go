@@ -563,15 +563,6 @@ func statValue(path, key string) (uint64, bool) {
 	return 0, false
 }
 
-// HostSys returns where /sys is: HOST_SYS in a container that mounts the
-// host's /sys there, else /sys.
-func HostSys() string {
-	if dir := os.Getenv("HOST_SYS"); dir != "" {
-		return dir
-	}
-	return "/sys"
-}
-
 // DockerDir returns Docker's folder of container settings: the folder
 // containers in DOCKER_DIR, Docker's data folder, which is /var/lib/docker
 // unless Docker is set up to keep its data elsewhere.

@@ -262,12 +262,3 @@ func parseKeys(f io.Reader) map[string]uint64 {
 	}
 	return values
 }
-
-// HostProc returns where /proc is: HOST_PROC in a container that mounts the
-// host's /proc there, else /proc.
-func HostProc() string {
-	if dir := os.Getenv("HOST_PROC"); dir != "" {
-		return dir
-	}
-	return "/proc"
-}

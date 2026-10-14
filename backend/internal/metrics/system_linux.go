@@ -56,7 +56,7 @@ func parseOSRelease(text string) string {
 // Pi, or else the PC's maker and model from its firmware (DMI). Both are
 // files every user may read; the serial number next to them is not read.
 func readBoard() (maker, model string) {
-	sysDir := hostPath("HOST_SYS", "/sys")
+	sysDir := sysfile.HostSys()
 	if model := firmwareText(sysfile.Text(filepath.Join(sysDir, "firmware", "devicetree", "base", "model"))); model != "" {
 		return "", model
 	}

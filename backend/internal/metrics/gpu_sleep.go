@@ -205,7 +205,7 @@ func (d *deviceReads) prune(now time.Time) {
 // held.
 func (d *deviceReads) amdgpuParams(now time.Time) (runpm, dc string) {
 	if since := now.Sub(d.paramsRead); d.runpm == "" || since < 0 || since >= paramsTime {
-		params := filepath.Join(hostPath("HOST_SYS", "/sys"), "module", "amdgpu", "parameters")
+		params := filepath.Join(sysfile.HostSys(), "module", "amdgpu", "parameters")
 		d.runpm = sysfile.Text(filepath.Join(params, "runpm"))
 		d.dc = sysfile.Text(filepath.Join(params, "dc"))
 		d.paramsRead = now
@@ -219,7 +219,7 @@ func (d *deviceReads) amdgpuParams(now time.Time) (runpm, dc string) {
 // tell, the program's own does. d.mu is held.
 func (d *deviceReads) kernelRelease() string {
 	if !d.releaseRead {
-		d.release = sysfile.Text(filepath.Join(hostPath("HOST_PROC", "/proc"), "sys", "kernel", "osrelease"))
+		d.release = sysfile.Text(filepath.Join(sysfile.HostProc(), "sys", "kernel", "osrelease"))
 		if d.release == "" {
 			d.release = sysfile.Text("/proc/sys/kernel/osrelease")
 		}

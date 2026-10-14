@@ -9,9 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/load"
+
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 // LoadAverage is the average number of processes running or waiting for the
@@ -128,7 +129,7 @@ func readLoadAverage(ctx context.Context) (*LoadAverage, *Processes) {
 	case "windows":
 		return nil, nil
 	case "linux":
-		procDir := hostPath("HOST_PROC", "/proc")
+		procDir := sysfile.HostProc()
 		text, err := sysfile.Read(filepath.Join(procDir, "loadavg"))
 		if err != nil {
 			return nil, nil
@@ -201,7 +202,7 @@ func countProcesses(procDir string) (int, error) {
 // none on other systems, in most virtual machines and where the kernel does
 // not scale the clock.
 func clockFiles() []string {
-	pattern := filepath.Join(hostPath("HOST_SYS", "/sys"), "devices", "system", "cpu", "cpufreq", "policy*", "scaling_cur_freq")
+	pattern := filepath.Join(sysfile.HostSys(), "devices", "system", "cpu", "cpufreq", "policy*", "scaling_cur_freq")
 	files, _ := filepath.Glob(pattern)
 	return files
 }

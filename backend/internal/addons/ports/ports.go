@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/netip"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -195,13 +194,4 @@ func joinAddresses(addresses []string) string {
 		text = next
 	}
 	return text
-}
-
-// HostProc returns where /proc is: HOST_PROC in a container that mounts the
-// host's /proc there, else /proc.
-func HostProc() string {
-	if dir := os.Getenv("HOST_PROC"); dir != "" {
-		return dir
-	}
-	return "/proc"
 }

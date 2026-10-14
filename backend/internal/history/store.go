@@ -5,10 +5,9 @@ package history
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
-	"slices"
 	"sync"
 	"time"
 
@@ -46,6 +45,13 @@ type Store struct {
 	path  string
 	cache rangeCache
 	ids   *metricIDs
+	// flushEvery is how long minutes wait in pend before they are written,
+	// or zero to write them at once.
+	flushEvery time.Duration
+	pend       pending
+	// flushing lets one Flush run at a time, and keeps DeleteDevice from
+	// running along with one.
+	flushing sync.Mutex
 	// brokenInfo has a brokenInfoKey for each description of an extra that
 	// could not be read and was logged.
 	brokenInfo sync.Map
@@ -78,7 +84,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		return nil, err
 	}
 	removeBackups(path)
-	store := &Store{db: db, path: path, cache: newRangeCache(), ids: newMetricIDs()}
+	store := &Store{db: db, path: path, cache: newRangeCache(), ids: newMetricIDs(), pend: newPending()}
 	if err := store.convertSamples(ctx); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -103,9 +109,10 @@ func openDB(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-// Close closes the database.
+// Close writes the minutes that wait and closes the database.
 func (s *Store) Close() error {
-	return s.db.Close()
+	err := s.Flush(context.Background())
+	return errors.Join(err, s.db.Close())
 }
 
 // Add stores the values of one device measured at one time, and counts them
@@ -118,55 +125,16 @@ func (s *Store) Add(ctx context.Context, device string, at time.Time, values map
 
 // AddMinutes stores several minutes of one device in one go, as Add does
 // each, as when a hub fetches what a device kept while it could not reach it.
+// With a flush interval (see SetFlushInterval) they wait in memory until the
+// next Flush; reads see them meanwhile.
 func (s *Store) AddMinutes(ctx context.Context, device string, minutes []Minute) error {
-	names := map[string]bool{}
-	for _, minute := range minutes {
-		for metric := range minute.Values {
-			names[metric] = true
-		}
+	if s.flushEvery <= 0 {
+		return s.write(ctx, map[string][]Minute{device: minutes})
 	}
-	ids, err := s.idsOf(ctx, slices.Collect(maps.Keys(names)))
-	if err != nil {
-		return err
+	if s.pend.add(device, minutes) > maxPendingMinutes {
+		return s.Flush(ctx)
 	}
-
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	average, err := tx.PrepareContext(ctx, `
-		INSERT INTO samples_hourly (device, time, metric, value, count) VALUES (?, ?, ?, ?, 1)
-		ON CONFLICT (device, time, metric) DO UPDATE SET
-			value = (value * count + excluded.value) / (count + 1),
-			count = count + 1`)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = average.Close() }()
-	for _, minute := range minutes {
-		list := storableValues(ids, minute.Values)
-		if len(list) == 0 {
-			continue
-		}
-		// Values stored already were counted in their hour then.
-		stored, err := storeMinute(ctx, tx, device, minute.Time, list)
-		if err != nil {
-			return fmt.Errorf("store %s at %d: %w", device, minute.Time, err)
-		}
-		hour := minute.Time / 3600 * 3600
-		for _, v := range stored {
-			metric, err := s.nameOf(ctx, v.id)
-			if err != nil {
-				return err
-			}
-			if _, err := average.ExecContext(ctx, device, hour, metric, minute.Values[metric]); err != nil {
-				return fmt.Errorf("average %s: %w", metric, err)
-			}
-		}
-	}
-	return tx.Commit()
+	return nil
 }
 
 // Range returns the values of one device from from up to (not including) to,
@@ -219,10 +187,14 @@ func (s *Store) Range(ctx context.Context, device string, from, to time.Time, st
 func (s *Store) Newest(ctx context.Context, device string) (time.Time, bool, error) {
 	var newest sql.NullInt64
 	err := s.db.QueryRowContext(ctx, `SELECT MAX(time) FROM history_minutes WHERE device = ?`, device).Scan(&newest)
-	if err != nil || !newest.Valid {
+	if err != nil {
 		return time.Time{}, false, err
 	}
-	return time.Unix(newest.Int64, 0), true, nil
+	at, waiting := s.pend.newest(device)
+	if !newest.Valid && !waiting {
+		return time.Time{}, false, nil
+	}
+	return time.Unix(max(newest.Int64, at), 0), true, nil
 }
 
 // cachedRange is Range, but answers with the previous answer while that is
@@ -276,6 +248,10 @@ func (s *Store) DeleteBefore(ctx context.Context, t time.Time) (int64, error) {
 // DeleteDevice deletes every value of one device, and how its extras are
 // described, in chunks as DeleteBefore does.
 func (s *Store) DeleteDevice(ctx context.Context, device string) error {
+	// Not while minutes are written: they would come back.
+	s.flushing.Lock()
+	defer s.flushing.Unlock()
+	s.pend.forget(device)
 	s.cache.forget(device)
 	deleted, err := s.deleteChunks(ctx, "history_minutes", "device, time", `device = ?`, device)
 	if err != nil {

@@ -19,6 +19,9 @@ const backupPattern = ".den-watcher-backup-*.db"
 // the database is used as it is writable, and a temporary folder may be too
 // small or, in a container, in memory.
 func (s *Store) Backup(ctx context.Context) (string, error) {
+	if err := s.Flush(ctx); err != nil {
+		return "", err
+	}
 	file, err := os.CreateTemp(filepath.Dir(s.path), backupPattern)
 	if err != nil {
 		return "", err

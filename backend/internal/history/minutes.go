@@ -1,10 +1,13 @@
 package history
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
+	"slices"
 	"sync"
 	"time"
 )
@@ -202,8 +205,7 @@ func (r Reader) Since(ctx context.Context, _ string, after time.Time, minutes, v
 		return nil, false, err
 	}
 	defer func() { _ = rows.Close() }()
-	list := []Minute{}
-	total, more := 0, false
+	var list []Minute
 	for rows.Next() {
 		var at int64
 		var data []byte
@@ -214,10 +216,6 @@ func (r Reader) Since(ctx context.Context, _ string, after time.Time, minutes, v
 		if err != nil {
 			return nil, false, fmt.Errorf("minute %d of %s: %w", at, r.Device, err)
 		}
-		if len(list) == minutes || (len(list) > 0 && total+len(stored) > values) {
-			more = true
-			break
-		}
 		minute := Minute{Time: at, Values: make(map[string]float64, len(stored))}
 		for _, v := range stored {
 			name, err := r.Store.nameOf(ctx, v.id)
@@ -227,9 +225,43 @@ func (r Reader) Since(ctx context.Context, _ string, after time.Time, minutes, v
 			minute.Values[name] = float64(v.value)
 		}
 		list = append(list, minute)
-		total += len(stored)
 	}
-	return list, more, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, false, err
+	}
+	// The minutes that wait come last, unless the stored ones are more than
+	// asked for: they follow in a later request.
+	if len(list) <= minutes {
+		list = mergeMinutes(list, r.Store.pend.between(r.Device, after.Unix()+1, math.MaxInt64))
+	}
+	taken, total := 0, 0
+	for taken < len(list) && taken < minutes && (taken == 0 || total+len(list[taken].Values) <= values) {
+		total += len(list[taken].Values)
+		taken++
+	}
+	if taken == 0 {
+		return []Minute{}, false, nil
+	}
+	return list[:taken], taken < len(list), nil
+}
+
+// mergeMinutes adds to the minutes in stored, in order of time, those in
+// waiting, in order too: a minute in both keeps the stored values and gets
+// the others.
+func mergeMinutes(stored, waiting []Minute) []Minute {
+	for _, w := range waiting {
+		i, found := slices.BinarySearchFunc(stored, w.Time, func(m Minute, t int64) int { return cmp.Compare(m.Time, t) })
+		if !found {
+			stored = slices.Insert(stored, i, w)
+			continue
+		}
+		for metric, value := range w.Values {
+			if _, ok := stored[i].Values[metric]; !ok {
+				stored[i].Values[metric] = value
+			}
+		}
+	}
+	return stored
 }
 
 // readMinutes reads the oldest minutes after the given time, at most minutes

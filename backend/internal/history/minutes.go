@@ -6,8 +6,6 @@ import (
 	"errors"
 	"sync"
 	"time"
-
-	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // Minute is the average of a device's readings over one SampleInterval, as
@@ -256,11 +254,4 @@ func readMinutes(ctx context.Context, db *sql.DB, times, values string, after ti
 		list[len(list)-1].Values[metric] = value
 	}
 	return list, more, rows.Err()
-}
-
-// DescribeExtras describes the extras that ask for their history, by the
-// metric they are stored under, as a recorder does: for a hub that fetched
-// the minutes of a device with how their extras are described.
-func DescribeExtras(extras []metrics.Extra, maxEntries int) map[string]ExtraInfo {
-	return extraInfo(extras, maxEntries)
 }

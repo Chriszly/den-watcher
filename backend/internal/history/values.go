@@ -142,9 +142,10 @@ func storedExtras(extras []metrics.Extra, maxEntries int) (stored []storedExtra,
 	return stored[:MaxExtras(maxEntries)], true
 }
 
-// extraInfo describes the extras values keeps, by the metric they are stored
-// under.
-func extraInfo(extras []metrics.Extra, maxEntries int) map[string]ExtraInfo {
+// DescribeExtras describes the extras values keeps, by the metric they are
+// stored under: for a recorder, and for a hub that fetched the minutes of a
+// device with how their extras are described.
+func DescribeExtras(extras []metrics.Extra, maxEntries int) map[string]ExtraInfo {
 	stored, _ := storedExtras(extras, maxEntries)
 	info := map[string]ExtraInfo{}
 	for _, extra := range stored {

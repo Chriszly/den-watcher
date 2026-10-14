@@ -42,7 +42,7 @@ func StoredPasswords(dir string) (map[string]string, bool, error) {
 	encrypted, err := os.ReadFile(path) //nolint:gosec // the service's own file in its data folder
 	switch {
 	case err == nil:
-		plain, err := unprotect(encrypted)
+		plain, err := dpapi(encrypted, false)
 		if err != nil {
 			return nil, false, fmt.Errorf("decrypt %s: %w", path, err)
 		}
@@ -75,7 +75,7 @@ func StoredPasswords(dir string) (map[string]string, bool, error) {
 	}
 	if len(added) > 0 {
 		maps.Copy(passwords, added)
-		encrypted, err := protect(formatPasswords(passwords))
+		encrypted, err := dpapi(formatPasswords(passwords), true)
 		if err != nil {
 			return nil, false, fmt.Errorf("encrypt the router passwords: %w", err)
 		}
@@ -111,16 +111,8 @@ func storedString(key registry.Key) (string, error) {
 	return strings.Join(lines, "\n"), err
 }
 
-// protect encrypts data with DPAPI for the current account.
-func protect(data []byte) ([]byte, error) {
-	return dpapi(data, true)
-}
-
-// unprotect decrypts what protect encrypted, on the same PC and account.
-func unprotect(data []byte) ([]byte, error) {
-	return dpapi(data, false)
-}
-
+// dpapi encrypts data with DPAPI for the current account, or decrypts what
+// it encrypted, on the same PC and account.
 func dpapi(data []byte, encrypt bool) ([]byte, error) {
 	if len(data) == 0 {
 		return nil, errors.New("nothing to encrypt or decrypt")

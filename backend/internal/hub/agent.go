@@ -89,21 +89,11 @@ func NewAgent(address string) *Agent {
 // newAgent returns an Agent that checks every address it connects to with
 // control, which refuses one by returning an error.
 func newAgent(address string, control func(network, address string, c syscall.RawConn) error) *Agent {
-	dialer := &net.Dialer{Timeout: requestTimeout, Control: control}
 	return &Agent{
 		url:        "http://" + address + "/api/metrics",
 		minutesURL: "http://" + address + MinutesPath,
 		maxEntries: history.DefaultMaxEntries,
-		client: &http.Client{
-			Timeout: requestTimeout,
-			Transport: &http.Transport{
-				// No proxy: the device is on the local network.
-				DialContext:         dialer.DialContext,
-				MaxIdleConnsPerHost: 1,
-			},
-			// The API answers directly; a redirect could lead off the local network.
-			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-		},
+		client:     lan.NewClient(control, requestTimeout),
 	}
 }
 

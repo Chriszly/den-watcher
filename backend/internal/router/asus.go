@@ -64,7 +64,7 @@ type ASUSReader struct {
 // NewASUS returns a reader for the ASUS router at address (host or
 // host:port) with the login of its web interface.
 func NewASUS(address, user, password string) *ASUSReader {
-	return &ASUSReader{base: "http://" + address, user: user, password: password, client: newClient(lan.Control)}
+	return &ASUSReader{base: "http://" + address, user: user, password: password, client: lan.NewClient(lan.Control, requestTimeout)}
 }
 
 // Collect reads the router's usage, logging in first when there is no
@@ -197,13 +197,7 @@ func (a *ASUSReader) appGet(ctx context.Context) (map[string]json.RawMessage, er
 
 // ask asks a page of the web interface with the token.
 func (a *ASUSReader) ask(ctx context.Context, method, path string, form url.Values) ([]byte, int, error) {
-	var body *strings.Reader
-	if form != nil {
-		body = strings.NewReader(form.Encode())
-	} else {
-		body = strings.NewReader("")
-	}
-	request, err := http.NewRequestWithContext(ctx, method, a.base+path, body)
+	request, err := http.NewRequestWithContext(ctx, method, a.base+path, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, 0, err
 	}

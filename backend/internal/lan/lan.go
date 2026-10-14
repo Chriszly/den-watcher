@@ -5,6 +5,7 @@ package lan
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"net/netip"
 	"sync"
 	"syscall"
@@ -112,4 +113,16 @@ func globalPrefixes(addrs []net.Addr) []netip.Prefix {
 		prefixes = append(prefixes, netip.PrefixFrom(addr, bits).Masked())
 	}
 	return prefixes
+}
+
+// NewClient returns an HTTP client for a device on the local network, with
+// control checking each address it connects to: no proxy, and no redirect,
+// which could lead off the local network.
+func NewClient(control func(network, address string, c syscall.RawConn) error, timeout time.Duration) *http.Client {
+	dialer := &net.Dialer{Timeout: timeout, Control: control}
+	return &http.Client{
+		Timeout:       timeout,
+		Transport:     &http.Transport{DialContext: dialer.DialContext, MaxIdleConnsPerHost: 1},
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
 }

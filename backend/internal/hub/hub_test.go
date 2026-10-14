@@ -1056,7 +1056,7 @@ func TestKeepingTheHistoryKeepsAvailabilityAndKindAcrossRestarts(t *testing.T) {
 	if _, err := again.Add(ctx, "Laptop", startDevice(t), KindPC); err != nil {
 		t.Fatalf("Add() again error = %v", err)
 	}
-	if kept, err := again.keptHistory(ctx); err != nil || len(kept) != 0 {
+	if kept, err := again.selectDevices(ctx, `SELECT device FROM hub_kept`); err != nil || len(kept) != 0 {
 		t.Errorf("kept devices after adding again = %q, %v; want none", kept, err)
 	}
 	if availability, err := readAvailability(ctx, store.DB(), "laptop"); err != nil || availability.Outages != 1 {
@@ -1104,7 +1104,7 @@ func TestAKeptDeviceInHubDevicesIsCollectedFromAgain(t *testing.T) {
 		t.Fatalf("forgetExpired() error = %v", err)
 	}
 
-	if kept, err := again.keptHistory(ctx); err != nil || len(kept) != 0 {
+	if kept, err := again.selectDevices(ctx, `SELECT device FROM hub_kept`); err != nil || len(kept) != 0 {
 		t.Errorf("kept devices = %q, %v; want none once in HUB_DEVICES", kept, err)
 	}
 	if kind, err := readKind(ctx, store.DB(), "laptop"); err != nil || kind != KindPC {

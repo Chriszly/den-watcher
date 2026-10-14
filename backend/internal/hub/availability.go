@@ -86,25 +86,11 @@ func forget(ctx context.Context, db *sql.DB, device string) error {
 // from HUB_DEVICES without being added on the page, and the ones removed on
 // the page without keeping their history whose forgetting did not finish.
 func (h *Hub) forgetOthers(ctx context.Context, kept []string) error {
-	rows, err := h.store.DB().QueryContext(ctx, `SELECT device FROM hub_watched UNION SELECT device FROM hub_outages UNION SELECT device FROM hub_device_kinds`)
+	devices, err := h.selectDevices(ctx, `SELECT device FROM hub_watched UNION SELECT device FROM hub_outages UNION SELECT device FROM hub_device_kinds`)
 	if err != nil {
 		return err
 	}
-	var gone []string
-	for rows.Next() {
-		var device string
-		if err := rows.Scan(&device); err != nil {
-			_ = rows.Close()
-			return err
-		}
-		if !slices.Contains(kept, device) {
-			gone = append(gone, device)
-		}
-	}
-	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
-		return err
-	}
-	for _, device := range gone {
+	for _, device := range slices.DeleteFunc(devices, func(d string) bool { return slices.Contains(kept, d) }) {
 		if err := h.forgetDevice(ctx, device); err != nil {
 			return err
 		}

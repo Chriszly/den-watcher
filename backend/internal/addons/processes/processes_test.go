@@ -139,11 +139,11 @@ func TestReaderRanksByCPUSinceThePreviousRead(t *testing.T) {
 	}
 	r := NewReader(source(samples...))
 
-	first := r.Read(time.Now())
+	first := r.Read(t.Context(), time.Now())
 	if len(first) != 1 || first[0].ID != "processes-memory" {
 		t.Fatalf("first Read() = %+v, want memory only", first)
 	}
-	second := r.Read(time.Now())
+	second := r.Read(t.Context(), time.Now())
 	if len(second) != 2 || second[0].ID != "processes-cpu" || second[1].ID != "processes-memory" {
 		t.Fatalf("second Read() = %+v, want CPU and memory", second)
 	}
@@ -176,14 +176,14 @@ func TestReaderWaitsForAProcessItMissed(t *testing.T) {
 			{PID: 3, Start: 150, Name: "job", CPU: 80},
 		}},
 	))
-	r.Read(time.Now())
+	r.Read(t.Context(), time.Now())
 
 	// The job started after the previous sample, so all its CPU time counts;
 	// the server is older and only went unread, so it waits a sample.
-	if cpu := values(r.Read(time.Now())[0]); len(cpu) != 1 || cpu["pid-3 job"] != 10 {
+	if cpu := values(r.Read(t.Context(), time.Now())[0]); len(cpu) != 1 || cpu["pid-3 job"] != 10 {
 		t.Errorf("CPU = %v, want only the new job at 10 %%", cpu)
 	}
-	if cpu := values(r.Read(time.Now())[0]); len(cpu) != 2 || cpu["pid-2 server"] != 25 || cpu["pid-3 job"] != 10 {
+	if cpu := values(r.Read(t.Context(), time.Now())[0]); len(cpu) != 2 || cpu["pid-2 server"] != 25 || cpu["pid-3 job"] != 10 {
 		t.Errorf("CPU = %v, want the server at 25 %% once it was read twice", cpu)
 	}
 }
@@ -211,7 +211,7 @@ func TestReaderListsTheTopTen(t *testing.T) {
 	}
 	r := NewReader(func(time.Time) (Sample, error) { return Sample{Processes: processes, Total: 1}, nil })
 
-	got := r.Read(time.Now())
+	got := r.Read(t.Context(), time.Now())
 
 	if len(got) != 1 || len(got[0].Items) != Top || got[0].Items[0].ID != "pid-25" || got[0].Items[9].Label != "p (10)" {
 		t.Errorf("Read() = %+v, want the ten largest, numbered", got)
@@ -223,7 +223,7 @@ func TestReaderListsTheTopTen(t *testing.T) {
 
 func TestReaderWithoutSourceReturnsNothing(t *testing.T) {
 	r := NewReader(func(time.Time) (Sample, error) { return Sample{}, errors.New("no /proc") })
-	if got := r.Read(time.Now()); got != nil {
+	if got := r.Read(t.Context(), time.Now()); got != nil {
 		t.Errorf("Read() = %+v, want nothing", got)
 	}
 }
@@ -232,17 +232,17 @@ func TestReaderNotesWhenReadingFailsAndWorksAgain(t *testing.T) {
 	var err error
 	r := NewReader(func(time.Time) (Sample, error) { return Sample{Total: 1}, err })
 
-	r.Read(time.Now())
+	r.Read(t.Context(), time.Now())
 	if r.failing {
 		t.Error("failing = true after a read that worked")
 	}
 	err = errors.New("no /proc")
-	r.Read(time.Now())
+	r.Read(t.Context(), time.Now())
 	if !r.failing {
 		t.Error("failing = false after a read that failed, want it noted")
 	}
 	err = nil
-	r.Read(time.Now())
+	r.Read(t.Context(), time.Now())
 	if r.failing {
 		t.Error("failing = true once reading works again")
 	}

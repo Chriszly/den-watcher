@@ -142,14 +142,13 @@ func Extras(readings []Reading) []metrics.Extra {
 	}
 	numbered := metrics.NumberDuplicates(names)
 	for i, r := range readings {
-		watts := r.Watts
 		label, labels := numberLabels(r.Label, r.Labels, numbered[i])
 		group.Items = append(group.Items, metrics.ExtraItem{
 			ID:      r.ID,
 			Label:   label,
 			Labels:  labels,
 			Unit:    metrics.UnitWatts,
-			Value:   &watts,
+			Value:   new(r.Watts),
 			History: true,
 		})
 	}

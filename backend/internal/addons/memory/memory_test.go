@@ -47,7 +47,7 @@ func TestReadSizesNowAndRatesFromTheSecondRead(t *testing.T) {
 	r.pageSize = 4096
 	start := time.Now()
 
-	first := r.Read(start)
+	first := r.Read(t.Context(), start)
 	if len(first) != 3 || first[0].ID != "memory" || first[0].Titles["de"] != "Speicherdetails" ||
 		first[1].ID != "memory-committed" || first[2].ID != "memory-writeback" {
 		t.Fatalf("first Read() = %+v, want the memory, committed and writeback groups", first)
@@ -68,7 +68,7 @@ func TestReadSizesNowAndRatesFromTheSecondRead(t *testing.T) {
 	}
 
 	writeProc(t, dir, meminfo, "pgfault 6000\npgmajfault 20\npswpin 10\npswpout 100\n")
-	second := r.Read(start.Add(5 * time.Second))
+	second := r.Read(t.Context(), start.Add(5*time.Second))
 
 	got := values(second)
 	for id, value := range map[string]float64{
@@ -130,10 +130,10 @@ func TestReadLeavesOutCountersThatWentBack(t *testing.T) {
 	writeProc(t, dir, "", "pgfault 1000\n")
 	r := NewReader(dir)
 	start := time.Now()
-	r.Read(start)
+	r.Read(t.Context(), start)
 	writeProc(t, dir, "", "pgfault 10\n")
 
-	if got := r.Read(start.Add(5 * time.Second)); got != nil {
+	if got := r.Read(t.Context(), start.Add(5*time.Second)); got != nil {
 		t.Errorf("Read() = %+v, want nothing", got)
 	}
 }
@@ -141,10 +141,10 @@ func TestReadLeavesOutCountersThatWentBack(t *testing.T) {
 func TestReadWithoutProcReadsNothing(t *testing.T) {
 	r := NewReader(filepath.Join(t.TempDir(), "missing"))
 	now := time.Now()
-	if got := r.Read(now); got != nil {
+	if got := r.Read(t.Context(), now); got != nil {
 		t.Errorf("Read() = %+v, want nil", got)
 	}
-	if got := r.Read(now.Add(5 * time.Second)); got != nil {
+	if got := r.Read(t.Context(), now.Add(5*time.Second)); got != nil {
 		t.Errorf("second Read() = %+v, want nil", got)
 	}
 }

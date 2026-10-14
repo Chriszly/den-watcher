@@ -156,7 +156,7 @@ func TestReaderCountsLinksWithoutBlueZ(t *testing.T) {
 	startBus(t) // a bus without BlueZ on it
 	sysDir := t.TempDir()
 	for _, name := range []string{"hci0", "hci0:64"} {
-		if err := os.MkdirAll(filepath.Join(ClassDir(sysDir), name), 0o750); err != nil {
+		if err := os.MkdirAll(filepath.Join(sysDir, "class", "bluetooth", name), 0o750); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -171,7 +171,7 @@ func TestReaderCountsLinksWithoutBlueZ(t *testing.T) {
 func TestReaderCountsLinksWithoutBus(t *testing.T) {
 	t.Setenv("DBUS_SYSTEM_BUS_ADDRESS", "unix:path="+filepath.Join(t.TempDir(), "none"))
 	sysDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(ClassDir(sysDir), "hci0"), 0o750); err != nil {
+	if err := os.MkdirAll(filepath.Join(sysDir, "class", "bluetooth", "hci0"), 0o750); err != nil {
 		t.Fatal(err)
 	}
 

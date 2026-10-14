@@ -128,14 +128,13 @@ func Extras(disks []Disk) []metrics.Extra {
 			if number == nil {
 				continue
 			}
-			n := *number
 			group.Items = append(group.Items, metrics.ExtraItem{
 				ID:      id + "-" + v.id,
 				Label:   prefix + ": " + v.label,
 				Labels:  labelled(prefix, v.labels),
 				Section: prefix,
 				Unit:    v.unit,
-				Value:   &n,
+				Value:   new(*number),
 				History: true,
 			})
 		}

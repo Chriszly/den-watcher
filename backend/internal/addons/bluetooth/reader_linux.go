@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"path/filepath"
 	"time"
 
 	"github.com/godbus/dbus/v5"
@@ -27,7 +28,7 @@ func NewReader(sysDir string) func(ctx context.Context) *Reading {
 	// The last problem logged of each source, so each is logged once
 	// until it changes, also while both fail.
 	var loggedBlueZ, loggedLinks string
-	classDir := ClassDir(sysDir)
+	classDir := filepath.Join(sysDir, "class", "bluetooth")
 	return func(ctx context.Context) *Reading {
 		reading, err := askBlueZ(ctx, &conn)
 		if err == nil {

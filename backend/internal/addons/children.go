@@ -91,11 +91,19 @@ func startHost(dir, program string, args, names []string, retryDelay, maxRetryDe
 	}
 }
 
-// RunHost is the add-on host: it starts the installed add-ons, as
-// StartChildren does, and runs until den-watcher ends it, which ends the
-// add-ons too.
+// RunHost is the add-on host: it starts each add-on of Children installed
+// next to the running program, as den-watcher-<name>.exe, starts it again
+// whenever it stops, and runs until den-watcher ends it, which ends the
+// add-ons too. The installer puts only the add-ons picked at setup there.
 func RunHost(dir string) {
-	StartChildren(dir)
+	if dir == "" {
+		dir = DefaultDir()
+	}
+	if exe, err := os.Executable(); err != nil {
+		slog.Error("the add-ons are not started, as the program's folder is unknown", "error", err)
+	} else {
+		startChildren(dir, installedChildren(exe), childRetryDelay, maxChildRetryDelay)
+	}
 	go func() {
 		noValues := func(context.Context, time.Time) []metrics.Extra { return nil }
 		if err := Serve(context.Background(), hostReport, noValues); err != nil {
@@ -109,23 +117,6 @@ func RunHost(dir string) {
 	for range terms {
 		// Ignored: den-watcher ends the host.
 	}
-}
-
-// StartChildren starts each add-on of Children that is installed next to
-// the running program, as den-watcher-<name>.exe, and starts it again
-// whenever it stops. The returned function stops them, waits until they have
-// ended and removes their reports from the add-on folder dir, as a killed
-// add-on cannot. The installer puts only the add-ons picked at setup there.
-func StartChildren(dir string) (stop func()) {
-	if dir == "" {
-		dir = DefaultDir()
-	}
-	exe, err := os.Executable()
-	if err != nil {
-		slog.Error("the add-ons are not started, as the program's folder is unknown", "error", err)
-		return func() {}
-	}
-	return startChildren(dir, installedChildren(exe), childRetryDelay, maxChildRetryDelay)
 }
 
 // installedChildren are the programs of the add-ons of Children installed
@@ -142,7 +133,9 @@ func installedChildren(exe string) []string {
 }
 
 // startChildren runs each of programs, an add-on named den-watcher-<name>
-// with an optional extension, as StartChildren does.
+// with an optional extension, as RunHost does. The returned function stops
+// them, waits until they have ended and removes their reports from the
+// add-on folder dir, as a killed add-on cannot.
 func startChildren(dir string, programs []string, retryDelay, maxRetryDelay time.Duration) (stop func()) {
 	if len(programs) == 0 {
 		return func() {}

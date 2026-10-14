@@ -23,13 +23,13 @@ func parseNVMeHealth(log []byte) (Disk, error) {
 	passed := log[0] == 0
 	disk := Disk{
 		Passed:         &passed,
-		PercentageUsed: number(float64(log[5])),
-		PowerOnHours:   number(uint128(log[128:144])),
-		MediaErrors:    number(uint128(log[160:176])),
+		PercentageUsed: new(float64(log[5])),
+		PowerOnHours:   new(uint128(log[128:144])),
+		MediaErrors:    new(uint128(log[160:176])),
 	}
 	// The composite temperature in kelvin; 0 when the disk does not report it.
 	if kelvin := binary.LittleEndian.Uint16(log[1:3]); kelvin != 0 {
-		disk.Celsius = number(float64(kelvin) - 273)
+		disk.Celsius = new(float64(kelvin) - 273)
 	}
 	return disk, nil
 }
@@ -37,8 +37,4 @@ func parseNVMeHealth(log []byte) (Disk, error) {
 // uint128 reads a little-endian 128-bit counter of the NVMe health log.
 func uint128(b []byte) float64 {
 	return float64(binary.LittleEndian.Uint64(b[:8])) + float64(binary.LittleEndian.Uint64(b[8:16]))*math.Pow(2, 64)
-}
-
-func number(f float64) *float64 {
-	return &f
 }

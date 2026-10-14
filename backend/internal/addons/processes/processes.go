@@ -8,6 +8,7 @@ package processes
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -75,7 +76,7 @@ func NewReader(source Source) *Reader {
 // Read returns the busiest processes as extras: by CPU, as a percent of the
 // whole machine since the previous call, so the first call leaves that group
 // out, and by memory.
-func (r *Reader) Read(now time.Time) []metrics.Extra {
+func (r *Reader) Read(_ context.Context, now time.Time) []metrics.Extra {
 	sample, err := r.source(now)
 	switch {
 	case err != nil && !r.failing:
@@ -221,12 +222,11 @@ func group(g metrics.Extra, values []ranked, unit metrics.Unit) metrics.Extra {
 		if n := seen[name]; n > 1 {
 			label = fmt.Sprintf("%s (%d)", name, n)
 		}
-		value := v.value
 		g.Items = append(g.Items, metrics.ExtraItem{
 			ID:    "pid-" + strconv.Itoa(v.process.PID),
 			Label: label,
 			Unit:  unit,
-			Value: &value,
+			Value: new(v.value),
 		})
 	}
 	return g

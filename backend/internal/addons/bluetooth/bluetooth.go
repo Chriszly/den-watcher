@@ -113,7 +113,6 @@ func Extras(reading *Reading) []metrics.Extra {
 	if reading == nil {
 		return nil
 	}
-	connected := float64(reading.Connected)
 	group := metrics.Extra{
 		ID:          "bluetooth",
 		Title:       "Bluetooth",
@@ -132,7 +131,7 @@ func Extras(reading *Reading) []metrics.Extra {
 				"es": "Dispositivos conectados",
 			},
 			Unit:    metrics.UnitNumber,
-			Value:   &connected,
+			Value:   new(float64(reading.Connected)),
 			History: true,
 		}},
 	}

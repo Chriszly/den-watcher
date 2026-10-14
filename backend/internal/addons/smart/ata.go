@@ -192,16 +192,16 @@ func parseSMARTData(sector []byte) (Disk, error) {
 		raw := sector[i+5 : i+11]
 		switch sector[i] {
 		case attrReallocatedSectors:
-			disk.ReallocatedSectors = number(float64(binary.LittleEndian.Uint32(raw)))
+			disk.ReallocatedSectors = new(float64(binary.LittleEndian.Uint32(raw)))
 		case attrPowerOnHours:
-			disk.PowerOnHours = number(float64(binary.LittleEndian.Uint32(raw)))
+			disk.PowerOnHours = new(float64(binary.LittleEndian.Uint32(raw)))
 		case attrTemperature:
 			if raw[0] != 0 {
-				disk.Celsius = number(float64(raw[0]))
+				disk.Celsius = new(float64(raw[0]))
 			}
 		case attrAirflowTemperature:
 			if raw[0] != 0 {
-				airflow = number(float64(raw[0]))
+				airflow = new(float64(raw[0]))
 			}
 		}
 	}

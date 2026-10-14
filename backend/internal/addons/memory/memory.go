@@ -11,6 +11,7 @@ package memory
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -88,7 +89,7 @@ func NewReader(procDir string) *Reader {
 // Read returns the memory details as the group of extras the collector
 // shows, or nothing where /proc is missing. The rates are the average since
 // the previous call, so the first call leaves them out.
-func (r *Reader) Read(now time.Time) []metrics.Extra {
+func (r *Reader) Read(_ context.Context, now time.Time) []metrics.Extra {
 	var items []metrics.ExtraItem
 	if values := readKeys(r.meminfo); values != nil {
 		for _, s := range sizes {
@@ -96,9 +97,8 @@ func (r *Reader) Read(now time.Time) []metrics.Extra {
 			if !ok {
 				continue
 			}
-			bytes := float64(kilobytes) * 1024
 			items = append(items, metrics.ExtraItem{
-				ID: s.id, Label: s.label, Labels: s.labels, Unit: metrics.UnitBytes, Value: &bytes, History: true,
+				ID: s.id, Label: s.label, Labels: s.labels, Unit: metrics.UnitBytes, Value: new(float64(kilobytes) * 1024), History: true,
 			})
 		}
 	}

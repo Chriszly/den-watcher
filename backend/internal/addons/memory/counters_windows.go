@@ -1,11 +1,13 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 	"time"
 
+	"github.com/Chriszly/den-watcher/backend/internal/addons"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 	"github.com/Chriszly/den-watcher/backend/internal/pdh"
 )
@@ -23,11 +25,11 @@ type counterReader struct {
 
 // New returns what reads the memory details of this machine: the Memory
 // performance counters, or nothing where they cannot be opened.
-func New() func(now time.Time) []metrics.Extra {
+func New() addons.Read {
 	r, err := openCounters()
 	if err != nil {
 		slog.Warn("the memory counters cannot be read", "error", err)
-		return func(time.Time) []metrics.Extra { return nil }
+		return func(context.Context, time.Time) []metrics.Extra { return nil }
 	}
 	return r.Read
 }
@@ -55,7 +57,7 @@ func openCounters() (*counterReader, error) {
 // Read returns the memory details as the group of extras the collector
 // shows. Windows measures the rates between two reads, so the first read
 // leaves them out.
-func (r *counterReader) Read(time.Time) []metrics.Extra {
+func (r *counterReader) Read(context.Context, time.Time) []metrics.Extra {
 	if err := r.query.Collect(); err != nil {
 		return nil
 	}

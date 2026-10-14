@@ -8,7 +8,6 @@ package wifi
 
 import (
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -34,14 +33,6 @@ type Reading struct {
 	// that report no level in dBm leave it out.
 	SignalDBm float64
 	HasSignal bool
-}
-
-// File returns where the host's wireless statistics are: in the first
-// process of procDir, since /proc/net describes the network of the reading
-// process, which in a container or a service without network is not the
-// host's.
-func File(procDir string) string {
-	return filepath.Join(procDir, "1", "net", "wireless")
 }
 
 // Read reads the wireless statistics in file, or returns nothing when there
@@ -112,7 +103,6 @@ func Extras(readings []Reading) []metrics.Extra {
 		},
 	}
 	for _, r := range readings {
-		quality := r.QualityPercent
 		group.Items = append(group.Items, metrics.ExtraItem{
 			ID:    idOf(r.Key, "-quality"),
 			Label: label(r.Interface, "link quality"),
@@ -122,7 +112,7 @@ func Extras(readings []Reading) []metrics.Extra {
 				"es": label(r.Interface, "calidad del enlace"),
 			},
 			Unit:    metrics.UnitPercent,
-			Value:   &quality,
+			Value:   new(r.QualityPercent),
 			History: true,
 		})
 		if !r.HasSignal {
@@ -131,7 +121,6 @@ func Extras(readings []Reading) []metrics.Extra {
 		// The signal is shown as it is now, without history: its chart
 		// starts at 0 and has no room for values below it. The quality,
 		// which follows from the signal, is the one charted.
-		signal := r.SignalDBm
 		group.Items = append(group.Items, metrics.ExtraItem{
 			ID:    idOf(r.Key, "-signal"),
 			Label: label(r.Interface, "signal (dBm)"),
@@ -141,7 +130,7 @@ func Extras(readings []Reading) []metrics.Extra {
 				"es": label(r.Interface, "señal (dBm)"),
 			},
 			Unit:  metrics.UnitNumber,
-			Value: &signal,
+			Value: new(r.SignalDBm),
 		})
 	}
 	return []metrics.Extra{group}

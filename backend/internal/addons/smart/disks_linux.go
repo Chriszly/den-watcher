@@ -14,6 +14,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 // linuxSource reads the disks Linux lists in /sys/block: SATA disks through
@@ -52,7 +54,7 @@ func (s linuxSource) list() ([]device, error) {
 		if !sataName.MatchString(name) && match == nil {
 			continue
 		}
-		if s.text(filepath.Join(block, name, "removable")) == "1" {
+		if sysfile.Text(filepath.Join(block, name, "removable")) == "1" {
 			continue
 		}
 		// Virtual disks such as loop devices sit below /devices/virtual, as
@@ -71,12 +73,12 @@ func (s linuxSource) list() ([]device, error) {
 			ctrl := s.controller(filepath.Join(block, name, "device"), match[1])
 			d = device{
 				name: ctrl, path: filepath.Join(s.dev, ctrl), nvme: true,
-				model:  s.text(filepath.Join(s.sys, "class", "nvme", ctrl, "model")),
-				serial: s.text(filepath.Join(s.sys, "class", "nvme", ctrl, "serial")),
+				model:  sysfile.Text(filepath.Join(s.sys, "class", "nvme", ctrl, "model")),
+				serial: sysfile.Text(filepath.Join(s.sys, "class", "nvme", ctrl, "serial")),
 				blocks: []string{name},
 			}
 		} else {
-			d.model = s.text(filepath.Join(block, name, "device", "model"))
+			d.model = sysfile.Text(filepath.Join(block, name, "device", "model"))
 		}
 		if i, ok := seen[d.path]; ok {
 			devices[i].blocks = append(devices[i].blocks, name)
@@ -96,10 +98,10 @@ func (s linuxSource) list() ([]device, error) {
 func (s linuxSource) ioCount(d device) (uint64, bool) {
 	var count uint64
 	for _, block := range d.blocks {
-		if s.text(filepath.Join(s.sys, "block", block, "queue", "iostats")) == "0" {
+		if sysfile.Text(filepath.Join(s.sys, "block", block, "queue", "iostats")) == "0" {
 			return 0, false
 		}
-		n, ok := parseBlockStat(s.text(filepath.Join(s.sys, "block", block, "stat")))
+		n, ok := parseBlockStat(sysfile.Text(filepath.Join(s.sys, "block", block, "stat")))
 		if !ok {
 			return 0, false
 		}
@@ -158,15 +160,6 @@ func (s linuxSource) controller(link, guess string) string {
 		}
 	}
 	return guess
-}
-
-// text reads a sysfs file, or "" when it is missing.
-func (s linuxSource) text(path string) string {
-	b, err := os.ReadFile(path) //nolint:gosec // a file below /sys, named from /sys/block
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(b))
 }
 
 func (s linuxSource) read(d device) (Disk, error) {

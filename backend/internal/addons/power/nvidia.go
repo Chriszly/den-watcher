@@ -4,20 +4,10 @@ import (
 	"context"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/addons"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
-
-// nvidiaTimeout is how long nvidia-smi may take. Without the driver's
-// persistence mode, as on many Linux servers, each call starts the driver,
-// which can take more than a second.
-const nvidiaTimeout = 3 * time.Second
-
-// nvidiaGiveUp is how long a read waits for nvidia-smi, which a kill after
-// nvidiaTimeout may not end (see addons.Program).
-const nvidiaGiveUp = nvidiaTimeout + 2*time.Second
 
 // readNvidia reads the power draw of each NVIDIA GPU through nvidia-smi,
 // which comes with the NVIDIA driver, run by calls. program is "" when it is
@@ -26,15 +16,8 @@ func readNvidia(ctx context.Context, program string, calls *addons.Program) []Re
 	if program == "" {
 		return nil
 	}
-	out, _ := calls.Output(nvidiaGiveUp, func() (string, error) { return runNvidia(ctx, program) })
+	out, _ := calls.NvidiaSMI(ctx, program, "--query-gpu=index,uuid,name,power.draw", "--format=csv,noheader,nounits")
 	return parseNvidia(out)
-}
-
-// runNvidia runs nvidia-smi for readNvidia, giving up after nvidiaTimeout.
-func runNvidia(ctx context.Context, program string) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, nvidiaTimeout)
-	defer cancel()
-	return addons.NvidiaSMI(ctx, program, "--query-gpu=index,uuid,name,power.draw", "--format=csv,noheader,nounits")
 }
 
 // parseNvidia reads lines such as

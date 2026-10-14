@@ -108,7 +108,9 @@ An older version refuses to start on a file a newer version has changed, instead
 | 2 | adds `samples_hourly` and fills it from the values already kept |
 | 3 | stores a minute as one row in `history_minutes` instead of one row per value in `samples` |
 
-Version 3 moves the values already kept when the program starts, one device and one day at a time, and drops `samples` after the last one. It makes no copy of the file first: nothing is deleted before everything is converted, and a start that is cut short goes on from where it stopped. The hub does not answer while it runs: it took 3 seconds for a file of 130 MB on a PC, and takes longer on a Raspberry Pi, in proportion to the size of the file. Afterwards the file shrinks to a twentieth of its size, if the temporary folder has room for a copy of what is kept; otherwise it keeps its size and the free space is reused. It needs room for the new rows next to the old ones while it runs.
+> **No way back from version 3 (den-watcher 3.0.0) without losing the history.** Once 3.0.0 has started on a file, earlier versions refuse it, and there is no `.backup` copy to go back to. Before updating a hub to 3.0.0, download a backup of its database (**Download backup** in the devices dialog, see [Backups](#backups)); to go back to an earlier version later, put that file in place, which loses what was recorded since.
+
+Version 3 moves the values already kept when the program starts, one device and one day at a time, and drops `samples` after the last one. It makes no copy of the file first: nothing is deleted before everything is converted, and a start that is cut short goes on with the first day it had not converted. The hub does not answer while it runs: it took 3 seconds for a file of 130 MB on a PC, and takes longer on a Raspberry Pi, in proportion to the size of the file. Afterwards the file shrinks to a twentieth of its size, if the temporary folder has room for a copy of what is kept; otherwise it keeps its size and the free space is reused. It needs room for the new rows next to the old ones while it runs.
 
 ## Backups
 

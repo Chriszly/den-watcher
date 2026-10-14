@@ -113,6 +113,21 @@ func (p *pending) between(device string, from, to int64) []Minute {
 	return list
 }
 
+// dropBefore drops the minutes from before t, which are older than the
+// retention.
+func (p *pending) dropBefore(t int64) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for _, byTime := range p.waiting {
+		for at := range byTime {
+			if at < t {
+				delete(byTime, at)
+				p.count--
+			}
+		}
+	}
+}
+
 // forget drops the minutes of a device.
 func (p *pending) forget(device string) {
 	p.mu.Lock()
@@ -143,7 +158,10 @@ func (p *pending) take() map[string][]Minute {
 
 // done forgets the minutes being written, or when they were not written puts
 // them back among those that wait, where newer values of the same minute win.
-func (p *pending) done(err error) {
+// While writes fail, as on a full disk, the oldest are dropped once more than
+// maxPendingMinutes wait, down to half of that, so memory stays bounded and
+// a flush is not tried at every minute; it returns how many were dropped.
+func (p *pending) done(err error) (dropped int) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if err != nil {
@@ -158,6 +176,26 @@ func (p *pending) done(err error) {
 	for _, byTime := range p.waiting {
 		p.count += len(byTime)
 	}
+	if p.count <= maxPendingMinutes {
+		return 0
+	}
+	type key struct {
+		device string
+		at     int64
+	}
+	var all []key
+	for device, byTime := range p.waiting {
+		for at := range byTime {
+			all = append(all, key{device, at})
+		}
+	}
+	slices.SortFunc(all, func(a, b key) int { return cmp.Compare(a.at, b.at) })
+	for _, k := range all[:p.count-maxPendingMinutes/2] {
+		delete(p.waiting[k.device], k.at)
+		dropped++
+	}
+	p.count -= dropped
+	return dropped
 }
 
 // SetFlushInterval makes minutes wait in memory for up to interval before
@@ -199,7 +237,9 @@ func (s *Store) Flush(ctx context.Context) error {
 		return nil
 	}
 	err := s.write(ctx, taken)
-	s.pend.done(err)
+	if dropped := s.pend.done(err); dropped > 0 {
+		slog.Error("writing the history keeps failing; the oldest minutes that waited are dropped", "minutes", dropped)
+	}
 	return err
 }
 
@@ -231,6 +271,10 @@ func (s *Store) write(ctx context.Context, byDevice map[string][]Minute) error {
 	if err != nil {
 		return err
 	}
+	metricOf := make(map[int64]string, len(ids))
+	for name, id := range ids {
+		metricOf[id] = name
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -251,10 +295,7 @@ func (s *Store) write(ctx context.Context, byDevice map[string][]Minute) error {
 				return fmt.Errorf("store %s at %d: %w", device, minute.Time, err)
 			}
 			for _, v := range stored {
-				metric, err := s.nameOf(ctx, v.id)
-				if err != nil {
-					return err
-				}
+				metric := metricOf[v.id]
 				key := hourKey{device, metric, minute.Time / 3600 * 3600}
 				if hours[key] == nil {
 					hours[key] = &hourSum{}

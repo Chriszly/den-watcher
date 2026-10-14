@@ -46,6 +46,14 @@ func newMetricIDs() *metricIDs {
 	return &metricIDs{ids: map[string]int64{}, names: map[int64]string{}}
 }
 
+// idOf returns the id of a metric, or 0 for one not known yet, which has no
+// stored values.
+func (m *metricIDs) idOf(name string) int64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.ids[name]
+}
+
 func (m *metricIDs) remember(id int64, name string) {
 	m.mu.Lock()
 	m.ids[name], m.names[id] = id, name
@@ -221,6 +229,14 @@ func (s *Store) rangeMinutes(ctx context.Context, device string, from, to, stepS
 	}
 	byID := map[int64]map[int64]*total{}
 	byName := map[string]map[int64]*total{}
+	// A minute can be both stored and waiting, as while a flush that wrote
+	// it has not forgotten it yet: of those, what the database has counts.
+	waiting := s.pend.between(device, from, to)
+	waitingAt := make(map[int64]bool, len(waiting))
+	for _, minute := range waiting {
+		waitingAt[minute.Time] = true
+	}
+	storedIDs := map[int64]map[int64]bool{}
 	add := func(steps map[int64]*total, step int64, value float64) {
 		t := steps[step]
 		if t == nil {
@@ -241,6 +257,12 @@ func (s *Store) rangeMinutes(ctx context.Context, device string, from, to, stepS
 			return nil, fmt.Errorf("minute %d of %s: %w", at, device, err)
 		}
 		step := at / stepSeconds * stepSeconds
+		if waitingAt[at] {
+			storedIDs[at] = map[int64]bool{}
+			for _, v := range values {
+				storedIDs[at][v.id] = true
+			}
+		}
 		for _, v := range values {
 			if byID[v.id] == nil {
 				byID[v.id] = map[int64]*total{}
@@ -251,9 +273,12 @@ func (s *Store) rangeMinutes(ctx context.Context, device string, from, to, stepS
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	for _, minute := range s.pend.between(device, from, to) {
+	for _, minute := range waiting {
 		step := minute.Time / stepSeconds * stepSeconds
 		for metric, value := range minute.Values {
+			if stored := storedIDs[minute.Time]; stored != nil && stored[s.ids.idOf(metric)] {
+				continue
+			}
 			if byName[metric] == nil {
 				byName[metric] = map[int64]*total{}
 			}
@@ -292,8 +317,8 @@ func (s *Store) rangeMinutes(ctx context.Context, device string, from, to, stepS
 // convertSamples moves the values of a database from before version 3, one
 // row per value in samples, into minutes, one device and one day at a time,
 // and drops samples. Nothing else uses the database while it runs, and a day
-// is converted in a transaction of its own that replaces the minutes it has,
-// so a start cut short goes on from where it was. The hourly averages stay
+// is converted in a transaction of its own, so a start cut short goes on
+// with the first day that is not converted yet. The hourly averages stay
 // as they are.
 func (s *Store) convertSamples(ctx context.Context) error {
 	var tables int
@@ -336,6 +361,16 @@ func (s *Store) convertDevice(ctx context.Context, device string) error {
 			return nil
 		}
 		end := start.Int64/day*day + day
+		// A day is converted in one transaction, so one whose first minute
+		// is there already was converted by a start that was cut short.
+		var done int
+		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM history_minutes WHERE device = ? AND time = ?`, device, start.Int64).Scan(&done); err != nil {
+			return err
+		}
+		if done > 0 {
+			query, args = `SELECT MIN(time) FROM samples WHERE device = ? AND time >= ?`, []any{device, end}
+			continue
+		}
 		if err := s.convertDay(ctx, device, start.Int64, end); err != nil {
 			return err
 		}

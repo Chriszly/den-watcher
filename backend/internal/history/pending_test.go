@@ -225,3 +225,72 @@ func TestSinceHandsOutMinutesThatWaitAfterTheStoredOnes(t *testing.T) {
 		t.Errorf("Since(5 values) = %d minutes, %v, %v; want one minute (4 values) and more", len(minutes), more, err)
 	}
 }
+
+func TestRangeCountsAMinuteThatIsStoredAndWaitingOnce(t *testing.T) {
+	ctx := context.Background()
+	store := openBatchedStore(t)
+	at := time.Unix(1_800_000_000, 0)
+	if err := store.Add(ctx, LocalDevice, at, map[string]float64{MetricCPU: 10}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Flush(ctx); err != nil {
+		t.Fatal(err)
+	}
+	// As between a flush's commit and its end, or a late value of the same
+	// minute: the stored value counts, the new metric is added.
+	store.pend.add(LocalDevice, []Minute{{Time: at.Unix(), Values: map[string]float64{MetricCPU: 99, MetricMemory: 40}}})
+
+	got, err := store.Range(ctx, LocalDevice, at, at.Add(time.Minute), time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Series{
+		{Metric: MetricCPU, Points: []Point{{at.Unix(), 10}}},
+		{Metric: MetricMemory, Points: []Point{{at.Unix(), 40}}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Range() = %+v, want %+v", got, want)
+	}
+}
+
+func TestFailingWritesKeepABoundedNumberOfMinutes(t *testing.T) {
+	ctx := context.Background()
+	store := openBatchedStore(t)
+	if _, err := store.db.Exec(`DROP TABLE history_minutes`); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Unix(1_800_000_000, 0)
+	var minutes []Minute
+	for i := range maxPendingMinutes + 10 {
+		minutes = append(minutes, Minute{Time: start.Unix() + int64(i)*60, Values: map[string]float64{MetricCPU: 1}})
+	}
+
+	if err := store.AddMinutes(ctx, LocalDevice, minutes); err == nil {
+		t.Fatal("AddMinutes() without a table succeeded, want the error of its flush")
+	}
+
+	if store.pend.count != maxPendingMinutes/2 {
+		t.Errorf("%d minutes wait, want %d", store.pend.count, maxPendingMinutes/2)
+	}
+	if newest, ok := store.pend.newest(LocalDevice); !ok || newest != minutes[len(minutes)-1].Time {
+		t.Errorf("newest minute that waits = %d, %v; want the newest added, %d", newest, ok, minutes[len(minutes)-1].Time)
+	}
+}
+
+func TestDeleteBeforeDropsWaitingMinutesOlderThanTheRetention(t *testing.T) {
+	ctx := context.Background()
+	store := openBatchedStore(t)
+	start := time.Unix(1_800_000_000, 0)
+	addMany(t, store, LocalDevice, start, 10)
+
+	if _, err := store.DeleteBefore(ctx, start.Add(4*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Flush(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := countRows(t, store, "history_minutes", LocalDevice); got != 6 {
+		t.Errorf("%d minutes written, want the 6 within the retention", got)
+	}
+}

@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { I18n } from '../i18n/i18n';
 import { DeviceItem } from './device-item';
-import { DEVICE_KINDS, Device, DeviceService } from './devices';
+import { DEVICE_KINDS, DeviceService } from './devices';
 import { FleetValues } from './fleet-values';
 import { ManageButton } from './manage-button';
 
@@ -36,10 +36,5 @@ export class DevicePicker {
 
   constructor() {
     this.fleet.watch.pipe(takeUntilDestroyed()).subscribe();
-  }
-
-  /** Shows the device on its own, also when the devices were being compared. */
-  protected pick(device: Device): void {
-    this.devices.show(device.id);
   }
 }

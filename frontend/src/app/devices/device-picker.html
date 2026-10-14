@@ -21,7 +21,7 @@
             [summary]="fleet.summaries().get(device.id)"
             [selected]="!devices.comparing() && device.id === devices.selectedId()"
             [compact]="compact()"
-            (picked)="pick(device)"
+            (picked)="devices.show(device.id)"
           />
         </li>
       }

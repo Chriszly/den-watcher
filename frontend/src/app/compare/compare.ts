@@ -176,6 +176,10 @@ export class Compare {
   protected readonly columns = COLUMNS;
   protected readonly factLabels = SYSTEM_FACTS;
   protected readonly ranges = RANGES;
+  protected readonly deviceName = deviceName;
+  protected readonly state = deviceState;
+  protected readonly worstLevel = worstLevel;
+  protected readonly formatUptime = formatUptime;
   protected readonly sortedBy = signal<Column | null>(null);
   protected readonly range = signal(RANGES[2]);
 
@@ -200,7 +204,7 @@ export class Compare {
     // The list is read again every few seconds; the charts load again only when it changes.
     { equal: (a, b) => a.map((d) => d.id).join('\n') === b.map((d) => d.id).join('\n') },
   );
-  private readonly histories = signal<Histories | null>(null);
+  protected readonly histories = signal<Histories | null>(null);
   protected readonly charts = computed(() => {
     const h = this.histories();
     if (!h) {
@@ -218,7 +222,6 @@ export class Compare {
         .filter((line) => line.points.length > 0),
     })).filter((chart) => chart.lines.length > 0);
   });
-  protected readonly chartRange = computed(() => this.histories());
 
   constructor() {
     this.fleet.watch.pipe(takeUntilDestroyed()).subscribe();
@@ -259,25 +262,6 @@ export class Compare {
   /** Sorts by the column, largest first, or back to the order of the devices when it is sorted by it. */
   protected sort(column: Column): void {
     this.sortedBy.update((c) => (c === column ? null : column));
-  }
-
-  /** Shows one device on its own, as when it is picked in the list of devices. */
-  protected open(device: Device): void {
-    this.devices.show(device.id);
-  }
-
-  protected deviceName(device: Device): string {
-    return deviceName(device, this.i18n);
-  }
-
-  protected readonly state = deviceState;
-
-  protected alertLevel(device: Device): AlertLevel | null {
-    return worstLevel(device.alerts ?? []);
-  }
-
-  protected uptime(seconds: number): string {
-    return formatUptime(seconds, this.i18n);
   }
 
   /**

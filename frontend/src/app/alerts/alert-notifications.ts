@@ -128,9 +128,7 @@ export class AlertNotifications {
 
   private show(alert: Alert, ended: boolean): void {
     const text = alertText(alert, this.i18n);
-    const level = this.i18n.t(
-      alert.level === 'alert' ? 'alerts.level.alert' : 'alerts.level.warning',
-    );
+    const level = this.i18n.t(`alerts.level.${alert.level}`);
     const body = ended
       ? this.i18n.t('alerts.notify.endedBody', { text })
       : this.i18n.t('alerts.notify.startedBody', { level, text });

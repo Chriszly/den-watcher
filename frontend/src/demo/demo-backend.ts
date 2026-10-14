@@ -88,28 +88,17 @@ export class DemoBackend implements HttpBackend {
     if (!machine) {
       return fail(request, 404, 'unknown device');
     }
+    const from = Number(url.searchParams.get('from'));
+    const to = Number(url.searchParams.get('to'));
     switch (url.pathname) {
       case '/api/metrics':
         return isOnline(machine, now)
           ? respond(request, snapshotOf(machine, Math.floor(now), this.version))
           : fail(request, 503, 'the device has not answered recently');
       case '/api/history':
-        return respond(
-          request,
-          historyEndingAtLastReading(
-            machine,
-            Number(url.searchParams.get('from')),
-            Number(url.searchParams.get('to')),
-            now,
-          ),
-        );
+        return respond(request, historyEndingAtLastReading(machine, from, to, now));
       case '/api/history.csv': {
-        const h = historyEndingAtLastReading(
-          machine,
-          Number(url.searchParams.get('from')),
-          Number(url.searchParams.get('to')),
-          now,
-        );
+        const h = historyEndingAtLastReading(machine, from, to, now);
         return respondWithFile(
           request,
           new Blob([historyCsv(h.series)], { type: 'text/csv;charset=utf-8' }),
@@ -117,16 +106,7 @@ export class DemoBackend implements HttpBackend {
         );
       }
       case '/api/events':
-        return respond(
-          request,
-          demoEvents(
-            machine,
-            Number(url.searchParams.get('from')),
-            Number(url.searchParams.get('to')),
-            now,
-            this.version,
-          ),
-        );
+        return respond(request, demoEvents(machine, from, to, now, this.version));
       case '/api/availability':
         return respond(request, availability(machine, now));
       default:

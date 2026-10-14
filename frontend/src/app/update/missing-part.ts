@@ -62,7 +62,7 @@ export class MissingParts {
       this.missing.set(false);
       return loaded;
     } catch (error) {
-      if (!(await this.reload())) {
+      if ((await this.tryReload()) !== 'reloading') {
         this.missing.set(true);
       }
       throw error;
@@ -71,13 +71,8 @@ export class MissingParts {
 
   /**
    * Reloads the page unless it was reloaded for a missing part within a minute or the hub does not
-   * answer; true if it does.
+   * answer, and says which.
    */
-  async reload(): Promise<boolean> {
-    return (await this.tryReload()) === 'reloading';
-  }
-
-  /** Reloads the page as reload() does, and says why it does not. */
   async tryReload(): Promise<ReloadOutcome> {
     if (!this.mayReload()) {
       return 'notAgain';

@@ -213,15 +213,6 @@ export const descriptions: Record<
       es: 'Los dispositivos en línea en la red del router ahora mismo, cada uno con su tipo de conexión.',
     },
   },
-  internet: {
-    description:
-      "The router's line to the internet: how fast it is and how long it has been connected.",
-    descriptions: {
-      de: 'Die Leitung des Routers ins Internet: wie schnell sie ist und wie lange sie schon verbunden ist.',
-      fr: 'La ligne du routeur vers Internet : son débit et depuis combien de temps elle est connectée.',
-      es: 'La línea del router a Internet: su velocidad y cuánto tiempo lleva conectada.',
-    },
-  },
   reachability: {
     description:
       'How long it took to answer the hub, which checks it every 15 seconds. It runs no den-watcher, so this is all the hub knows of it.',

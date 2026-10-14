@@ -83,7 +83,7 @@ func NewFritzBox(address, user, password string) *FritzBoxReader {
 		host, port = h, p
 	}
 	return &FritzBoxReader{
-		host: host, port: port, client: newClient(lan.Control),
+		host: host, port: port, client: lan.NewClient(lan.Control, requestTimeout),
 		digest: digest{user: user, password: password},
 	}
 }
@@ -149,23 +149,16 @@ func (f *FritzBoxReader) find(ctx context.Context) error {
 	}
 	base, _ := url.Parse(location)
 	services := map[string]upnpService{}
-	var walk func(device upnpDevice)
-	walk = func(device upnpDevice) {
-		for _, service := range device.Services {
-			for _, prefix := range []string{fritzCommon, fritzDSL, fritzDeviceInfo, fritzHosts, fritzIP, fritzPPP} {
-				if _, found := services[prefix]; found || !strings.HasPrefix(service.ServiceType, prefix) {
-					continue
-				}
-				if control, err := sameHost(base, service.ControlURL, ip); err == nil {
-					services[prefix] = upnpService{ServiceType: service.ServiceType, ControlURL: control}
-				}
+	for _, service := range allServices(description.Device) {
+		for _, prefix := range []string{fritzCommon, fritzDSL, fritzDeviceInfo, fritzHosts, fritzIP, fritzPPP} {
+			if _, found := services[prefix]; found || !strings.HasPrefix(service.ServiceType, prefix) {
+				continue
+			}
+			if control, err := sameHost(base, service.ControlURL, ip); err == nil {
+				services[prefix] = upnpService{ServiceType: service.ServiceType, ControlURL: control}
 			}
 		}
-		for _, child := range device.Devices {
-			walk(child)
-		}
 	}
-	walk(description.Device)
 	if _, ok := services[fritzCommon]; !ok {
 		return fmt.Errorf("the TR-064 description of %s has no internet connection (WANCommonInterfaceConfig); is it a FRITZ!Box?", f.host)
 	}
@@ -253,11 +246,7 @@ func (f *FritzBoxReader) read(ctx context.Context) (metrics.Snapshot, error) {
 	}
 	snapshot.Network = []metrics.NetworkInterface{wan}
 
-	var connected *uint64
-	if seconds, err := strconv.ParseUint(status["NewUptime"], 10, 64); err == nil {
-		connected = &seconds
-	}
-	items := lineItems(status["NewConnectionStatus"], link["NewPhysicalLinkStatus"], down, up, connected)
+	items := lineItems(status, link, down, up)
 	// The noise margins of a DSL line, in tenths of a dB: the lower, the
 	// closer the line is to losing its sync.
 	for _, margin := range []struct{ id, value, label string }{
@@ -320,18 +309,8 @@ func (f *FritzBoxReader) clients(ctx context.Context) ([]metrics.Extra, bool) {
 	if err != nil {
 		return nil, false
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, location, nil)
-	if err != nil {
-		return nil, false
-	}
-	response, err := f.client.Do(request)
-	if err != nil {
-		return nil, false
-	}
-	defer func() { _ = response.Body.Close() }()
-	data, err := readBody(response.Body)
 	var list fritzHostList
-	if err != nil || response.StatusCode != http.StatusOK || xml.Unmarshal(data, &list) != nil {
+	if getXML(ctx, f.client, location, &list) != nil {
 		return nil, false
 	}
 	var wired, wireless float64

@@ -181,7 +181,7 @@ func newHub(ctx context.Context, store *history.Store, fixed []Device, complete 
 	if err := h.forgetExpired(ctx, time.Now()); err != nil {
 		return nil, err
 	}
-	kept, err := h.keptHistory(ctx)
+	kept, err := h.selectDevices(ctx, `SELECT device FROM hub_kept`)
 	if err != nil {
 		return nil, err
 	}
@@ -615,20 +615,8 @@ func (h *Hub) forgetExpired(ctx context.Context, now time.Time) error {
 	// forgetters run under it too: they never wait for the hub.
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	rows, err := h.store.DB().QueryContext(ctx, `SELECT device FROM hub_kept WHERE removed < ?`, now.Add(-h.retention).Unix())
+	expired, err := h.selectDevices(ctx, `SELECT device FROM hub_kept WHERE removed < ?`, now.Add(-h.retention).Unix())
 	if err != nil {
-		return err
-	}
-	var expired []string
-	for rows.Next() {
-		var device string
-		if err := rows.Scan(&device); err != nil {
-			_ = rows.Close()
-			return err
-		}
-		expired = append(expired, device)
-	}
-	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return err
 	}
 	for _, device := range expired {
@@ -647,9 +635,9 @@ func (h *Hub) forgetExpired(ctx context.Context, now time.Time) error {
 	return nil
 }
 
-// keptHistory lists the devices removed with their history kept.
-func (h *Hub) keptHistory(ctx context.Context) ([]string, error) {
-	rows, err := h.store.DB().QueryContext(ctx, `SELECT device FROM hub_kept`)
+// selectDevices returns the ids of the devices query selects.
+func (h *Hub) selectDevices(ctx context.Context, query string, args ...any) ([]string, error) {
+	rows, err := h.store.DB().QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

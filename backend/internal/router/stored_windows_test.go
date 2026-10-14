@@ -9,14 +9,14 @@ import (
 
 func TestDPAPIRoundTrip(t *testing.T) {
 	plain := formatPasswords(map[string]string{"Router": "se=cret ", "Box": "x"})
-	encrypted, err := protect(plain)
+	encrypted, err := dpapi(plain, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if bytes.Contains(encrypted, []byte("se=cret")) {
 		t.Error("the password is in the encrypted data")
 	}
-	decrypted, err := unprotect(encrypted)
+	decrypted, err := dpapi(encrypted, false)
 	if err != nil || !bytes.Equal(decrypted, plain) {
 		t.Fatalf("got %q, %v", decrypted, err)
 	}
@@ -24,7 +24,7 @@ func TestDPAPIRoundTrip(t *testing.T) {
 
 func TestStoredPasswordsReadsTheEncryptedFile(t *testing.T) {
 	dir := t.TempDir()
-	encrypted, err := protect(formatPasswords(map[string]string{"Router": "secret"}))
+	encrypted, err := dpapi(formatPasswords(map[string]string{"Router": "secret"}), true)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -14,14 +14,12 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
@@ -222,23 +220,6 @@ const (
 	// maxResponseBytes is the largest answer of a router that is read.
 	maxResponseBytes = 1 << 20
 )
-
-// newClient returns an HTTP client that only connects to the local network,
-// with control checking each address it connects to.
-func newClient(control func(network, address string, c syscall.RawConn) error) *http.Client {
-	dialer := &net.Dialer{Timeout: requestTimeout, Control: control}
-	return &http.Client{
-		Timeout: requestTimeout,
-		Transport: &http.Transport{
-			// No proxy: the router is on the local network.
-			DialContext:         dialer.DialContext,
-			MaxIdleConnsPerHost: 1,
-		},
-		// A redirect could lead off the local network, or to a page that
-		// changes a setting.
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}
-}
 
 // readBody reads an answer of at most maxResponseBytes, and fails on one
 // that is longer.

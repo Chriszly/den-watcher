@@ -77,7 +77,7 @@ type UPnPReader struct {
 // NewUPnP returns a reader for the router at host, a host name or IP
 // address.
 func NewUPnP(host string) *UPnPReader {
-	return &UPnPReader{host: host, client: newClient(lan.Control), ssdpPort: ssdpPort, multicast: ssdpMulticast}
+	return &UPnPReader{host: host, client: lan.NewClient(lan.Control, requestTimeout), ssdpPort: ssdpPort, multicast: ssdpMulticast}
 }
 
 // Collect reads the router's internet traffic and connection.
@@ -147,36 +147,19 @@ func (u *UPnPReader) read(ctx context.Context) (metrics.Snapshot, error) {
 		u.connectionUptime, u.connectionUptimeRead = uptime, true
 	}
 	now := time.Now()
-	down, downErr := strconv.ParseUint(link["NewLayer1DownstreamMaxBitRate"], 10, 64)
-	up, upErr := strconv.ParseUint(link["NewLayer1UpstreamMaxBitRate"], 10, 64)
+	down, up := parseRate(link["NewLayer1DownstreamMaxBitRate"], 1), parseRate(link["NewLayer1UpstreamMaxBitRate"], 1)
 	// Traffic faster than the line, with room for a line that synchronized
 	// faster since, is a counter that was reset, not counted up.
-	u.received.limit, u.sent.limit = 0, 0
-	if downErr == nil && down > 0 {
-		u.received.limit = float64(down) / 8 * 2
-	}
-	if upErr == nil && up > 0 {
-		u.sent.limit = float64(up) / 8 * 2
-	}
+	u.received.limit, u.sent.limit = float64(down)/8*2, float64(up)/8*2
 	wan := metrics.NetworkInterface{Name: "WAN", ReceivedBytes: receivedBytes, SentBytes: sentBytes}
 	wan.ReceiveBytesPerSecond, _ = u.received.rate(receivedBytes, now, restarted)
 	wan.SendBytesPerSecond, _ = u.sent.rate(sentBytes, now, restarted)
-	if downErr == nil && down > 0 {
-		wan.LinkMbps = int(down / 1_000_000)
+	if down > 0 {
+		wan.LinkMbps = int(min(down/1_000_000, 1<<31-1))
 	}
 	snapshot := metrics.Snapshot{Network: []metrics.NetworkInterface{wan}}
 
-	if downErr != nil {
-		down = 0
-	}
-	if upErr != nil {
-		up = 0
-	}
-	var connected *uint64
-	if uptimeErr == nil {
-		connected = &uptime
-	}
-	if items := lineItems(status["NewConnectionStatus"], link["NewPhysicalLinkStatus"], down, up, connected); len(items) > 0 {
+	if items := lineItems(status, link, down, up); len(items) > 0 {
 		snapshot.Extras = []metrics.Extra{internetExtra(items)}
 	}
 	return snapshot, nil
@@ -186,13 +169,13 @@ func (u *UPnPReader) read(ctx context.Context) (metrics.Snapshot, error) {
 // FRITZ!Box share: the connection's state, from status or else from the
 // link's, the line's speeds in bit/s when not 0, and how long it has been
 // connected in seconds when known.
-func lineItems(status, linkStatus string, down, up uint64, connected *uint64) []metrics.ExtraItem {
+func lineItems(status, link map[string]string, down, up uint64) []metrics.ExtraItem {
 	var items []metrics.ExtraItem
 	switch {
-	case status != "":
-		items = append(items, connectionState(status))
-	case linkStatus != "":
-		items = append(items, connectionState(linkStatus))
+	case status["NewConnectionStatus"] != "":
+		items = append(items, connectionState(status["NewConnectionStatus"]))
+	case link["NewPhysicalLinkStatus"] != "":
+		items = append(items, connectionState(link["NewPhysicalLinkStatus"]))
 	}
 	if down > 0 {
 		items = append(items, bitRate("download", "Download speed of the line", map[string]string{
@@ -204,8 +187,8 @@ func lineItems(status, linkStatus string, down, up uint64, connected *uint64) []
 			"de": "Upload-Geschwindigkeit der Leitung", "fr": "Débit montant de la ligne", "es": "Velocidad de subida de la línea",
 		}, up))
 	}
-	if connected != nil {
-		hours := float64(*connected) / 3600
+	if seconds, err := strconv.ParseUint(status["NewUptime"], 10, 64); err == nil {
+		hours := float64(seconds) / 3600
 		items = append(items, metrics.ExtraItem{
 			ID: "connected-hours", Label: "Connected for (hours)", Unit: metrics.UnitNumber, Value: &hours,
 			Labels: map[string]string{"de": "Verbunden seit (Stunden)", "fr": "Connecté depuis (heures)", "es": "Conectado desde hace (horas)"},
@@ -254,6 +237,15 @@ type upnpDescription struct {
 	Device  upnpDevice `xml:"device"`
 }
 
+// allServices returns the services of device and of the devices in it.
+func allServices(device upnpDevice) []upnpService {
+	services := device.Services
+	for _, child := range device.Devices {
+		services = append(services, allServices(child)...)
+	}
+	return services
+}
+
 // find looks for the router's UPnP description and the services in it.
 func (u *UPnPReader) find(ctx context.Context) error {
 	routerIP, err := localIP(ctx, u.host)
@@ -269,21 +261,14 @@ func (u *UPnPReader) find(ctx context.Context) error {
 		return err
 	}
 	var common, connection upnpService
-	var walk func(device upnpDevice)
-	walk = func(device upnpDevice) {
-		for _, service := range device.Services {
-			switch {
-			case strings.HasPrefix(service.ServiceType, serviceCommon) && common.ControlURL == "":
-				common = service
-			case (strings.HasPrefix(service.ServiceType, serviceIP) || strings.HasPrefix(service.ServiceType, servicePPP)) && connection.ControlURL == "":
-				connection = service
-			}
-		}
-		for _, child := range device.Devices {
-			walk(child)
+	for _, service := range allServices(description.Device) {
+		switch {
+		case strings.HasPrefix(service.ServiceType, serviceCommon) && common.ControlURL == "":
+			common = service
+		case (strings.HasPrefix(service.ServiceType, serviceIP) || strings.HasPrefix(service.ServiceType, servicePPP)) && connection.ControlURL == "":
+			connection = service
 		}
 	}
-	walk(description.Device)
 	if common.ControlURL == "" {
 		return fmt.Errorf("the UPnP description of %s has no internet connection (WANCommonInterfaceConfig)", u.host)
 	}
@@ -385,24 +370,8 @@ func (u *UPnPReader) search(ctx context.Context, routerIP netip.Addr) (string, e
 // description reads the UPnP description at location, and returns it with
 // the URL its control URLs are relative to.
 func (u *UPnPReader) description(ctx context.Context, location string, routerIP netip.Addr) (upnpDescription, *url.URL, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, location, nil)
-	if err != nil {
-		return upnpDescription{}, nil, err
-	}
-	response, err := u.client.Do(request)
-	if err != nil {
-		return upnpDescription{}, nil, fmt.Errorf("read the UPnP description of %s: %w", u.host, err)
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode != http.StatusOK {
-		return upnpDescription{}, nil, fmt.Errorf("read the UPnP description of %s: answered %s", u.host, response.Status)
-	}
-	data, err := readBody(response.Body)
-	if err != nil {
-		return upnpDescription{}, nil, fmt.Errorf("read the UPnP description of %s: %w", u.host, err)
-	}
 	var description upnpDescription
-	if err := xml.Unmarshal(data, &description); err != nil {
+	if err := getXML(ctx, u.client, location, &description); err != nil {
 		return upnpDescription{}, nil, fmt.Errorf("read the UPnP description of %s: %w", u.host, err)
 	}
 	base, err := url.Parse(location)
@@ -415,6 +384,27 @@ func (u *UPnPReader) description(ctx context.Context, location string, routerIP 
 		}
 	}
 	return description, base, nil
+}
+
+// getXML reads the XML document at location into v.
+func getXML(ctx context.Context, client *http.Client, location string, v any) error {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, location, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("answered %s", response.Status)
+	}
+	data, err := readBody(response.Body)
+	if err != nil {
+		return err
+	}
+	return xml.Unmarshal(data, v)
 }
 
 // sameHost resolves reference against base and returns it, when it is an

@@ -34,7 +34,7 @@ func readNvidia(ctx context.Context, program string, calls *addons.Program) []Re
 func runNvidia(ctx context.Context, program string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, nvidiaTimeout)
 	defer cancel()
-	return metrics.RunNvidiaSMI(ctx, program, "--query-gpu=index,uuid,name,power.draw", "--format=csv,noheader,nounits")
+	return addons.NvidiaSMI(ctx, program, "--query-gpu=index,uuid,name,power.draw", "--format=csv,noheader,nounits")
 }
 
 // parseNvidia reads lines such as

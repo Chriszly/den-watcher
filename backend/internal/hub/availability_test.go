@@ -426,37 +426,48 @@ func TestWatchedAgentWritesAnOngoingOutageWhenStopped(t *testing.T) {
 	}
 }
 
-func TestWatchedAgentMovesAnOutageWithTheClock(t *testing.T) {
+func TestWatchedAgentEndsAnOutageWhenTheClockJumps(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 	agent, written := outageTestAgent(t, &now)
+	start := now
 	_, _ = agent.Collect(ctx)
 	now = now.Add(5 * time.Second)
 	_, _ = agent.Collect(ctx)
+	lastBefore := now
 
 	// NTP sets the clock 3 hours on, 5 s after the last reading.
-	jump := 3 * time.Hour
 	agent.mu.Lock()
-	agent.shift(ctx, jump)
+	agent.split(ctx)
 	agent.mu.Unlock()
-	now = now.Add(jump + 5*time.Second)
-	_, _ = agent.Collect(ctx)
-
-	start := now.Add(-10 * time.Second)
-	if s, _ := written(); !s.Equal(start) {
-		t.Errorf("outage starts at %v in the database, want %v", s, start)
+	if s, e := written(); !s.Equal(start) || !e.Equal(lastBefore) {
+		t.Errorf("outage before the jump = %v to %v, want %v to %v", s, e, start, lastBefore)
 	}
-	if outage, unwritten, ok := agent.ongoing(); !ok || !outage.Start.Equal(start) || unwritten != 5*time.Second {
-		t.Errorf("ongoing() = %+v, unwritten %v, %v; want an outage of 10 s with 5 s unwritten", outage, unwritten, ok)
+	if _, _, ok := agent.ongoing(); ok {
+		t.Error("ongoing() = true right after the jump, want false")
+	}
+
+	// The device still does not answer: a new outage starts after the jump.
+	now = now.Add(3*time.Hour + 5*time.Second)
+	after := now
+	_, _ = agent.Collect(ctx)
+	now = now.Add(5 * time.Second)
+	_, _ = agent.Collect(ctx)
+	if s, e := written(); !s.Equal(after) || !e.Equal(now) {
+		t.Errorf("outage after the jump = %v to %v, want %v to %v", s, e, after, now)
+	}
+	var outages, offline int64
+	if err := agent.db.QueryRow(`SELECT COUNT(*), SUM(ended - started) FROM hub_outages`).Scan(&outages, &offline); err != nil || outages != 2 || offline != 10_000 {
+		t.Errorf("outages = %d of %d ms in all, %v; want 2 of 5 s each", outages, offline, err)
 	}
 }
 
-func TestClockJumpIgnoresTimesWithoutMonotonicReadings(t *testing.T) {
+func TestClockJump(t *testing.T) {
 	prev := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
-	if got := clockJump(prev, prev.Add(3*time.Hour)); got != 0 {
-		t.Errorf("clockJump() = %v, want 0", got)
+	if clockJump(prev, prev.Add(3*time.Hour)) {
+		t.Error("clockJump() of times without monotonic readings = true, want false")
 	}
-	if got := clockJump(time.Now(), time.Now()); got != 0 {
-		t.Errorf("clockJump() of two readings in a row = %v, want 0", got)
+	if clockJump(time.Now(), time.Now()) {
+		t.Error("clockJump() of two readings in a row = true, want false")
 	}
 }

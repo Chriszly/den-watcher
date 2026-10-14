@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -116,6 +117,15 @@ export class ScrollRows {
       }
     });
     inject(DestroyRef).onDestroy(() => rows.disconnect());
+    // A web font that finishes loading makes the rows taller without changing them.
+    const fonts = inject(DOCUMENT).fonts as FontFaceSet | undefined;
+    const fontsLoaded = () => {
+      if (this.observing) {
+        this.measure();
+      }
+    };
+    fonts?.addEventListener('loadingdone', fontsLoaded);
+    inject(DestroyRef).onDestroy(() => fonts?.removeEventListener('loadingdone', fontsLoaded));
 
     const host = this.host;
     observeWidth(host, () => requestAnimationFrame(() => this.measure()));

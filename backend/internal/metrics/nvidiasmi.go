@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"context"
-	"errors"
 	"os/exec"
 	"time"
 )
@@ -10,10 +9,9 @@ import (
 // RunNvidiaSMI runs nvidia-smi, the program found on the PATH at start, with
 // fixed arguments, and returns what it printed. When one GPU is in an error
 // state, nvidia-smi still prints the others but exits with an error, so its
-// output is returned then too, with its error output, which may hold the
-// message for a GPU it cannot reach; the error is then an *exec.ExitError.
-// When ctx ended, as at a timeout, nothing is returned, as its output may end
-// in the middle of a line.
+// output is returned then too; the error is then an *exec.ExitError, which
+// holds the error output. When ctx ended, as at a timeout, nothing is
+// returned, as its output may end in the middle of a line.
 func RunNvidiaSMI(ctx context.Context, program string, args ...string) (string, error) {
 	// program is the nvidia-smi found on the PATH at start, and every caller
 	// passes fixed arguments.
@@ -25,10 +23,6 @@ func RunNvidiaSMI(ctx context.Context, program string, args ...string) (string, 
 	out, err := cmd.Output()
 	if ctx.Err() != nil {
 		return "", ctx.Err()
-	}
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
-		out = append(out, exit.Stderr...)
 	}
 	return string(out), err
 }

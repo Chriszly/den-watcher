@@ -156,7 +156,7 @@ func sleeping(gpus []GPU) []GPU {
 func run(ctx context.Context, program string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, nvidiaTimeout)
 	defer cancel()
-	return metrics.RunNvidiaSMI(ctx, program, query, "--format=csv,noheader,nounits")
+	return addons.NvidiaSMI(ctx, program, query, "--format=csv,noheader,nounits")
 }
 
 // GPU is what nvidia-smi reports of one GPU. A value the GPU does not

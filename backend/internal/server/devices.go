@@ -67,6 +67,9 @@ type deviceChanges struct {
 	// both choose the password. The password is checked before, so the wait
 	// after a wrong guess does not hold up the changes of others.
 	mu sync.Mutex
+	// backingUp makes backups one at a time, as each is a copy of the whole
+	// database next to it. They do not hold up the other changes.
+	backingUp sync.Mutex
 }
 
 type addRequest struct {

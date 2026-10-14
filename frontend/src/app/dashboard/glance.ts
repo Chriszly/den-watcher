@@ -91,20 +91,25 @@ export class Glance {
   /** Whether the hub reads the device; kept apart, as the list of devices is read every 5 s. */
   private readonly router = computed(() => readByHub(this.devices.selected()));
 
+  /** Whether the network tile counts an interface: on a router only its WAN interfaces. */
+  private readonly counted = computed(() => {
+    const router = this.router();
+    return (name: string) => !router || isWan(name);
+  });
+
   /**
    * The network tile's chart, added up only when the history changes, not with each new snapshot,
    * so its sparkline is not drawn again every few seconds.
    */
   private readonly networkPoints = computed(() => {
-    const router = this.router();
+    const counted = this.counted();
     const lines = linesOf(this.store.history()?.series ?? [], 'network.receive');
-    return sum(lines.filter((line) => !router || isWan(line.label)));
+    return sum(lines.filter((line) => counted(line.label)));
   });
 
   protected readonly tiles = computed((): Tile[] => {
     const s = this.snapshot();
     const series = this.store.history()?.series ?? [];
-    const router = this.router();
     const t = this.i18n.t.bind(this.i18n);
     const language = this.i18n.language();
     const number = (value: number, digits = '1.0-1') => formatNumber(value, language, digits);
@@ -175,7 +180,7 @@ export class Glance {
         series: 3,
       });
     }
-    const counted = (name: string) => !router || isWan(name);
+    const counted = this.counted();
     const network = s.network.filter((n) => counted(n.name));
     if (network.length > 0) {
       const [received, unit] = splitUnit(

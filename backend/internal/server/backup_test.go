@@ -3,12 +3,14 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -21,17 +23,34 @@ type fakeBackups struct {
 	// started and copied, when set, are closed when a copy starts, and
 	// awaited before it ends.
 	started, copied chan struct{}
+
+	mu sync.Mutex
+	// copying is how many copies are being made now, most the most at once.
+	copying, most int
 }
 
 func (f *fakeBackups) Backup(context.Context) (string, error) {
+	f.mu.Lock()
+	f.copying++
+	f.most = max(f.most, f.copying)
+	f.mu.Unlock()
+	defer func() {
+		f.mu.Lock()
+		f.copying--
+		f.mu.Unlock()
+	}()
 	if f.started != nil {
 		close(f.started)
 		<-f.copied
+	} else {
+		time.Sleep(20 * time.Millisecond)
 	}
 	if f.err != nil {
 		return "", f.err
 	}
-	path := filepath.Join(f.dir, ".den-watcher-backup-1.db")
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	path := filepath.Join(f.dir, fmt.Sprintf(".den-watcher-backup-%d.db", len(f.made)+1))
 	if err := os.WriteFile(path, []byte("SQLite format 3\x00"), 0o600); err != nil {
 		return "", err
 	}
@@ -155,5 +174,23 @@ func TestABackupDoesNotHoldUpChanges(t *testing.T) {
 	close(backups.copied)
 	if code := <-backedUp; code != http.StatusOK {
 		t.Errorf("backup status = %d, want 200", code)
+	}
+}
+
+func TestBackupsAreMadeOneAtATime(t *testing.T) {
+	backups := &fakeBackups{dir: t.TempDir()}
+	handler := newBackupHandler(&fakePassword{password: "correct horse"}, backups)
+
+	var wg sync.WaitGroup
+	for range 3 {
+		wg.Go(func() {
+			if rec := send(handler, http.MethodPost, "/api/backup", `{"password":"correct horse"}`); rec.Code != http.StatusOK {
+				t.Errorf("status = %d, want 200", rec.Code)
+			}
+		})
+	}
+	wg.Wait()
+	if backups.most != 1 {
+		t.Errorf("%d copies were made at once, want 1", backups.most)
 	}
 }

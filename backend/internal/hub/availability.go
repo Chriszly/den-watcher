@@ -236,8 +236,8 @@ func (w *watchedAgent) Collect(ctx context.Context) (metrics.Snapshot, error) {
 	now := read.Round(0)
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if !w.read.IsZero() {
-		w.shift(ctx, clockJump(w.read, read))
+	if !w.read.IsZero() && clockJump(w.read, read) {
+		w.split(ctx)
 	}
 	w.read = read
 	w.refused = errors.Is(err, errOwnAddress)
@@ -282,39 +282,27 @@ func (w *watchedAgent) Collect(ctx context.Context) (metrics.Snapshot, error) {
 	return snapshot, err
 }
 
-// clockJump returns how far the clock was set between the readings at prev
+// clockJump reports whether the clock was set between the readings at prev
 // and now, as when NTP sets the clock of a Raspberry Pi that started from a
-// saved time: the time the clock shows passed, less the time that really
-// passed. Time the machine was suspended counts as a jump too, as the hub
-// was not running then. Up to a minute either way is taken as no jump, and so is any jump
-// when either time has no monotonic reading, as in tests.
-func clockJump(prev, now time.Time) time.Duration {
+// saved time, or the machine was suspended in between: whether the time the
+// clock shows passed differs from the time the program ran by over a minute.
+// Times without a monotonic reading, as in tests, never jump.
+func clockJump(prev, now time.Time) bool {
 	jump := now.Round(0).Sub(prev.Round(0)) - now.Sub(prev)
-	if jump > -time.Minute && jump < time.Minute {
-		return 0
-	}
-	return jump
+	return jump <= -time.Minute || jump >= time.Minute
 }
 
-// shift moves the outage that lasts, and the times it is told apart by, by
-// jump, so a clock set while the device does not answer neither stretches
-// nor shrinks it. The caller holds mu.
-func (w *watchedAgent) shift(ctx context.Context, jump time.Duration) {
-	if jump == 0 {
-		return
+// split ends the outage that lasts at its newest failed reading, after the
+// clock jumped, so the jump is not counted as time offline: the clock may
+// have been wrong before, or the hub was not running. A device that still
+// does not answer starts a new outage as at any other time. The caller holds
+// mu.
+func (w *watchedAgent) split(ctx context.Context) {
+	if !w.outageStart.IsZero() {
+		w.note(ctx, w.lastFailed)
 	}
-	if !w.outageStart.IsZero() && !w.noted.IsZero() {
-		_, err := w.db.ExecContext(ctx, `UPDATE hub_outages SET started = started + ?, ended = ended + ? WHERE device = ? AND started = ?`,
-			jump.Milliseconds(), jump.Milliseconds(), w.device, w.outageStart.UnixMilli())
-		if err != nil {
-			slog.Error("move an outage to the clock that was set", "device", w.device, "error", err)
-		}
-	}
-	for _, t := range []*time.Time{&w.firstFailed, &w.outageStart, &w.lastFailed, &w.noted, &w.lastEnd} {
-		if !t.IsZero() {
-			*t = t.Add(jump)
-		}
-	}
+	// Times before the jump say nothing about the times after it.
+	w.firstFailed, w.outageStart, w.lastEnd = time.Time{}, time.Time{}, time.Time{}
 }
 
 // stop writes the outage that lasts up to its newest failed reading, as the

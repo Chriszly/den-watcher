@@ -49,7 +49,7 @@ func (c *deviceChanges) backup(w http.ResponseWriter, r *http.Request) {
 	// server's can.
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(backupTimeout))
 	var request backupRequest
-	if !readJSON(w, r, &request, maxChangeBytes) {
+	if !readJSON(w, r, &request) {
 		return
 	}
 	var made string

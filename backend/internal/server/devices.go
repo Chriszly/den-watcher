@@ -93,7 +93,7 @@ type removeRequest struct {
 // add serves POST /api/devices: adds the device in the body.
 func (c *deviceChanges) add(w http.ResponseWriter, r *http.Request) {
 	var request addRequest
-	if !readJSON(w, r, &request, maxChangeBytes) {
+	if !readJSON(w, r, &request) {
 		return
 	}
 	c.change(w, r, request.Password, true, func() (any, error) {
@@ -109,7 +109,7 @@ func (c *deviceChanges) add(w http.ResponseWriter, r *http.Request) {
 // setKind serves PUT /api/devices/{id}/kind: changes what a device is used as.
 func (c *deviceChanges) setKind(w http.ResponseWriter, r *http.Request) {
 	var request kindRequest
-	if !readJSON(w, r, &request, maxChangeBytes) {
+	if !readJSON(w, r, &request) {
 		return
 	}
 	c.change(w, r, request.Password, true, func() (any, error) {
@@ -124,7 +124,7 @@ func (c *deviceChanges) setKind(w http.ResponseWriter, r *http.Request) {
 // remove serves DELETE /api/devices/{id}: removes a device added on the page.
 func (c *deviceChanges) remove(w http.ResponseWriter, r *http.Request) {
 	var request removeRequest
-	if !readJSON(w, r, &request, maxChangeBytes) {
+	if !readJSON(w, r, &request) {
 		return
 	}
 	c.change(w, r, request.Password, true, func() (any, error) {
@@ -208,17 +208,16 @@ func (c *deviceChanges) change(w http.ResponseWriter, r *http.Request, given str
 	writeJSON(w, http.StatusCreated, result)
 }
 
-// readJSON reads a JSON request body of at most limit bytes into v. Only
-// JSON is accepted: a browser does not send it from another site without
-// asking this one first, and this one never allows it, so other web pages
-// cannot change devices.
-func readJSON(w http.ResponseWriter, r *http.Request, v any, limit int64) bool {
+// readJSON reads a small JSON request body into v. Only JSON is accepted: a
+// browser does not send it from another site without asking this one first,
+// and this one never allows it, so other web pages cannot change devices.
+func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	mediaType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if mediaType != "application/json" {
 		writeJSON(w, http.StatusUnsupportedMediaType, problemResponse{problemRequest, "send the request as application/json"})
 		return false
 	}
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxChangeBytes))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(v); err != nil {
 		writeJSON(w, http.StatusBadRequest, problemResponse{problemRequest, "the request is not valid JSON: " + err.Error()})

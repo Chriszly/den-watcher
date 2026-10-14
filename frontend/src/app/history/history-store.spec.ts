@@ -185,6 +185,20 @@ describe('HistoryStore with a short range', () => {
     answer(whole, [NOW + 5]);
     expect(store.unreachable()).toBe(false);
   });
+
+  it("keeps the range a whole span long when this computer's clock is ahead of the hub's", () => {
+    // The hub's clock is a minute behind, so it ends the range a minute before what was asked.
+    const hub = NOW - 60;
+    answer(read(), [hub - 5], 5, hub);
+    const whole = store.history()!;
+    expect([whole.from, whole.to]).toEqual([hub - SPAN, hub]);
+
+    const small = next();
+    expect(range(small)[0]).toBe(hub - 5);
+    answer(small, [hub], 5, hub + 5);
+    const history = store.history()!;
+    expect([history.from, history.to]).toEqual([hub + 5 - SPAN, hub + 5]);
+  });
 });
 
 describe('refreshIntervalMs', () => {

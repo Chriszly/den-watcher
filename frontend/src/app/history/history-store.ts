@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { Observable, catchError, defer, of, share, switchMap, tap } from 'rxjs';
+import { Observable, catchError, defer, map, of, share, switchMap, tap } from 'rxjs';
 
 import { DeviceService } from '../devices/devices';
 import { MessageKey } from '../i18n/messages/en';
@@ -161,8 +161,15 @@ export class HistoryStore {
         let reads = 0;
         const readAll = (to: number) =>
           this.metrics.history(to - span, to, device).pipe(
-            tap((history) => {
-              live = LiveHistory.canKeep(history, span) ? new LiveHistory(history, span) : null;
+            map((history) => {
+              if (!LiveHistory.canKeep(history, span)) {
+                live = null;
+                return history;
+              }
+              live = new LiveHistory(history, span);
+              // The backend ends the range at its own time. As in the small reads, it starts a span
+              // before that, so a clock ahead of the hub's does not make the range shorter.
+              return { ...history, from: history.to - span };
             }),
           );
         return this.page.poll(refreshIntervalMs(span), () =>

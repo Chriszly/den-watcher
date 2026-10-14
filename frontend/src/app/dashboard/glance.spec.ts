@@ -5,6 +5,7 @@ import { By } from '@angular/platform-browser';
 
 import { DeviceService, LOCAL_DEVICE } from '../devices/devices';
 import { ChartCanvas } from '../history/chart-canvas';
+import { HistoryStore } from '../history/history-store';
 import { Sparkline } from '../history/sparkline';
 import { History, Snapshot } from '../metrics/metrics';
 import { Glance } from './glance';
@@ -178,6 +179,8 @@ describe('Glance', () => {
   });
 
   it('draws the history of each value in a small chart', () => {
+    // A long range, which is shown as the backend answers it.
+    TestBed.inject(HistoryStore).span.set(3600);
     show(SNAPSHOT, {
       from: 0,
       to: 1000,

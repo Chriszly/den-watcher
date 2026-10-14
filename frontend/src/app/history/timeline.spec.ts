@@ -38,6 +38,8 @@ describe('Timeline', () => {
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     http = TestBed.inject(HttpTestingController);
+    // The range of HISTORY: a short range starts a span before the end the backend answers.
+    TestBed.inject(HistoryStore).span.set(HISTORY.to - HISTORY.from);
     fixture = TestBed.createComponent(Timeline);
   });
 

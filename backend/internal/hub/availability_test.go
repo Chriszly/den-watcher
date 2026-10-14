@@ -368,3 +368,95 @@ func TestReadOutagesKeepsTheNewest(t *testing.T) {
 		t.Errorf("outages from %v to %v, want the newest %d", first, last, outagesLimit)
 	}
 }
+
+// outageTestAgent returns a watched agent on a device that does not answer,
+// with a clock the test sets, and a function that reads the newest outage
+// written.
+func outageTestAgent(t *testing.T, now *time.Time) (*watchedAgent, func() (started, ended time.Time)) {
+	t.Helper()
+	store := openTestStore(t)
+	openTestHub(t, store, nil) // creates the tables
+	var up atomic.Bool
+	agent := &watchedAgent{agent: NewAgent(startSwitchableDevice(t, &up)), db: store.DB(), device: "pi", clock: func() time.Time { return *now }}
+	written := func() (started, ended time.Time) {
+		t.Helper()
+		var s, e int64
+		if err := store.DB().QueryRow(`SELECT started, ended FROM hub_outages WHERE device = 'pi' ORDER BY started DESC LIMIT 1`).Scan(&s, &e); err != nil {
+			t.Fatalf("read the outage: %v", err)
+		}
+		return time.UnixMilli(s).UTC(), time.UnixMilli(e).UTC()
+	}
+	return agent, written
+}
+
+func TestWatchedAgentCountsAnUnwrittenOutageFromItsStart(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	agent, _ := outageTestAgent(t, &now)
+	// The outage cannot be written, as when the disk is full.
+	if _, err := agent.db.ExecContext(ctx, `ALTER TABLE hub_outages RENAME TO hub_outages_gone`); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = agent.Collect(ctx)
+	now = now.Add(5 * time.Second)
+	_, _ = agent.Collect(ctx)
+	now = now.Add(5 * time.Second)
+	_, _ = agent.Collect(ctx)
+	if _, unwritten, ok := agent.ongoing(); !ok || unwritten != 10*time.Second {
+		t.Errorf("ongoing() unwritten = %v, %v; want the 10 s since the outage started", unwritten, ok)
+	}
+}
+
+func TestWatchedAgentWritesAnOngoingOutageWhenStopped(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	agent, written := outageTestAgent(t, &now)
+	start := now
+	_, _ = agent.Collect(ctx)
+	now = now.Add(5 * time.Second)
+	_, _ = agent.Collect(ctx)
+	now = now.Add(time.Minute)
+	_, _ = agent.Collect(ctx)
+
+	stopped, cancel := context.WithCancel(ctx)
+	cancel()
+	agent.stop(stopped)
+	if s, e := written(); !s.Equal(start) || !e.Equal(now) {
+		t.Errorf("outage after stopping = %v to %v, want %v to %v", s, e, start, now)
+	}
+}
+
+func TestWatchedAgentMovesAnOutageWithTheClock(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	agent, written := outageTestAgent(t, &now)
+	_, _ = agent.Collect(ctx)
+	now = now.Add(5 * time.Second)
+	_, _ = agent.Collect(ctx)
+
+	// NTP sets the clock 3 hours on, 5 s after the last reading.
+	jump := 3 * time.Hour
+	agent.mu.Lock()
+	agent.shift(ctx, jump)
+	agent.mu.Unlock()
+	now = now.Add(jump + 5*time.Second)
+	_, _ = agent.Collect(ctx)
+
+	start := now.Add(-10 * time.Second)
+	if s, _ := written(); !s.Equal(start) {
+		t.Errorf("outage starts at %v in the database, want %v", s, start)
+	}
+	if outage, unwritten, ok := agent.ongoing(); !ok || !outage.Start.Equal(start) || unwritten != 5*time.Second {
+		t.Errorf("ongoing() = %+v, unwritten %v, %v; want an outage of 10 s with 5 s unwritten", outage, unwritten, ok)
+	}
+}
+
+func TestClockJumpIgnoresTimesWithoutMonotonicReadings(t *testing.T) {
+	prev := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	if got := clockJump(prev, prev.Add(3*time.Hour)); got != 0 {
+		t.Errorf("clockJump() = %v, want 0", got)
+	}
+	if got := clockJump(time.Now(), time.Now()); got != 0 {
+		t.Errorf("clockJump() of two readings in a row = %v, want 0", got)
+	}
+}

@@ -874,6 +874,7 @@ func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
 	h.recording.Go(func() {
 		defer close(remote.recorded)
 		recorder.Run(ctx)
+		watched.stop(ctx)
 	})
 	h.remotes = append(h.remotes, remote)
 	slog.Info("collecting from another device", "name", device.Name, "address", device.Address)

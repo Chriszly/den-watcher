@@ -206,7 +206,7 @@ export function history(machine: DemoMachine, from: number, to: number): History
   const span = Math.max(1, to - from);
   const interval = span <= RECENT_SPAN ? RECENT_INTERVAL : SAMPLE_INTERVAL;
   let step = Math.max(1, Math.ceil(span / interval / MAX_POINTS)) * interval;
-  if (step >= 3600) {
+  if (step > 20 * 60) {
     step = Math.ceil(step / 3600) * 3600;
   }
   const oldest = Math.max(from, to - DEMO_RETENTION_DAYS * 86400);

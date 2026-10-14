@@ -4,7 +4,7 @@ import { Observable, catchError, defer, map, of, share, switchMap, tap } from 'r
 
 import { DeviceService } from '../devices/devices';
 import { MessageKey } from '../i18n/messages/en';
-import { History, MetricsService } from '../metrics/metrics';
+import { History, MetricsService, nowSeconds } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
 import { LiveHistory, SHORT_SPAN } from './live-history';
 
@@ -219,8 +219,4 @@ export class HistoryStore {
   private longestRange(): number {
     return Math.max(...this.units().flatMap((unit) => unit.ranges.map((range) => range.seconds)));
   }
-}
-
-function nowSeconds(): number {
-  return Math.floor(Date.now() / 1000);
 }

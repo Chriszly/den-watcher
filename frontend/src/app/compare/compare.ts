@@ -15,7 +15,7 @@ import { MessageKey } from '../i18n/messages/en';
 import { EvenColumns } from '../layout/even-columns';
 import { BytesPipe } from '../metrics/bytes.pipe';
 import { formatUptime } from '../metrics/format';
-import { History, MetricsService, Point, Series } from '../metrics/metrics';
+import { History, MetricsService, Point, Series, nowSeconds } from '../metrics/metrics';
 import { Summary } from '../metrics/summary';
 import { SYSTEM_FACTS, factValues } from '../metrics/system';
 import { PageVisibility } from '../page-visibility';
@@ -236,7 +236,7 @@ export class Compare {
   }
 
   private readHistories(seconds: number, devices: Device[]): Observable<Histories> {
-    const to = Math.floor(Date.now() / 1000);
+    const to = nowSeconds();
     const from = to - seconds;
     if (devices.length === 0) {
       return of({ from, to, step: 60, devices: [] });

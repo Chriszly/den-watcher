@@ -234,7 +234,7 @@ export class MetricsService {
     return this.http.get<Record<string, Snapshot>>('/api/devices/metrics');
   }
 
-  /** The usage from `from` to `to`, both Unix seconds. */
+  /** The usage from `from` to `to`, both Unix seconds, such as from nowSeconds(). */
   history(from: number, to: number, device = LOCAL_DEVICE.id): Observable<History> {
     return this.http.get<History>('/api/history', {
       params: { from, to, ...deviceParam(device) },
@@ -261,4 +261,9 @@ export class MetricsService {
 /** The backend answers for the device it runs on when a request names none. */
 function deviceParam(device: string): Record<string, string> {
   return device === LOCAL_DEVICE.id ? {} : { device };
+}
+
+/** This computer's time in whole Unix seconds, as the history is asked for. */
+export function nowSeconds(): number {
+  return Math.floor(Date.now() / 1000);
 }

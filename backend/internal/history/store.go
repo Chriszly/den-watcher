@@ -220,6 +220,7 @@ func (s *Store) cachedRange(ctx context.Context, device string, from, to time.Ti
 // downtime, or after RETENTION_DAYS was lowered, does not keep the recorders
 // from storing meanwhile.
 func (s *Store) DeleteBefore(ctx context.Context, t time.Time) (int64, error) {
+	s.pend.dropBefore(t.Unix())
 	// The primary key starts with the device, so each device's old minutes
 	// are one range of it; a time alone would read all of them.
 	devices, err := s.devices(ctx)
@@ -248,10 +249,10 @@ func (s *Store) DeleteBefore(ctx context.Context, t time.Time) (int64, error) {
 // DeleteDevice deletes every value of one device, and how its extras are
 // described, in chunks as DeleteBefore does.
 func (s *Store) DeleteDevice(ctx context.Context, device string) error {
-	// Not while minutes are written: they would come back.
+	// After a flush that is writing its minutes, which would bring them back.
 	s.flushing.Lock()
-	defer s.flushing.Unlock()
 	s.pend.forget(device)
+	s.flushing.Unlock()
 	s.cache.forget(device)
 	deleted, err := s.deleteChunks(ctx, "history_minutes", "device, time", `device = ?`, device)
 	if err != nil {
@@ -287,22 +288,22 @@ const (
 	deleteChunkPause = 50 * time.Millisecond
 )
 
-// devices returns the devices that have minutes.
+// devices returns the devices that have minutes: one lookup of the primary
+// key per device, where DISTINCT would read every minute.
 func (s *Store) devices(ctx context.Context) ([]string, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT DISTINCT device FROM history_minutes`)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
 	var devices []string
-	for rows.Next() {
-		var device string
-		if err := rows.Scan(&device); err != nil {
+	query, args := `SELECT MIN(device) FROM history_minutes`, []any{}
+	for {
+		var device sql.NullString
+		if err := s.db.QueryRowContext(ctx, query, args...).Scan(&device); err != nil {
 			return nil, err
 		}
-		devices = append(devices, device)
+		if !device.Valid {
+			return devices, nil
+		}
+		devices = append(devices, device.String)
+		query, args = `SELECT MIN(device) FROM history_minutes WHERE device > ?`, []any{device.String}
 	}
-	return devices, rows.Err()
 }
 
 // deleteChunks deletes the rows of table, history_minutes or samples_hourly,

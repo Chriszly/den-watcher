@@ -234,3 +234,37 @@ func TestDeleteBeforeDeletesTheOldMinutesOfEveryDevice(t *testing.T) {
 		}
 	}
 }
+
+func TestOpenSkipsTheDaysAStartCutShortConverted(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "history.db")
+	db := openRaw(t, path)
+	day := int64(1_799_971_200) // a multiple of a day
+	_, err := db.Exec(packedSchema+`
+		CREATE TABLE samples (device TEXT NOT NULL, time INTEGER NOT NULL, metric TEXT NOT NULL, value REAL NOT NULL, PRIMARY KEY (device, time, metric)) WITHOUT ROWID;
+		INSERT INTO samples VALUES ('local', ?1 + 60, 'cpu', 10), ('local', ?1 + 86400 + 60, 'cpu', 20);
+		INSERT INTO history_metrics (id, name) VALUES (1, 'cpu');
+		PRAGMA user_version = 3`, day)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The first day was converted, here with another value, which shows it
+	// is not converted again.
+	if _, err := db.Exec(`INSERT INTO history_minutes VALUES ('local', ?, ?)`, day+60, pack([]packed{{1, 11}})); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+
+	store, err := Open(context.Background(), path)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = store.Close() }()
+	got, err := store.Range(context.Background(), LocalDevice, time.Unix(day, 0), time.Unix(day+2*86400, 0), time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Series{{Metric: MetricCPU, Points: []Point{{day + 60, 11}, {day + 86400 + 60, 20}}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Range() = %+v, want the first day as it was and the second converted: %+v", got, want)
+	}
+}

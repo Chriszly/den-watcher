@@ -140,7 +140,6 @@ func Extras(ports []Port, ok bool) []metrics.Extra {
 	if !ok {
 		return nil
 	}
-	count := float64(len(ports))
 	labels := map[string]string{"de": "Offene Ports", "fr": "Ports en écoute", "es": "Puertos en escucha"}
 	group := metrics.Extra{
 		ID:          "ports",
@@ -157,7 +156,7 @@ func Extras(ports []Port, ok bool) []metrics.Extra {
 			Label:   "Listening ports",
 			Labels:  labels,
 			Unit:    metrics.UnitNumber,
-			Value:   &count,
+			Value:   new(float64(len(ports))),
 			History: true,
 		}},
 	}

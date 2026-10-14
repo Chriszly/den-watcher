@@ -31,13 +31,9 @@ func TestParseReadsQualityAndSignal(t *testing.T) {
 }
 
 func TestReadWithoutWirelessReportsNothing(t *testing.T) {
-	dir := t.TempDir()
-	if got := Read(File(dir)); got != nil {
+	file := filepath.Join(t.TempDir(), "wireless")
+	if got := Read(file); got != nil {
 		t.Errorf("Read() without the file = %+v, want nothing", got)
-	}
-	file := File(dir)
-	if err := os.MkdirAll(filepath.Dir(file), 0o750); err != nil {
-		t.Fatal(err)
 	}
 	header := "Inter-| sta-|   Quality        |   Discarded packets               | Missed | WE\n" +
 		" face | tus | link level noise |  nwid  crypt   frag  retry   misc | beacon | 22\n"

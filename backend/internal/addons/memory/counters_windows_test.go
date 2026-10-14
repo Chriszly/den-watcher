@@ -16,7 +16,7 @@ func TestMemoryCountersOnWindows(t *testing.T) {
 	if len(r.counters) != len(counters) {
 		t.Errorf("opened %d of %d counters", len(r.counters), len(counters))
 	}
-	first := values(r.Read(time.Now()))
+	first := values(r.Read(t.Context(), time.Now()))
 	for _, id := range []string{"modified", "pool-paged", "pool-nonpaged", "committed"} {
 		if _, ok := first[id]; !ok {
 			t.Errorf("first read lacks %s: %v", id, first)
@@ -29,7 +29,7 @@ func TestMemoryCountersOnWindows(t *testing.T) {
 		t.Errorf("committed = %v, want more than 0", first["committed"])
 	}
 	time.Sleep(time.Second)
-	second := values(r.Read(time.Now()))
+	second := values(r.Read(t.Context(), time.Now()))
 	for _, c := range counters {
 		if _, ok := second[c.id]; !ok {
 			t.Errorf("second read lacks %s: %v", c.id, second)

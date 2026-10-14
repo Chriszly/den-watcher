@@ -55,6 +55,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -126,16 +127,18 @@ func run(ctx context.Context) error {
 	if addr == "" {
 		addr = ":9393"
 	}
+	databasePath := cmp.Or(os.Getenv("DATABASE_PATH"), "usage-control.db")
 
-	retention, err := retentionDays()
+	days, err := intSettingOr("RETENTION_DAYS", 30, 3650, " of days")
 	if err != nil {
 		return err
 	}
+	retention := time.Duration(days) * 24 * time.Hour
 	port, err := pagePort(addr)
 	if err != nil {
 		return err
 	}
-	historyEntries, err := historyMaxEntries()
+	historyEntries, err := intSettingOr("HISTORY_MAX_ENTRIES", history.DefaultMaxEntries, 10000, "")
 	if err != nil {
 		return err
 	}
@@ -146,7 +149,7 @@ func run(ctx context.Context) error {
 	// complete is false when HUB_ROUTERS or HUB_CHECKS is left out for an
 	// error: the hub then forgets none of the devices it misses at this start.
 	complete := true
-	routers, err := routerDevices()
+	routers, err := routerDevices(databasePath)
 	if err != nil {
 		// A wrong router setting must not stop this device's own
 		// monitoring: it runs without the routers, and the log says why.
@@ -182,10 +185,11 @@ func run(ctx context.Context) error {
 		return errors.New("PROMETHEUS is set, but DATA_ONLY serves only the usage for a hub; let Prometheus scrape the hub, which lists this device too, or unset one of the two")
 	}
 
-	bufferSpan, err := bufferHours()
+	hours, err := intSettingOr("BUFFER_HOURS", int(history.DefaultBufferSpan/time.Hour), 168, " of hours")
 	if err != nil {
 		return err
 	}
+	bufferSpan := time.Duration(hours) * time.Hour
 	// Read before anything starts, so a wrong value stops the program before
 	// the database is opened and the recorders run.
 	checkUpdates, err := boolSettingOr("UPDATE_CHECK", true)
@@ -219,7 +223,6 @@ func run(ctx context.Context) error {
 		slog.Info("showing the values of the add-ons", "folder", dir)
 	}
 
-	databasePath := databaseFile()
 	collector.DatabasePath = databasePath
 
 	// One sampler reads the usage for every page, hub and the recorder.
@@ -489,19 +492,11 @@ func eventTargets(local events.Usage, others *hub.Hub) []events.Target {
 	return targets
 }
 
-// databaseFile returns the database's path, from DATABASE_PATH. The Windows
-// installer keeps the router passwords in the same folder.
-func databaseFile() string {
-	if path := os.Getenv("DATABASE_PATH"); path != "" {
-		return path
-	}
-	return "usage-control.db"
-}
-
 // routerDevices returns the routers in HUB_ROUTERS as devices, each with
 // the password it needs: from the passwords file (see router.PasswordsPath),
-// or else the one the Windows installer stored (see router.StoredPasswords).
-func routerDevices() ([]hub.Device, error) {
+// or else the one the Windows installer stored next to the database at
+// databasePath (see router.StoredPasswords).
+func routerDevices(databasePath string) ([]hub.Device, error) {
 	configs, err := router.ParseConfigs(os.Getenv("HUB_ROUTERS"))
 	if err != nil {
 		return nil, fmt.Errorf("check HUB_ROUTERS: %w", err)
@@ -527,7 +522,7 @@ func routerDevices() ([]hub.Device, error) {
 			}
 		default:
 			var stored bool
-			passwords, stored, err = router.StoredPasswords(filepath.Dir(databaseFile()))
+			passwords, stored, err = router.StoredPasswords(filepath.Dir(databasePath))
 			if err != nil {
 				return nil, fmt.Errorf("read the router passwords the installer stored: %w", err)
 			}
@@ -669,21 +664,6 @@ func systemDisk() string {
 	return "/"
 }
 
-// historyMaxEntries returns how many disks, sensors, network cards and GPUs
-// each the history keeps per device, from HISTORY_MAX_ENTRIES, or
-// history.DefaultMaxEntries when it is not set.
-func historyMaxEntries() (int, error) {
-	value := strings.TrimSpace(os.Getenv("HISTORY_MAX_ENTRIES"))
-	if value == "" {
-		return history.DefaultMaxEntries, nil
-	}
-	entries, err := strconv.Atoi(value)
-	if err != nil || entries < 1 || entries > 10000 {
-		return 0, fmt.Errorf("HISTORY_MAX_ENTRIES is %q; set it to a whole number from 1 to 10000", value)
-	}
-	return entries, nil
-}
-
 // pagePort returns the port the page is reachable on from the network, which
 // a hub tells the devices it collects from: PUBLIC_PORT, or the port of
 // LISTEN_ADDR. They differ in Docker, where the host's port is mapped to the
@@ -703,30 +683,16 @@ func pagePort(listenAddr string) (string, error) {
 	return value, nil
 }
 
-// bufferHours returns how long a data-only device keeps its minutes for a
-// hub, from BUFFER_HOURS, or history.DefaultBufferSpan when it is not set.
-func bufferHours() (time.Duration, error) {
-	value := strings.TrimSpace(os.Getenv("BUFFER_HOURS"))
+// intSettingOr reads a setting that is a whole number from 1 to most, with a
+// default for when it is not set; unit, such as " of days", names what it counts.
+func intSettingOr(name string, fallback, most int, unit string) (int, error) {
+	value := strings.TrimSpace(os.Getenv(name))
 	if value == "" {
-		return history.DefaultBufferSpan, nil
+		return fallback, nil
 	}
-	hours, err := strconv.Atoi(value)
-	if err != nil || hours < 1 || hours > 168 {
-		return 0, fmt.Errorf("BUFFER_HOURS is %q; set it to a whole number of hours from 1 to 168", value)
+	n, err := strconv.Atoi(value)
+	if err != nil || n < 1 || n > most {
+		return 0, fmt.Errorf("%s is %q; set it to a whole number%s from 1 to %d", name, value, unit, most)
 	}
-	return time.Duration(hours) * time.Hour, nil
-}
-
-// retentionDays returns how long the history is kept, from RETENTION_DAYS, or
-// 30 days when it is not set.
-func retentionDays() (time.Duration, error) {
-	value := strings.TrimSpace(os.Getenv("RETENTION_DAYS"))
-	if value == "" {
-		return 30 * 24 * time.Hour, nil
-	}
-	days, err := strconv.Atoi(value)
-	if err != nil || days < 1 || days > 3650 {
-		return 0, fmt.Errorf("RETENTION_DAYS is %q; set it to a whole number of days from 1 to 3650", value)
-	}
-	return time.Duration(days) * 24 * time.Hour, nil
+	return n, nil
 }

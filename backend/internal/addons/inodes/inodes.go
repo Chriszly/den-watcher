@@ -408,12 +408,11 @@ func Extras(usages []Usage) []metrics.Extra {
 		},
 	}
 	for _, u := range usages {
-		percent := u.UsedPercent
 		group.Items = append(group.Items, metrics.ExtraItem{
 			ID:      idOf(u.Path),
 			Label:   u.Path,
 			Unit:    metrics.UnitPercent,
-			Value:   &percent,
+			Value:   new(u.UsedPercent),
 			History: true,
 		})
 	}

@@ -14,19 +14,10 @@
 package main
 
 import (
-	"context"
-	"time"
-
 	"github.com/Chriszly/den-watcher/backend/internal/addons"
 	"github.com/Chriszly/den-watcher/backend/internal/addons/memory"
-	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 func main() {
-	addons.Main("memory", "UsageControlMemory", func() addons.Read {
-		read := memory.New()
-		return func(_ context.Context, now time.Time) []metrics.Extra {
-			return read(now)
-		}
-	})
+	addons.Main("memory", "UsageControlMemory", memory.New)
 }

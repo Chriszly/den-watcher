@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"regexp"
 )
 
@@ -18,12 +17,6 @@ var (
 	adapterName = regexp.MustCompile(`^hci[0-9]+$`)
 	linkName    = regexp.MustCompile(`^hci[0-9]+:[0-9]+$`)
 )
-
-// ClassDir returns where the kernel lists Bluetooth adapters and connections
-// below sysDir.
-func ClassDir(sysDir string) string {
-	return filepath.Join(sysDir, "class", "bluetooth")
-}
 
 // countLinks reads dir, the kernel's /sys/class/bluetooth, and returns the
 // connections it lists, or nil when it lists no adapter, as on a machine

@@ -59,14 +59,25 @@ func (p *Program) Output(giveUp time.Duration, run func() (string, error)) (stri
 	}
 }
 
-// NvidiaSMI runs nvidia-smi as metrics.RunNvidiaSMI does, and adds its error
-// output to what it printed when it exits with an error, as that may hold the
-// message for a GPU it cannot reach, which the add-ons show.
-func NvidiaSMI(ctx context.Context, program string, args ...string) (string, error) {
-	out, err := metrics.RunNvidiaSMI(ctx, program, args...)
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
-		out += string(exit.Stderr)
-	}
-	return out, err
+// nvidiaTimeout is how long nvidia-smi may take. Without the driver's
+// persistence mode, as on many Linux servers, each call starts the driver,
+// which can take more than a second.
+const nvidiaTimeout = 3 * time.Second
+
+// NvidiaSMI runs nvidia-smi through p as metrics.RunNvidiaSMI does, killing it
+// after nvidiaTimeout and waiting 2 seconds more for a kill that may not end
+// it, and adds its error output to what it printed when it exits with an
+// error, as that may hold the message for a GPU it cannot reach, which the
+// add-ons show.
+func (p *Program) NvidiaSMI(ctx context.Context, program string, args ...string) (string, error) {
+	return p.Output(nvidiaTimeout+2*time.Second, func() (string, error) {
+		ctx, cancel := context.WithTimeout(ctx, nvidiaTimeout)
+		defer cancel()
+		out, err := metrics.RunNvidiaSMI(ctx, program, args...)
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			out += string(exit.Stderr)
+		}
+		return out, err
+	})
 }

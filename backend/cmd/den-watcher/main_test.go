@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -35,29 +36,21 @@ func TestDiskPaths(t *testing.T) {
 	}
 }
 
-func TestRetentionDays(t *testing.T) {
-	tests := []struct {
+func TestIntSettingOr(t *testing.T) {
+	for _, tt := range []struct {
 		value string
-		want  time.Duration
-	}{
-		{"", 30 * 24 * time.Hour},
-		{"7", 7 * 24 * time.Hour},
-		{" 90 ", 90 * 24 * time.Hour},
-	}
-	for _, tt := range tests {
+		want  int
+	}{{"", 30}, {"1", 1}, {" 90 ", 90}, {"3650", 3650}} {
 		t.Setenv("RETENTION_DAYS", tt.value)
-		got, err := retentionDays()
-		if err != nil || got != tt.want {
-			t.Errorf("retentionDays() with RETENTION_DAYS=%q = %v, %v, want %v", tt.value, got, err, tt.want)
+		if got, err := intSettingOr("RETENTION_DAYS", 30, 3650, " of days"); err != nil || got != tt.want {
+			t.Errorf("intSettingOr() with RETENTION_DAYS=%q = %v, %v, want %v", tt.value, got, err, tt.want)
 		}
 	}
-}
-
-func TestRetentionDaysRefusesInvalidValues(t *testing.T) {
 	for _, value := range []string{"0", "-1", "30d", "1.5", "3651"} {
 		t.Setenv("RETENTION_DAYS", value)
-		if _, err := retentionDays(); err == nil {
-			t.Errorf("retentionDays() with RETENTION_DAYS=%q error = nil, want an error", value)
+		want := fmt.Sprintf("RETENTION_DAYS is %q; set it to a whole number of days from 1 to 3650", value)
+		if _, err := intSettingOr("RETENTION_DAYS", 30, 3650, " of days"); err == nil || err.Error() != want {
+			t.Errorf("intSettingOr() with RETENTION_DAYS=%q error = %v, want %q", value, err, want)
 		}
 	}
 }
@@ -90,30 +83,6 @@ func TestPagePortRefusesInvalidValues(t *testing.T) {
 	t.Setenv("PUBLIC_PORT", "")
 	if _, err := pagePort("9393"); err == nil {
 		t.Error("pagePort(\"9393\") error = nil, want an error for a LISTEN_ADDR without a port")
-	}
-}
-
-func TestHistoryMaxEntries(t *testing.T) {
-	tests := []struct {
-		value string
-		want  int
-	}{
-		{"", 64},
-		{"1", 1},
-		{" 200 ", 200},
-	}
-	for _, tt := range tests {
-		t.Setenv("HISTORY_MAX_ENTRIES", tt.value)
-		got, err := historyMaxEntries()
-		if err != nil || got != tt.want {
-			t.Errorf("historyMaxEntries() with HISTORY_MAX_ENTRIES=%q = %v, %v, want %v", tt.value, got, err, tt.want)
-		}
-	}
-	for _, value := range []string{"0", "-1", "many", "1.5", "10001"} {
-		t.Setenv("HISTORY_MAX_ENTRIES", value)
-		if _, err := historyMaxEntries(); err == nil {
-			t.Errorf("historyMaxEntries() with HISTORY_MAX_ENTRIES=%q error = nil, want an error", value)
-		}
 	}
 }
 
@@ -176,33 +145,6 @@ func TestOwnName(t *testing.T) {
 		t.Setenv("HOST_PROC", tt.hostProc)
 		if got := ownName(); got != tt.want {
 			t.Errorf("ownName() with DEVICE_NAME=%q, HOST_PROC=%q = %q, want %q", tt.deviceName, tt.hostProc, got, tt.want)
-		}
-	}
-}
-
-func TestBufferHours(t *testing.T) {
-	tests := []struct {
-		value string
-		want  time.Duration
-	}{
-		{"", 24 * time.Hour},
-		{"1", time.Hour},
-		{" 168 ", 7 * 24 * time.Hour},
-	}
-	for _, tt := range tests {
-		t.Setenv("BUFFER_HOURS", tt.value)
-		got, err := bufferHours()
-		if err != nil || got != tt.want {
-			t.Errorf("bufferHours() with BUFFER_HOURS=%q = %v, %v, want %v", tt.value, got, err, tt.want)
-		}
-	}
-}
-
-func TestBufferHoursRefusesInvalidValues(t *testing.T) {
-	for _, value := range []string{"0", "-1", "24h", "1.5", "169"} {
-		t.Setenv("BUFFER_HOURS", value)
-		if _, err := bufferHours(); err == nil {
-			t.Errorf("bufferHours() with BUFFER_HOURS=%q error = nil, want an error", value)
 		}
 	}
 }
@@ -363,7 +305,7 @@ func TestRouterDevicesNeedThePasswordOfALogin(t *testing.T) {
 	t.Setenv("HUB_ROUTERS", "Home router=upnp:192.168.1.1,Office=asus:admin@192.168.2.1")
 	t.Setenv("CREDENTIALS_DIRECTORY", "")
 	t.Setenv("ROUTER_PASSWORDS_FILE", "")
-	if _, err := routerDevices(); err == nil || !strings.Contains(err.Error(), "Office") {
+	if _, err := routerDevices("usage-control.db"); err == nil || !strings.Contains(err.Error(), "Office") {
 		t.Errorf("without a passwords file: %v, want an error naming the router", err)
 	}
 
@@ -372,14 +314,14 @@ func TestRouterDevicesNeedThePasswordOfALogin(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("ROUTER_PASSWORDS_FILE", path)
-	if _, err := routerDevices(); err == nil || !strings.Contains(err.Error(), "Office") {
+	if _, err := routerDevices("usage-control.db"); err == nil || !strings.Contains(err.Error(), "Office") {
 		t.Errorf("without the router's line: %v, want an error naming the router", err)
 	}
 
 	if err := os.WriteFile(path, []byte("office=secret\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	devices, err := routerDevices()
+	devices, err := routerDevices("usage-control.db")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,13 +337,13 @@ func TestRouterDevicesRefuseAShortSNMPv3Password(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("ROUTER_PASSWORDS_FILE", path)
-	if _, err := routerDevices(); err == nil || !strings.Contains(err.Error(), "8 characters") {
+	if _, err := routerDevices("usage-control.db"); err == nil || !strings.Contains(err.Error(), "8 characters") {
 		t.Errorf("with a 5-character password: %v, want an error", err)
 	}
 	if err := os.WriteFile(path, []byte("Core=long enough\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := routerDevices(); err != nil {
+	if _, err := routerDevices("usage-control.db"); err != nil {
 		t.Error(err)
 	}
 }

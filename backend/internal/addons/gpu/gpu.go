@@ -12,7 +12,6 @@ import (
 	"context"
 	"log/slog"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -21,18 +20,8 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
-const (
-	// query is what nvidia-smi is asked, in this order, one line per GPU.
-	query = "--query-gpu=index,uuid,name,fan.speed,clocks.gr,clocks.mem,utilization.encoder,utilization.decoder,pstate,power.limit"
-	// nvidiaTimeout is how long nvidia-smi may take, as long as the power
-	// add-on lets it. Without the driver's persistence mode, as on many
-	// Linux servers, each call starts the driver, which can take more than
-	// a second.
-	nvidiaTimeout = 3 * time.Second
-	// nvidiaGiveUp is how long a read waits for nvidia-smi, which a kill
-	// after nvidiaTimeout may not end (see addons.Program).
-	nvidiaGiveUp = nvidiaTimeout + 2*time.Second
-)
+// query is what nvidia-smi is asked, in this order, one line per GPU.
+const query = "--query-gpu=index,uuid,name,fan.speed,clocks.gr,clocks.mem,utilization.encoder,utilization.decoder,pstate,power.limit"
 
 // fields are the values of query after the index, the UUID and the name.
 var fields = []struct {
@@ -86,7 +75,7 @@ func NewReader() *Reader {
 
 // Read returns the GPUs' values as the group of extras the collector shows,
 // or nothing when nvidia-smi is missing or prints nothing. It gives up after
-// nvidiaTimeout, so a hanging driver does not hold up the next report.
+// a few seconds (see addons.Program.NvidiaSMI), so a hanging driver does not hold up the next report.
 // nvidia-smi is asked only every addons.ProgramInterval (see addons.Due), and
 // at once when the GPUs wake, so a GPU asleep since the add-on started shows
 // up then; in between, its last answer is returned. While a GPU may sleep,
@@ -115,7 +104,7 @@ func (r *Reader) read(ctx context.Context, asleep bool) []metrics.Extra {
 	if asleep {
 		return Extras(sleeping(r.gpus))
 	}
-	out, err := r.calls.Output(nvidiaGiveUp, func() (string, error) { return run(ctx, r.program) })
+	out, err := r.calls.NvidiaSMI(ctx, r.program, query, "--format=csv,noheader,nounits")
 	switch {
 	case err != nil && !r.failing:
 		slog.Warn("nvidia-smi failed", "error", err)
@@ -151,12 +140,6 @@ func sleeping(gpus []GPU) []GPU {
 		asleep = append(asleep, gpu)
 	}
 	return asleep
-}
-
-func run(ctx context.Context, program string) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, nvidiaTimeout)
-	defer cancel()
-	return addons.NvidiaSMI(ctx, program, query, "--format=csv,noheader,nounits")
 }
 
 // GPU is what nvidia-smi reports of one GPU. A value the GPU does not
@@ -255,7 +238,7 @@ func Extras(gpus []GPU) []metrics.Extra {
 				continue
 			}
 			item := metrics.ExtraItem{
-				ID:      idOf(key, field.id),
+				ID:      metrics.ShortID(key+"-"+field.id, 40),
 				Label:   prefix + field.label,
 				Labels:  map[string]string{},
 				Unit:    field.unit,
@@ -277,16 +260,4 @@ func Extras(gpus []GPU) []metrics.Extra {
 		return nil
 	}
 	return []metrics.Extra{group}
-}
-
-var notInID = regexp.MustCompile(`[^a-z0-9]+`)
-
-// idOf turns parts of a name into an id for an extra: lowercase letters and
-// digits joined by "-", at most 40 characters.
-func idOf(parts ...string) string {
-	id := strings.Trim(notInID.ReplaceAllString(strings.ToLower(strings.Join(parts, "-")), "-"), "-")
-	if len(id) > 40 {
-		id = strings.TrimRight(id[:40], "-")
-	}
-	return id
 }

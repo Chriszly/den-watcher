@@ -484,9 +484,8 @@ func Extras(containers []Container) []metrics.Extra {
 			})
 		}
 		if c.MemoryBytes != nil {
-			bytes := float64(*c.MemoryBytes)
 			memory.Items = append(memory.Items, metrics.ExtraItem{
-				ID: id, Label: c.Name, Unit: metrics.UnitBytes, Value: &bytes, History: true,
+				ID: id, Label: c.Name, Unit: metrics.UnitBytes, Value: new(float64(*c.MemoryBytes)), History: true,
 			})
 		}
 	}

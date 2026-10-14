@@ -40,12 +40,7 @@ type Event struct {
 type Target struct {
 	ID string
 	// Usage reads its newest usage.
-	Usage Usage
-}
-
-// Usage reads the usage of a device.
-type Usage interface {
-	Collect(ctx context.Context) (metrics.Snapshot, error)
+	Usage metrics.Source
 }
 
 // schema keeps the events, and the uptime and version each device had when

@@ -12,12 +12,9 @@ import (
 // describe the host's network also inside a container.
 func readLinks(names []string) map[string]link {
 	netDir := filepath.Join(sysfile.HostProc(), "1", "net")
-	var addresses map[string][]string
-	trie, trieErr := sysfile.Read(filepath.Join(netDir, "fib_trie"))
-	routes, routeErr := sysfile.Read(filepath.Join(netDir, "route"))
-	if trieErr == nil && routeErr == nil {
-		addresses = addressesByInterface(parseLocalAddresses(string(trie)), parseRoutes(string(routes)))
-	}
+	trie := sysfile.Text(filepath.Join(netDir, "fib_trie"))
+	routes := sysfile.Text(filepath.Join(netDir, "route"))
+	addresses := addressesByInterface(parseLocalAddresses(trie), parseRoutes(routes))
 
 	sysDir := sysfile.HostSys()
 	links := make(map[string]link, len(names))

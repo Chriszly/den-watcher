@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"log/slog"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -256,16 +255,9 @@ func boolValue(b bool) float64 {
 	return 0
 }
 
-// formatFloat writes a value as Prometheus reads it.
+// formatFloat writes a value as Prometheus reads it, NaN and +Inf and -Inf
+// included.
 func formatFloat(v float64) string {
-	switch {
-	case math.IsNaN(v):
-		return "NaN"
-	case math.IsInf(v, 1):
-		return "+Inf"
-	case math.IsInf(v, -1):
-		return "-Inf"
-	}
 	return strconv.FormatFloat(v, 'g', -1, 64)
 }
 

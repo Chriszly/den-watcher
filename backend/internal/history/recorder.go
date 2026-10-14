@@ -29,11 +29,6 @@ const storeAt = 55 * time.Second
 // (see Fetch).
 const fetchLag = 10 * time.Second
 
-// Collector reads the current usage of the machine.
-type Collector interface {
-	Collect(ctx context.Context) (metrics.Snapshot, error)
-}
-
 // Saver keeps the averages a Recorder stores: a Store, or the Buffer of a
 // device without a history of its own.
 type Saver interface {
@@ -46,7 +41,7 @@ type Saver interface {
 type Recorder struct {
 	Store     Saver
 	Recent    *Recent
-	Collector Collector
+	Collector metrics.Source
 	// Device is the name the readings are stored under, such as LocalDevice.
 	Device string
 	// MaxEntries is how many disks, sensors, network cards and GPUs each are

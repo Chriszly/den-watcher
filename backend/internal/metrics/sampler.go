@@ -14,9 +14,9 @@ const SamplingInterval = 2 * time.Second
 // readTimeout is how long one reading of the machine may take.
 const readTimeout = 10 * time.Second
 
-// source reads one snapshot of the machine's usage: the Collector, or a
-// stand-in in tests.
-type source interface {
+// Source reads one snapshot of a device's usage: the Collector, a Sampler
+// sharing its readings, or a stand-in in tests.
+type Source interface {
 	Collect(ctx context.Context) (Snapshot, error)
 }
 
@@ -26,7 +26,7 @@ type source interface {
 // interval, and only when someone asks: every few seconds for the recorder or
 // a hub, every 2 seconds while a page is open.
 type Sampler struct {
-	source   source
+	source   Source
 	interval time.Duration
 
 	// reading holds a value while a reading runs, so requests that arrive
@@ -45,7 +45,7 @@ func NewSampler(collector *Collector) *Sampler {
 	return newSampler(collector, SamplingInterval)
 }
 
-func newSampler(src source, interval time.Duration) *Sampler {
+func newSampler(src Source, interval time.Duration) *Sampler {
 	return &Sampler{source: src, interval: interval, reading: make(chan struct{}, 1)}
 }
 

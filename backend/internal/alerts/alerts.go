@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -92,12 +93,7 @@ type Target struct {
 	Unreachable      bool
 	UnreachableSince time.Time
 	// Usage reads its newest usage.
-	Usage Usage
-}
-
-// Usage reads the usage of a device.
-type Usage interface {
-	Collect(ctx context.Context) (metrics.Snapshot, error)
+	Usage metrics.Source
 }
 
 const schema = `
@@ -211,11 +207,7 @@ func (w *Watcher) Check(ctx context.Context, now time.Time) {
 	// added again.
 	for device, at := range w.forgotten {
 		if at > forgets {
-			for key := range seen {
-				if deviceOf(key) == device {
-					delete(seen, key)
-				}
-			}
+			maps.DeleteFunc(seen, func(key string, _ Alert) bool { return deviceOf(key) == device })
 		} else if _, listed := unread[device]; listed {
 			delete(w.forgotten, device)
 		}
@@ -376,16 +368,8 @@ func (w *Watcher) Forget(ctx context.Context, device string) error {
 	defer w.mu.Unlock()
 	w.forgets++
 	w.forgotten[device] = w.forgets
-	for key, a := range w.active {
-		if a.Device == device {
-			delete(w.active, key)
-		}
-	}
-	for key := range w.pending {
-		if deviceOf(key) == device {
-			delete(w.pending, key)
-		}
-	}
+	maps.DeleteFunc(w.active, func(_ string, a *Alert) bool { return a.Device == device })
+	maps.DeleteFunc(w.pending, func(key string, _ time.Time) bool { return deviceOf(key) == device })
 	if _, err := w.db.ExecContext(ctx, `DELETE FROM alerts WHERE device = ?`, device); err != nil {
 		return fmt.Errorf("delete the alerts of a removed device: %w", err)
 	}
@@ -405,14 +389,10 @@ func (w *Watcher) query(ctx context.Context, query string, args ...any) ([]Alert
 	list := []Alert{}
 	for rows.Next() {
 		var a Alert
-		var value sql.NullFloat64
 		var started int64
 		var ended sql.NullInt64
-		if err := rows.Scan(&a.ID, &a.Device, &a.DeviceName, &a.Kind, &a.Subject, &a.Level, &value, &started, &ended); err != nil {
+		if err := rows.Scan(&a.ID, &a.Device, &a.DeviceName, &a.Kind, &a.Subject, &a.Level, &a.Value, &started, &ended); err != nil {
 			return nil, fmt.Errorf("read the alerts: %w", err)
-		}
-		if value.Valid {
-			a.Value = &value.Float64
 		}
 		a.Started = time.UnixMilli(started)
 		if ended.Valid {

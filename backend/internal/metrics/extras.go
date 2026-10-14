@@ -138,10 +138,10 @@ func CleanExtras(extras []Extra, maxEntries int) []Extra {
 		groups[group.ID] = true
 		clean = append(clean, Extra{
 			ID:           group.ID,
-			Title:        cut(group.Title),
-			Titles:       cleanTranslations(group.Titles),
+			Title:        CleanText(group.Title),
+			Titles:       cleanTranslations(group.Titles, MaxTextLength),
 			Description:  cutTo(group.Description, MaxDescriptionLength),
-			Descriptions: cleanTranslationsTo(group.Descriptions, MaxDescriptionLength),
+			Descriptions: cleanTranslations(group.Descriptions, MaxDescriptionLength),
 			Items:        items,
 		})
 	}
@@ -157,15 +157,15 @@ func cleanItems(items []ExtraItem, maxEntries int) []ExtraItem {
 		if !validID.MatchString(item.ID) || ids[item.ID] {
 			continue
 		}
-		item.Label = cut(item.Label)
-		item.Section = cut(item.Section)
-		item.Labels = cleanTranslations(item.Labels)
+		item.Label = CleanText(item.Label)
+		item.Section = CleanText(item.Section)
+		item.Labels = cleanTranslations(item.Labels, MaxTextLength)
 		if !knownUnits[item.Unit] {
 			item.Unit = UnitNumber
 		}
 		if item.Unit == UnitText {
-			item.Text, item.Value, item.History = cut(item.Text), nil, false
-			item.Texts = cleanTranslations(item.Texts)
+			item.Text, item.Value, item.History = CleanText(item.Text), nil, false
+			item.Texts = cleanTranslations(item.Texts, MaxTextLength)
 		} else {
 			item.Texts = nil
 			if item.Value == nil || math.IsNaN(*item.Value) || math.IsInf(*item.Value, 0) {
@@ -205,16 +205,10 @@ func first[T any](list []T, n int, id func(T) string, history func(T) bool) []T 
 	return slices.DeleteFunc(list, func(entry T) bool { return !kept[id(entry)] })
 }
 
-// cleanTranslations keeps the valid translations, in the order of their
-// language codes, so the same ones are kept on every read when there are too
-// many.
-func cleanTranslations(texts map[string]string) map[string]string {
-	return cleanTranslationsTo(texts, MaxTextLength)
-}
-
-// cleanTranslationsTo is cleanTranslations for texts of at most limit
-// characters.
-func cleanTranslationsTo(texts map[string]string, limit int) map[string]string {
+// cleanTranslations keeps the valid translations, cut to limit characters,
+// in the order of their language codes, so the same ones are kept on every
+// read when there are too many.
+func cleanTranslations(texts map[string]string, limit int) map[string]string {
 	var clean map[string]string
 	for _, language := range slices.Sorted(maps.Keys(texts)) {
 		if len(clean) == maxTranslations {
@@ -230,12 +224,6 @@ func cleanTranslationsTo(texts map[string]string, limit int) map[string]string {
 		clean[language] = cutTo(text, limit)
 	}
 	return clean
-}
-
-// cut returns text cut to MaxTextLength characters, with invalid UTF-8
-// replaced.
-func cut(text string) string {
-	return cutTo(text, MaxTextLength)
 }
 
 // cutTo returns text cut to limit characters, with invalid UTF-8 replaced.

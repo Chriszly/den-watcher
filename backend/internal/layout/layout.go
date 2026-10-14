@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -136,7 +137,7 @@ func check(field string, names []string) error {
 	}
 	seen := make(map[string]bool, len(names))
 	for _, name := range names {
-		if name == "" || len(name) > MaxNameBytes || !utf8.ValidString(name) || !printable(name) {
+		if name == "" || len(name) > MaxNameBytes || !utf8.ValidString(name) || strings.ContainsFunc(name, func(r rune) bool { return !unicode.IsPrint(r) }) {
 			return &InputError{fmt.Sprintf("each entry of %s must be printable text of 1 to %d bytes", field, MaxNameBytes)}
 		}
 		if seen[name] {
@@ -160,13 +161,4 @@ func checkWidths(widths map[string]int) error {
 		}
 	}
 	return nil
-}
-
-func printable(name string) bool {
-	for _, r := range name {
-		if !unicode.IsPrint(r) {
-			return false
-		}
-	}
-	return true
 }

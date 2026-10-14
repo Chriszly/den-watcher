@@ -46,7 +46,7 @@ func newHandler(devices []Device, retention time.Duration, files fs.FS) http.Han
 }
 
 // device returns the machine the site runs on, as the only device.
-func device(collector Collector, reader HistoryReader) []Device {
+func device(collector metrics.Source, reader HistoryReader) []Device {
 	return []Device{{ID: "local", Metrics: collector, History: reader}}
 }
 

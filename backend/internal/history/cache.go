@@ -1,6 +1,7 @@
 package history
 
 import (
+	"maps"
 	"sync"
 	"time"
 )
@@ -66,11 +67,7 @@ func (c *rangeCache) put(device string, from, to time.Time, step time.Duration, 
 	if forgotten != c.forgotten {
 		return
 	}
-	for key, answer := range c.answers {
-		if now.Sub(answer.at) >= cacheFor {
-			delete(c.answers, key)
-		}
-	}
+	maps.DeleteFunc(c.answers, func(_ rangeKey, answer rangeAnswer) bool { return now.Sub(answer.at) >= cacheFor })
 	c.answers[rangeKey{device, step}] = rangeAnswer{from: stepOf(from, step), to: stepOf(to, step), at: now, series: series}
 }
 
@@ -79,11 +76,7 @@ func (c *rangeCache) forget(device string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.forgotten++
-	for key := range c.answers {
-		if key.device == device {
-			delete(c.answers, key)
-		}
-	}
+	maps.DeleteFunc(c.answers, func(key rangeKey, _ rangeAnswer) bool { return key.device == device })
 }
 
 // stepOf returns which step since the Unix epoch t falls in, as Store.Range

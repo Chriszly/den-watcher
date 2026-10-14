@@ -38,14 +38,7 @@ func throttlingFile() string {
 // readThrottling reads the firmware's report, or returns nil when there is
 // none.
 func readThrottling(file string) *Throttling {
-	if file == "" {
-		return nil
-	}
-	text, err := sysfile.Read(file)
-	if err != nil {
-		return nil
-	}
-	return parseThrottling(string(text))
+	return parseThrottling(sysfile.Text(file))
 }
 
 // parseThrottling turns the hexadecimal number in get_throttled, such as

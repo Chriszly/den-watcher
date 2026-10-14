@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"slices"
 )
 
 // migrations change the database file, every table in it included, from one
@@ -67,13 +68,13 @@ func migrate(ctx context.Context, db *sql.DB, path string, migrations []string) 
 	}
 
 	// A new database has nothing to change: its tables are created in the
-	// latest layout.
+	// latest layout. Nor has one whose pending migrations are all "".
 	var tables int
 	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'`).Scan(&tables); err != nil {
 		return err
 	}
 	pending := migrations[current:]
-	if tables > 0 && changesSomething(pending) {
+	if tables > 0 && slices.ContainsFunc(pending, func(m string) bool { return m != "" }) {
 		if err := backup(ctx, db, path+".backup"); err != nil {
 			return fmt.Errorf("copy the database before changing it: %w", err)
 		}
@@ -100,16 +101,6 @@ func migrate(ctx context.Context, db *sql.DB, path string, migrations []string) 
 		return err
 	}
 	return tx.Commit()
-}
-
-// changesSomething reports whether one of the migrations changes the file.
-func changesSomething(migrations []string) bool {
-	for _, m := range migrations {
-		if m != "" {
-			return true
-		}
-	}
-	return false
 }
 
 // backup copies the database to path, replacing an older copy.

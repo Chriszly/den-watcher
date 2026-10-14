@@ -3,8 +3,9 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
-import { DeviceService } from '../devices/devices';
+import { DeviceService, LOCAL_DEVICE } from '../devices/devices';
 import { ChartCanvas } from '../history/chart-canvas';
+import { Sparkline } from '../history/sparkline';
 import { History, Snapshot } from '../metrics/metrics';
 import { Glance } from './glance';
 
@@ -207,6 +208,34 @@ describe('Glance', () => {
     expect(lines[1]).toEqual([]);
     // Both cards together, 2 KiB/s, at the top of a 2 KiB/s chart.
     expect(lines[4]).toEqual([[{ x: 0.05, y: 0 }]]);
+  });
+
+  it('does not draw the small charts again for a new snapshot while the history stays', () => {
+    show(SNAPSHOT, {
+      from: 0,
+      to: 1000,
+      stepSeconds: 100,
+      retentionDays: 30,
+      series: [
+        { metric: 'cpu', points: [{ time: 0, value: 50 }] },
+        { metric: 'network.receive:eth0', points: [{ time: 0, value: 1024 }] },
+      ],
+    });
+    const points = () =>
+      fixture.debugElement
+        .queryAll(By.directive(Sparkline))
+        .map((d) => (d.componentInstance as Sparkline).points());
+    const before = points();
+
+    fixture.componentRef.setInput('snapshot', {
+      ...SNAPSHOT,
+      cpu: { ...SNAPSHOT.cpu, usagePercent: 9 },
+    });
+    TestBed.inject(DeviceService).devices.set([{ ...LOCAL_DEVICE }]);
+    fixture.detectChanges();
+    // The CPU's and the network's, which the history has.
+    expect(points()[0]).toBe(before[0]);
+    expect(points()[4]).toBe(before[4]);
   });
 });
 

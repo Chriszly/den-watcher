@@ -1,6 +1,12 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+
+import { DeviceService, LOCAL_DEVICE } from '../devices/devices';
 import { TextParams, translate } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
-import { chartsOf, devicePoints, extraChartsOf, valueChartsOf } from './history';
+import { HistoryStore } from './history-store';
+import { DeviceCharts, chartsOf, devicePoints, extraChartsOf, valueChartsOf } from './history';
 
 describe('chartsOf', () => {
   it('groups metrics into charts and adds up the network cards', () => {
@@ -256,5 +262,35 @@ describe('devicePoints', () => {
 
   it('keeps the CPU of an idle device that is no router', () => {
     expect(devicePoints(idle, 'cpu', false)).toEqual([{ time: 0, value: 0 }]);
+  });
+});
+
+describe('DeviceCharts', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+  });
+
+  it('does not build the charts again when the list of devices is read again unchanged', () => {
+    const devices = TestBed.inject(DeviceService);
+    const charts = TestBed.inject(DeviceCharts);
+    TestBed.inject(HistoryStore).history.set({
+      from: 0,
+      to: 1800,
+      stepSeconds: 5,
+      retentionDays: 30,
+      series: [{ metric: 'cpu', points: [{ time: 0, value: 10 }] }],
+    });
+    devices.devices.set([{ ...LOCAL_DEVICE }]);
+    const first = charts.byCard();
+
+    // Each read of the list gives new objects, though nothing changed.
+    devices.devices.set([{ ...LOCAL_DEVICE }]);
+    expect(charts.byCard()).toBe(first);
+
+    // A device that turns out to be a router is charted as one.
+    devices.devices.set([{ ...LOCAL_DEVICE, router: true }]);
+    expect(charts.byCard()).not.toBe(first);
   });
 });

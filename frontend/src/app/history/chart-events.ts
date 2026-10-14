@@ -87,15 +87,16 @@ export class ChartEvents {
   private readonly i18n = inject(I18n);
 
   private readonly events = signal<{ device: string; events: DeviceEvent[] } | null>(null);
+  /** Whether the picked device is a PC; kept apart, as the list of devices is read every 5 s. */
+  private readonly pc = computed(() => this.devices.selected().kind === 'pc');
 
   /** The marks of the picked device, in the page's language. */
   readonly markers = computed((): ChartMarker[] => {
     const read = this.events();
-    const device = this.devices.selected();
-    if (!read || read.device !== device.id) {
+    if (!read || read.device !== this.devices.selectedId()) {
       return [];
     }
-    return markersOf(read.events, this.i18n, device.kind === 'pc');
+    return markersOf(read.events, this.i18n, this.pc());
   });
 
   /** Reads the events of the shown range while subscribed to. */

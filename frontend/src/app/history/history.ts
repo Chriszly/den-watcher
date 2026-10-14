@@ -25,6 +25,12 @@ export class DeviceCharts {
   private readonly store = inject(HistoryStore);
   private readonly i18n = inject(I18n);
 
+  /**
+   * Whether the hub reads the picked device. The list of devices is read every 5 s, which gives a
+   * new device each time, so the charts depend on only this, not to be drawn again each time.
+   */
+  private readonly readByHub = computed(() => readByHub(this.devices.selected()));
+
   private readonly charts = computed(() => this.chartsOf(this.store.history()));
 
   /** The charts of each card that has any, by the card's id. */
@@ -51,9 +57,8 @@ export class DeviceCharts {
     if (!history) {
       return [];
     }
-    const device = this.devices.selected();
     return [
-      ...chartsOf(history.series, (key, params) => this.i18n.t(key, params), readByHub(device)),
+      ...chartsOf(history.series, (key, params) => this.i18n.t(key, params), this.readByHub()),
       ...extraChartsOf(history.series, history.extras ?? {}, this.i18n.language()),
     ];
   }

@@ -88,11 +88,23 @@ export class Glance {
   private readonly devices = inject(DeviceService);
   private readonly i18n = inject(I18n);
 
+  /** Whether the hub reads the device; kept apart, as the list of devices is read every 5 s. */
+  private readonly router = computed(() => readByHub(this.devices.selected()));
+
+  /**
+   * The network tile's chart, added up only when the history changes, not with each new snapshot,
+   * so its sparkline is not drawn again every few seconds.
+   */
+  private readonly networkPoints = computed(() => {
+    const router = this.router();
+    const lines = linesOf(this.store.history()?.series ?? [], 'network.receive');
+    return sum(lines.filter((line) => !router || isWan(line.label)));
+  });
+
   protected readonly tiles = computed((): Tile[] => {
     const s = this.snapshot();
     const series = this.store.history()?.series ?? [];
-    const device = this.devices.selected();
-    const router = readByHub(device);
+    const router = this.router();
     const t = this.i18n.t.bind(this.i18n);
     const language = this.i18n.language();
     const number = (value: number, digits = '1.0-1') => formatNumber(value, language, digits);
@@ -178,7 +190,7 @@ export class Glance {
         detail: network.length === 1 ? network[0].name : '',
         sub: `↑ ${sent}/s`,
         alert: null,
-        points: sum(linesOf(series, 'network.receive').filter((line) => counted(line.label))),
+        points: this.networkPoints(),
         chartUnit: 'bytesPerSecond',
         series: 6,
       });

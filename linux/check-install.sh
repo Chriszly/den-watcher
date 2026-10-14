@@ -40,6 +40,22 @@ answer() {
   return 1
 }
 
+# Checks the add-on $1 runs and writes its report to the add-on folder within
+# 10 seconds, holding $2 when it is given; otherwise fails, saying $3.
+addon_reports() {
+  local report="/run/den-watcher-addons/$1.json"
+  systemctl is-active --quiet "den-watcher-$1" || { journalctl -u "den-watcher-$1" --no-pager | tail -20 >&2; echo "the $1 add-on is not running" >&2; exit 1; }
+  for _ in $(seq 1 10); do
+    [[ -f "$report" ]] && { [[ -z "$2" ]] || grep -qs -- "$2" "$report"; } && return
+    sleep 1
+  done
+  echo "$3" >&2
+  exit 1
+}
+
+# Whether the unit $1 or its program in /usr/local/bin is still there.
+installed() { systemctl cat "$1" > /dev/null 2>&1 || [[ -e "/usr/local/bin/$1" ]]; }
+
 if [[ -n "$old_archive" ]]; then
   old="$work/old"
   mkdir "$old"
@@ -98,12 +114,7 @@ test -f /var/lib/den-watcher/usage-control.db
 # The power add-on runs as a service of its own and writes to the add-on
 # folder; an update without --addons keeps it.
 "$folder/install.sh" --addons=power
-systemctl is-active --quiet den-watcher-power || { journalctl -u den-watcher-power --no-pager | tail -20 >&2; echo "the power add-on is not running" >&2; exit 1; }
-for _ in $(seq 1 10); do
-  [[ -f /run/den-watcher-addons/power.json ]] && break
-  sleep 1
-done
-test -f /run/den-watcher-addons/power.json || { echo "the power add-on wrote no report" >&2; exit 1; }
+addon_reports power "" "the power add-on wrote no report"
 
 # The containers add-on reports a running container by its name, which it
 # reads from Docker's settings, where the runner has Docker.
@@ -158,11 +169,7 @@ if command -v docker > /dev/null && docker info > /dev/null 2>&1 && [[ -f /sys/f
   docker_check=false
   [[ "$reported" == true ]] || { echo "the containers add-on did not report the running container" >&2; exit 1; }
 else
-  for _ in $(seq 1 10); do
-    [[ -f /run/den-watcher-addons/containers.json ]] && break
-    sleep 1
-  done
-  test -f /run/den-watcher-addons/containers.json || { echo "the containers add-on wrote no report" >&2; exit 1; }
+  addon_reports containers "" "the containers add-on wrote no report"
 fi
 "$folder/install.sh" < /dev/null
 systemctl is-active --quiet den-watcher-power || { echo "the update removed the power add-on" >&2; exit 1; }
@@ -178,66 +185,16 @@ answer /api/metrics > /dev/null
 # installed, so --addons= below has to remove them all.
 "$folder/install.sh" --addons=power,pressure,kernel,wifi,ports,containers,bluetooth
 systemctl is-active --quiet den-watcher-pressure || { journalctl -u den-watcher-pressure --no-pager | tail -20 >&2; echo "the pressure add-on is not running" >&2; exit 1; }
-if [[ -f /proc/pressure/cpu ]]; then
-  for _ in $(seq 1 10); do
-    grep -qs '"cpu-some"' /run/den-watcher-addons/pressure.json && break
-    sleep 1
-  done
-  grep -qs '"cpu-some"' /run/den-watcher-addons/pressure.json || { echo "the pressure add-on reported no CPU pressure" >&2; exit 1; }
-fi
-systemctl is-active --quiet den-watcher-kernel || { journalctl -u den-watcher-kernel --no-pager | tail -20 >&2; echo "the kernel add-on is not running" >&2; exit 1; }
-for _ in $(seq 1 10); do
-  grep -qs '"tcp-established"' /run/den-watcher-addons/kernel.json && break
-  sleep 1
-done
-grep -qs '"tcp-established"' /run/den-watcher-addons/kernel.json || { echo "the kernel add-on wrote no report" >&2; exit 1; }
-systemctl is-active --quiet den-watcher-wifi || { journalctl -u den-watcher-wifi --no-pager | tail -20 >&2; echo "the Wi-Fi add-on is not running" >&2; exit 1; }
-for _ in $(seq 1 10); do
-  [[ -f /run/den-watcher-addons/wifi.json ]] && break
-  sleep 1
-done
-test -f /run/den-watcher-addons/wifi.json || { echo "the Wi-Fi add-on wrote no report" >&2; exit 1; }
-systemctl is-active --quiet den-watcher-ports || { journalctl -u den-watcher-ports --no-pager | tail -20 >&2; echo "the ports add-on is not running" >&2; exit 1; }
-for _ in $(seq 1 10); do
-  grep -qs '"id":"ports"' /run/den-watcher-addons/ports.json && break
-  sleep 1
-done
-grep -qs '"id":"ports"' /run/den-watcher-addons/ports.json || { echo "the ports add-on wrote no ports" >&2; exit 1; }
-systemctl is-active --quiet den-watcher-bluetooth || { journalctl -u den-watcher-bluetooth --no-pager | tail -20 >&2; echo "the Bluetooth add-on is not running" >&2; exit 1; }
-for _ in $(seq 1 10); do
-  grep -qs '"extras"' /run/den-watcher-addons/bluetooth.json && break
-  sleep 1
-done
-grep -qs '"extras"' /run/den-watcher-addons/bluetooth.json || { echo "the Bluetooth add-on wrote no report" >&2; exit 1; }
+[[ ! -f /proc/pressure/cpu ]] || addon_reports pressure '"cpu-some"' "the pressure add-on reported no CPU pressure"
+addon_reports kernel '"tcp-established"' "the kernel add-on wrote no report"
+addon_reports wifi "" "the Wi-Fi add-on wrote no report"
+addon_reports ports '"id":"ports"' "the ports add-on wrote no ports"
+addon_reports bluetooth '"extras"' "the Bluetooth add-on wrote no report"
 "$folder/install.sh" --addons=
-if systemctl cat den-watcher-power > /dev/null 2>&1 || [[ -e /usr/local/bin/den-watcher-power ]]; then
-  echo "--addons= left the power add-on behind" >&2
-  exit 1
-fi
-if systemctl cat den-watcher-pressure > /dev/null 2>&1 || [[ -e /usr/local/bin/den-watcher-pressure ]]; then
-  echo "--addons= left the pressure add-on behind" >&2
-  exit 1
-fi
-if systemctl cat den-watcher-kernel > /dev/null 2>&1 || [[ -e /usr/local/bin/den-watcher-kernel ]]; then
-  echo "--addons= left the kernel add-on behind" >&2
-  exit 1
-fi
-if systemctl cat den-watcher-wifi > /dev/null 2>&1 || [[ -e /usr/local/bin/den-watcher-wifi ]]; then
-  echo "--addons= left the Wi-Fi add-on behind" >&2
-  exit 1
-fi
-if systemctl cat den-watcher-ports > /dev/null 2>&1 || [[ -e /usr/local/bin/den-watcher-ports ]]; then
-  echo "--addons= left the ports add-on behind" >&2
-  exit 1
-fi
-if systemctl cat den-watcher-containers > /dev/null 2>&1 || [[ -e /usr/local/bin/den-watcher-containers ]]; then
-  echo "--addons= left the containers add-on behind" >&2
-  exit 1
-fi
-if systemctl cat den-watcher-bluetooth > /dev/null 2>&1 || [[ -e /usr/local/bin/den-watcher-bluetooth || -L /run/den-watcher-addons/bluetooth.json ]]; then
-  echo "--addons= left the Bluetooth add-on behind" >&2
-  exit 1
-fi
+for addon in power pressure kernel wifi ports containers bluetooth; do
+  ! installed "den-watcher-$addon" || { echo "--addons= left the $addon add-on behind" >&2; exit 1; }
+done
+[[ ! -L /run/den-watcher-addons/bluetooth.json ]] || { echo "--addons= left the Bluetooth add-on behind" >&2; exit 1; }
 
 # --addons=cub installs the Cub edition: the lightweight add-ons, and only those.
 "$folder/install.sh" --addons=cub
@@ -254,32 +211,16 @@ done
 
 # The gpu add-on runs without an NVIDIA GPU too, and then reports nothing.
 "$folder/install.sh" --addons=gpu
-systemctl is-active --quiet den-watcher-gpu || { journalctl -u den-watcher-gpu --no-pager | tail -20 >&2; echo "the gpu add-on is not running" >&2; exit 1; }
-for _ in $(seq 1 10); do
-  [[ -f /run/den-watcher-addons/gpu.json ]] && break
-  sleep 1
-done
-test -f /run/den-watcher-addons/gpu.json || { echo "the gpu add-on wrote no report" >&2; exit 1; }
+addon_reports gpu "" "the gpu add-on wrote no report"
 "$folder/install.sh" --addons=
-if systemctl cat den-watcher-gpu > /dev/null 2>&1 || [[ -e /usr/local/bin/den-watcher-gpu ]]; then
-  echo "--addons= left the gpu add-on behind" >&2
-  exit 1
-fi
+! installed den-watcher-gpu || { echo "--addons= left the gpu add-on behind" >&2; exit 1; }
 
 # The smart add-on runs and writes its report also where no disk answers
 # SMART commands, as on a CI machine's virtual disks.
 "$folder/install.sh" --addons=smart
-systemctl is-active --quiet den-watcher-smart || { journalctl -u den-watcher-smart --no-pager | tail -20 >&2; echo "the smart add-on is not running" >&2; exit 1; }
-for _ in $(seq 1 10); do
-  [[ -f /run/den-watcher-addons/smart.json ]] && break
-  sleep 1
-done
-test -f /run/den-watcher-addons/smart.json || { echo "the smart add-on wrote no report" >&2; exit 1; }
+addon_reports smart "" "the smart add-on wrote no report"
 "$folder/install.sh" --addons=power
-if systemctl cat den-watcher-smart > /dev/null 2>&1 || [[ -e /usr/local/bin/den-watcher-smart ]]; then
-  echo "--addons=power left the smart add-on behind" >&2
-  exit 1
-fi
+! installed den-watcher-smart || { echo "--addons=power left the smart add-on behind" >&2; exit 1; }
 
 # The inodes add-on runs next to them and reports at least the root
 # filesystem; the power add-on stays installed. The memory add-on runs next
@@ -287,22 +228,12 @@ fi
 # add-on lists the busiest processes, the CPU ones from its second read on.
 # The kernel, memory and processes add-ons stay for the uninstall to remove.
 "$folder/install.sh" --addons=power,inodes,kernel,memory,processes
-systemctl is-active --quiet den-watcher-inodes || { journalctl -u den-watcher-inodes --no-pager | tail -20 >&2; echo "the inodes add-on is not running" >&2; exit 1; }
+addon_reports inodes '"label":"/"' "the inodes add-on reported no root filesystem"
 # It takes DOCKER_DIR from the settings file, but not ADDONS_DIR.
 systemctl show -p EnvironmentFiles den-watcher-inodes | grep -q /etc/den-watcher.env || { echo "the inodes add-on does not read /etc/den-watcher.env" >&2; exit 1; }
 systemctl show -p UnsetEnvironment den-watcher-inodes | grep -q ADDONS_DIR || { echo "the inodes add-on does not unset ADDONS_DIR" >&2; exit 1; }
-for _ in $(seq 1 10); do
-  grep -qs '"label":"/"' /run/den-watcher-addons/inodes.json && break
-  sleep 1
-done
-grep -qs '"label":"/"' /run/den-watcher-addons/inodes.json || { echo "the inodes add-on reported no root filesystem" >&2; exit 1; }
 systemctl is-active --quiet den-watcher-power || { echo "adding the inodes add-on stopped the power add-on" >&2; exit 1; }
-systemctl is-active --quiet den-watcher-memory || { journalctl -u den-watcher-memory --no-pager | tail -20 >&2; echo "the memory add-on is not running" >&2; exit 1; }
-for _ in $(seq 1 10); do
-  grep -q '"id":"committed"' /run/den-watcher-addons/memory.json 2> /dev/null && break
-  sleep 1
-done
-grep -q '"id":"committed"' /run/den-watcher-addons/memory.json || { echo "the memory add-on wrote no report" >&2; exit 1; }
+addon_reports memory '"id":"committed"' "the memory add-on wrote no report"
 systemctl is-active --quiet den-watcher-processes || { journalctl -u den-watcher-processes --no-pager | tail -20 >&2; echo "the processes add-on is not running" >&2; exit 1; }
 for _ in $(seq 1 15); do
   grep -qs '"id":"processes-cpu"' /run/den-watcher-addons/processes.json && break
@@ -311,29 +242,16 @@ done
 grep -q '"id":"processes-memory"' /run/den-watcher-addons/processes.json || { echo "the processes add-on reported no processes by memory" >&2; exit 1; }
 grep -q '"id":"processes-cpu"' /run/den-watcher-addons/processes.json || { echo "the processes add-on reported no processes by CPU" >&2; exit 1; }
 # Once power has written its report, it must be able to write it again.
-for _ in $(seq 1 10); do
-  [[ -f /run/den-watcher-addons/power.json ]] && break
-  sleep 1
-done
+addon_reports power "" "the power add-on wrote no report"
 rm /run/den-watcher-addons/power.json
-for _ in $(seq 1 10); do
-  [[ -f /run/den-watcher-addons/power.json ]] && break
-  sleep 1
-done
-test -f /run/den-watcher-addons/power.json || { echo "the power add-on can no longer write next to the other add-ons" >&2; exit 1; }
+addon_reports power "" "the power add-on can no longer write next to the other add-ons"
 
 # --purge also deletes settings made with systemctl edit.
 mkdir -p /etc/systemd/system/den-watcher-power.service.d
 printf '[Service]\nEnvironment=CHECK=1\n' > /etc/systemd/system/den-watcher-power.service.d/override.conf
 "$folder/install.sh" --uninstall --purge
-if systemctl cat den-watcher > /dev/null 2>&1 || systemctl cat den-watcher-power > /dev/null 2>&1 ||
-  systemctl cat den-watcher-inodes > /dev/null 2>&1 || systemctl cat den-watcher-kernel > /dev/null 2>&1 ||
-  systemctl cat den-watcher-memory > /dev/null 2>&1 || systemctl cat den-watcher-processes > /dev/null 2>&1 ||
-  [[ -e /usr/local/bin/den-watcher || -e /usr/local/bin/den-watcher-power || -e /usr/local/bin/den-watcher-inodes ||
-  -e /usr/local/bin/den-watcher-kernel || -e /usr/local/bin/den-watcher-memory ||
-  -e /usr/local/bin/den-watcher-processes || -e /etc/den-watcher.env ||
-  -e /etc/systemd/system/den-watcher-power.service.d ]]; then
-  echo "the uninstall left den-watcher behind" >&2
-  exit 1
-fi
+for name in den-watcher den-watcher-{power,inodes,kernel,memory,processes}; do
+  ! installed "$name" || { echo "the uninstall left den-watcher behind" >&2; exit 1; }
+done
+[[ ! -e /etc/den-watcher.env && ! -e /etc/systemd/system/den-watcher-power.service.d ]] || { echo "the uninstall left den-watcher behind" >&2; exit 1; }
 echo "Install, update, the power, pressure, kernel, Wi-Fi, ports, containers, gpu, smart, inodes, memory and processes add-ons and uninstall work."

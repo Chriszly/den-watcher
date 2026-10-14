@@ -278,6 +278,9 @@ function Assert-BluetoothAddOn {
     Wait-Until { Test-Path "$env:ProgramData\Usage Control\addons\bluetooth.json" } 'the Bluetooth add-on wrote its report'
 }
 
+# Every add-on, by the name of its Assert- function.
+$addOns = 'Power', 'Gpu', 'Kernel', 'Pressure', 'Wifi', 'Memory', 'Ports', 'Smart', 'Processes', 'Bluetooth'
+
 Write-Host 'An UPDATE_CHECK other than true or false is refused, naming the option'
 Assert-InstallerRefuses "/i `"$Msi`" UPDATE_CHECK=no" 'UPDATE_CHECK must be true or false.', ".msi`" UPDATE_CHECK=true"
 if (Get-Service UsageControl -ErrorAction SilentlyContinue) { throw 'The refused install installed the service' }
@@ -292,16 +295,7 @@ Assert-ServiceSetting HUB_DEVICES 'Pi=192.168.1.20:9393'
 Assert-ServiceSetting DISK_PATHS "$env:SystemDrive\"
 Assert-ServiceSetting UPDATE_CHECK 'false'
 Assert-ServiceSetting RESET_PASSWORD 'true'
-Assert-PowerAddOn
-Assert-GpuAddOn
-Assert-KernelAddOn
-Assert-PressureAddOn
-Assert-WifiAddOn
-Assert-MemoryAddOn
-Assert-PortsAddOn
-Assert-SmartAddOn
-Assert-ProcessesAddOn
-Assert-BluetoothAddOn
+foreach ($addOn in $addOns) { & "Assert-$($addOn)AddOn" }
 
 Write-Host 'The tray icon pauses, resumes and stops the service'
 Assert-Tray
@@ -319,16 +313,7 @@ if (-not (Test-Path "$env:ProgramData\Usage Control\usage-control.db")) { throw 
 Assert-ServiceSetting DISK_PATHS "$env:SystemDrive\"
 Assert-ServiceSetting UPDATE_CHECK 'false'
 Assert-ServiceSetting RESET_PASSWORD ''
-Assert-PowerAddOn
-Assert-GpuAddOn
-Assert-KernelAddOn
-Assert-PressureAddOn
-Assert-WifiAddOn
-Assert-MemoryAddOn
-Assert-PortsAddOn
-Assert-SmartAddOn
-Assert-ProcessesAddOn
-Assert-BluetoothAddOn
+foreach ($addOn in $addOns) { & "Assert-$($addOn)AddOn" }
 
 Write-Host 'The older bugfix refuses to install over the newer one'
 Assert-InstallerRefuses "/i `"$Msi`"" 'A newer bugfix of this version of Den-Watcher is already installed.'
@@ -381,15 +366,7 @@ if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-power.exe") {
     throw 'The repair with POWER=0 left den-watcher-power.exe'
 }
 if ((Get-ItemPropertyValue 'HKLM:\SOFTWARE\Usage Control' POWER) -ne '0') { throw 'The repair did not remember POWER=0' }
-Assert-GpuAddOn
-Assert-KernelAddOn
-Assert-PressureAddOn
-Assert-WifiAddOn
-Assert-MemoryAddOn
-Assert-PortsAddOn
-Assert-SmartAddOn
-Assert-ProcessesAddOn
-Assert-BluetoothAddOn
+foreach ($addOn in $addOns -ne 'Power') { & "Assert-$($addOn)AddOn" }
 Assert-Website 8091
 # The report the add-on left behind, so the check below sees a new one.
 Remove-Item "$env:ProgramData\Usage Control\addons\power.json" -ErrorAction SilentlyContinue
@@ -422,16 +399,7 @@ Start-Tray
 Remove-Item "$env:ProgramData\Usage Control\addons\*.json" -ErrorAction SilentlyContinue
 Invoke-Installer "/fa `"$NewerMsi`""
 if (Get-Process den-watcher-tray -ErrorAction SilentlyContinue) { throw 'The full repair left the tray icon running' }
-Assert-PowerAddOn
-Assert-GpuAddOn
-Assert-KernelAddOn
-Assert-PressureAddOn
-Assert-WifiAddOn
-Assert-MemoryAddOn
-Assert-PortsAddOn
-Assert-SmartAddOn
-Assert-ProcessesAddOn
-Assert-BluetoothAddOn
+foreach ($addOn in $addOns) { & "Assert-$($addOn)AddOn" }
 Assert-Website 8091
 
 Write-Host 'A bad remembered UPDATE_CHECK names the repair that fixes it, which does, and does not hold up an uninstall'
@@ -445,16 +413,10 @@ Set-ItemProperty 'HKLM:\SOFTWARE\Usage Control' -Name UPDATE_CHECK -Value 'no'
 Write-Host 'Uninstalling with DELETE_HISTORY=1'
 Invoke-Installer "/x `"$NewerMsi`" DELETE_HISTORY=1"
 if (Get-Service UsageControl -ErrorAction SilentlyContinue) { throw 'The service is still installed' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-power.exe") { throw 'The power add-on is still installed' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-gpu.exe") { throw 'The gpu add-on is still installed' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-kernel.exe") { throw 'The kernel add-on is still installed' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-pressure.exe") { throw 'The pressure add-on is still installed' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-wifi.exe") { throw 'The Wi-Fi add-on is still installed' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-memory.exe") { throw 'The memory add-on is still installed' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-ports.exe") { throw 'The ports add-on is still installed' }
+foreach ($addOn in $addOns -ne 'Smart') {
+    if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-$($addOn.ToLower()).exe") { throw "The $($addOn.ToLower()) add-on is still installed" }
+}
 if (Get-Service UsageControlSmart -ErrorAction SilentlyContinue) { throw 'The smart add-on is still installed' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-processes.exe") { throw 'The processes add-on is still installed' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-bluetooth.exe") { throw 'The Bluetooth add-on is still installed' }
 if (Get-NetFirewallRule -DisplayName 'Den-Watcher' -ErrorAction SilentlyContinue) { throw 'The firewall rule is still there' }
 if (Get-ItemProperty 'HKLM:\SOFTWARE\Usage Control' -Name PORT -ErrorAction SilentlyContinue) { throw 'The remembered options are still there' }
 if (Test-Path $trayExe) { throw 'The tray program is still there' }
@@ -470,16 +432,10 @@ $status = Get-StatusCode 'http://127.0.0.1:9393/'
 if ($status -ne 404) { throw "The website answered $status; without WEBSITE=1 it should be off" }
 Assert-FirewallPort 9393
 Assert-ServiceSetting DATA_ONLY 'true'
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-power.exe") { throw 'The power add-on was installed without POWER=1' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-gpu.exe") { throw 'The gpu add-on was installed without GPU=1' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-kernel.exe") { throw 'The kernel add-on was installed without KERNEL=1' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-pressure.exe") { throw 'The pressure add-on was installed without PRESSURE=1' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-wifi.exe") { throw 'The Wi-Fi add-on was installed without WIFI=1' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-memory.exe") { throw 'The memory add-on was installed without MEMORY=1' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-ports.exe") { throw 'The ports add-on was installed without PORTS=1' }
+foreach ($addOn in $addOns -ne 'Smart') {
+    if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-$($addOn.ToLower()).exe") { throw "The $($addOn.ToLower()) add-on was installed without $($addOn.ToUpper())=1" }
+}
 if (Get-Service UsageControlSmart -ErrorAction SilentlyContinue) { throw 'The smart add-on was installed without SMART=1' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-processes.exe") { throw 'The processes add-on was installed without PROCESSES=1' }
-if (Test-Path "$env:ProgramFiles\Den-Watcher\den-watcher-bluetooth.exe") { throw 'The Bluetooth add-on was installed without BLUETOOTH=1' }
 Invoke-Installer "/x `"$Msi`""
 
 Write-Host 'A router password is encrypted by the service and deleted from the registry'

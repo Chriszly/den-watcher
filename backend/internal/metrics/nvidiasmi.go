@@ -15,7 +15,9 @@ import (
 // When ctx ended, as at a timeout, nothing is returned, as its output may end
 // in the middle of a line.
 func RunNvidiaSMI(ctx context.Context, program string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, program, args...)
+	// program is the nvidia-smi found on the PATH at start, and every caller
+	// passes fixed arguments.
+	cmd := exec.CommandContext(ctx, program, args...) //nolint:gosec // see above
 	HideWindow(cmd)
 	// Once nvidia-smi is killed, wait at most a second for its output to
 	// close, in case a child it started keeps it open.

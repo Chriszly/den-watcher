@@ -222,7 +222,7 @@ func (r *Recorder) read(ctx context.Context) {
 	// A history keeps how the extras are described, and so does a data-only
 	// device's buffer, for the hub to fetch with the minutes.
 	if store, ok := r.Store.(extraInfoSetter); ok {
-		if err := r.extraInfo.write(ctx, store, r.Device, extraInfo(snapshot.Extras, r.MaxEntries), snapshot.Time); err != nil {
+		if err := r.extraInfo.write(ctx, store, r.Device, DescribeExtras(snapshot.Extras, r.MaxEntries), snapshot.Time); err != nil {
 			slog.Error("store how the extras are described", "device", r.Device, "error", err)
 		}
 	}

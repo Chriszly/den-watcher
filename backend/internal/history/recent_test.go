@@ -208,6 +208,9 @@ func TestStepFor(t *testing.T) {
 		{time.Hour, SampleInterval, SampleInterval},
 		{6 * time.Hour, SampleInterval, SampleInterval},
 		{6*time.Hour + time.Minute, SampleInterval, 2 * time.Minute},
+		{5 * 24 * time.Hour, SampleInterval, 20 * time.Minute},
+		{7 * 24 * time.Hour, SampleInterval, time.Hour}, // 28 min, from the hourly averages
+		{14 * 24 * time.Hour, SampleInterval, time.Hour},
 		{30 * 24 * time.Hour, SampleInterval, 2 * time.Hour},
 		{365 * 24 * time.Hour, SampleInterval, 25 * time.Hour}, // 24 h 20 min, as whole hours
 	}

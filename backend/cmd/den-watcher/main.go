@@ -219,10 +219,7 @@ func run(ctx context.Context) error {
 		slog.Info("showing the values of the add-ons", "folder", dir)
 	}
 
-	databasePath := os.Getenv("DATABASE_PATH")
-	if databasePath == "" {
-		databasePath = "usage-control.db"
-	}
+	databasePath := databaseFile()
 	collector.DatabasePath = databasePath
 
 	// One sampler reads the usage for every page, hub and the recorder.
@@ -492,6 +489,15 @@ func eventTargets(local events.Usage, others *hub.Hub) []events.Target {
 	return targets
 }
 
+// databaseFile returns the database's path, from DATABASE_PATH. The Windows
+// installer keeps the router passwords in the same folder.
+func databaseFile() string {
+	if path := os.Getenv("DATABASE_PATH"); path != "" {
+		return path
+	}
+	return "usage-control.db"
+}
+
 // routerDevices returns the routers in HUB_ROUTERS as devices, each with
 // the password it needs: from the passwords file (see router.PasswordsPath),
 // or else the one the Windows installer stored (see router.StoredPasswords).
@@ -520,12 +526,8 @@ func routerDevices() ([]hub.Device, error) {
 				return nil, fmt.Errorf("read the router passwords: %w", err)
 			}
 		default:
-			databasePath := os.Getenv("DATABASE_PATH")
-			if databasePath == "" {
-				databasePath = "usage-control.db"
-			}
 			var stored bool
-			passwords, stored, err = router.StoredPasswords(filepath.Dir(databasePath))
+			passwords, stored, err = router.StoredPasswords(filepath.Dir(databaseFile()))
 			if err != nil {
 				return nil, fmt.Errorf("read the router passwords the installer stored: %w", err)
 			}

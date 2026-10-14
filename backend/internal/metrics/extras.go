@@ -2,10 +2,13 @@ package metrics
 
 import (
 	"cmp"
+	"fmt"
+	"hash/crc32"
 	"maps"
 	"math"
 	"regexp"
 	"slices"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -94,6 +97,21 @@ var (
 // ValidID reports whether id can name a group of extras or a value in one.
 func ValidID(id string) bool {
 	return validID.MatchString(id)
+}
+
+var notInID = regexp.MustCompile(`[^a-z0-9]+`)
+
+// ShortID turns text, such as a serial number or a device name, into the id
+// of an extra or the start of one: lowercase letters and digits joined by
+// "-", at most limit characters. A longer one is cut and ends in a checksum
+// of the whole, so two that start the same keep apart.
+func ShortID(text string, limit int) string {
+	id := strings.Trim(notInID.ReplaceAllString(strings.ToLower(text), "-"), "-")
+	if len(id) > limit {
+		sum := crc32.ChecksumIEEE([]byte(id))
+		id = fmt.Sprintf("%s-%08x", strings.TrimRight(id[:limit-9], "-"), sum)
+	}
+	return id
 }
 
 // CleanExtras returns what can safely be stored and shown of the extras

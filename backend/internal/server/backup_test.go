@@ -3,13 +3,16 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 // fakeBackups writes a small file as the copy of the database, or fails.
@@ -17,13 +20,37 @@ type fakeBackups struct {
 	dir  string
 	err  error
 	made []string
+	// started and copied, when set, are closed when a copy starts, and
+	// awaited before it ends.
+	started, copied chan struct{}
+
+	mu sync.Mutex
+	// copying is how many copies are being made now, most the most at once.
+	copying, most int
 }
 
 func (f *fakeBackups) Backup(context.Context) (string, error) {
+	f.mu.Lock()
+	f.copying++
+	f.most = max(f.most, f.copying)
+	f.mu.Unlock()
+	defer func() {
+		f.mu.Lock()
+		f.copying--
+		f.mu.Unlock()
+	}()
+	if f.started != nil {
+		close(f.started)
+		<-f.copied
+	} else {
+		time.Sleep(20 * time.Millisecond)
+	}
 	if f.err != nil {
 		return "", f.err
 	}
-	path := filepath.Join(f.dir, ".den-watcher-backup-1.db")
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	path := filepath.Join(f.dir, fmt.Sprintf(".den-watcher-backup-%d.db", len(f.made)+1))
 	if err := os.WriteFile(path, []byte("SQLite format 3\x00"), 0o600); err != nil {
 		return "", err
 	}
@@ -119,5 +146,51 @@ func TestNoBackupWithoutTheDatabase(t *testing.T) {
 	data := NewDataOnly(fakeCollector{}, nil, nil)
 	if rec := send(data, http.MethodPost, "/api/backup", `{"password":"correct horse"}`); rec.Code != http.StatusMethodNotAllowed && rec.Code != http.StatusNotFound {
 		t.Errorf("data-only status = %d, want POST /api/backup left out", rec.Code)
+	}
+}
+
+func TestABackupDoesNotHoldUpChanges(t *testing.T) {
+	backups := &fakeBackups{dir: t.TempDir(), started: make(chan struct{}), copied: make(chan struct{})}
+	hub := &fakeHub{}
+	handler := New(Site{Devices: DeviceList(device(fakeCollector{}, nil)), Hub: hub, Password: &fakePassword{password: "correct horse"}, Backups: backups, Files: site})
+
+	backedUp := make(chan int)
+	go func() {
+		backedUp <- send(handler, http.MethodPost, "/api/backup", `{"password":"correct horse"}`).Code
+	}()
+	<-backups.started
+	removed := make(chan int)
+	go func() {
+		removed <- send(handler, http.MethodDelete, "/api/devices/nas", `{"password":"correct horse"}`).Code
+	}()
+	select {
+	case code := <-removed:
+		if code != http.StatusNoContent {
+			t.Errorf("removal during a backup: status = %d, want 204", code)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("the removal waits for the backup")
+	}
+	close(backups.copied)
+	if code := <-backedUp; code != http.StatusOK {
+		t.Errorf("backup status = %d, want 200", code)
+	}
+}
+
+func TestBackupsAreMadeOneAtATime(t *testing.T) {
+	backups := &fakeBackups{dir: t.TempDir()}
+	handler := newBackupHandler(&fakePassword{password: "correct horse"}, backups)
+
+	var wg sync.WaitGroup
+	for range 3 {
+		wg.Go(func() {
+			if rec := send(handler, http.MethodPost, "/api/backup", `{"password":"correct horse"}`); rec.Code != http.StatusOK {
+				t.Errorf("status = %d, want 200", rec.Code)
+			}
+		})
+	}
+	wg.Wait()
+	if backups.most != 1 {
+		t.Errorf("%d copies were made at once, want 1", backups.most)
 	}
 }

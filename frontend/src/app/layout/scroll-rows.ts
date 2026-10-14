@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -61,9 +62,8 @@ export function wheelPixels(event: { deltaY: number; deltaMode: number }, page: 
  * arrow below them tells that more follow and scrolls down a page; it hides at the bottom. Once
  * scrolled, an arrow over the top does the same upwards. While the pointer is over a card that
  * shares its row with others, the wheel scrolls only the list, also over its heading and at either
- * end, not the page (see locks). It measures
- * again after every render, as values that refresh can change how high a row is, and when its width
- * changes, which can wrap rows.
+ * end, not the page (see locks). It measures again when its rows change, as values that refresh
+ * can change how high a row is, and when its width changes, which can wrap rows.
  */
 @Component({
   selector: 'app-scroll-rows',
@@ -87,9 +87,45 @@ export class ScrollRows {
 
   private readonly list = viewChild.required<ElementRef<HTMLElement>>('list');
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
+  /** Whether the rows are watched for changes, which starts after the first render. */
+  private observing = false;
 
   constructor() {
-    afterEveryRender(() => this.measure());
+    // Measuring lays the page out, so it is done only when the rows changed: a mutation observer
+    // collects the changes, and after a render the list is measured if it has any. The list's own
+    // attributes, such as its height, do not count. Changes made outside a render are measured once
+    // the observer is told of them.
+    const changed = (records: MutationRecord[]) =>
+      records.some((r) => r.type !== 'attributes' || r.target !== this.list().nativeElement);
+    const rows = new MutationObserver((records) => {
+      if (changed(records)) {
+        this.measure();
+      }
+    });
+    afterEveryRender(() => {
+      if (!this.observing) {
+        this.observing = true;
+        rows.observe(this.list().nativeElement, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+          attributes: true,
+        });
+        this.measure();
+      } else if (changed(rows.takeRecords())) {
+        this.measure();
+      }
+    });
+    inject(DestroyRef).onDestroy(() => rows.disconnect());
+    // A web font that finishes loading makes the rows taller without changing them.
+    const fonts = inject(DOCUMENT).fonts as FontFaceSet | undefined;
+    const fontsLoaded = () => {
+      if (this.observing) {
+        this.measure();
+      }
+    };
+    fonts?.addEventListener('loadingdone', fontsLoaded);
+    inject(DestroyRef).onDestroy(() => fonts?.removeEventListener('loadingdone', fontsLoaded));
 
     const host = this.host;
     observeWidth(host, () => requestAnimationFrame(() => this.measure()));

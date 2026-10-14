@@ -10,7 +10,6 @@ package power
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -169,13 +168,4 @@ func numberLabels(label string, labels map[string]string, numbered string) (stri
 		out[lang] = text + suffix
 	}
 	return numbered, out
-}
-
-// HostSys returns where /sys is: HOST_SYS in a container that mounts the
-// host's /sys there, else /sys.
-func HostSys() string {
-	if dir := os.Getenv("HOST_SYS"); dir != "" {
-		return dir
-	}
-	return "/sys"
 }

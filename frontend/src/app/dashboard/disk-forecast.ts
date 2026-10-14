@@ -1,21 +1,11 @@
 import { Component, Injectable, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import {
-  EMPTY,
-  Observable,
-  catchError,
-  exhaustMap,
-  filter,
-  map,
-  share,
-  switchMap,
-  tap,
-} from 'rxjs';
+import { EMPTY, Observable, catchError, map, share, switchMap, tap } from 'rxjs';
 
 import { AlertIcon } from '../alerts/alert-icon';
 import { DeviceService } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
-import { History, MetricsService, Point } from '../metrics/metrics';
+import { History, MetricsService, Point, nowSeconds } from '../metrics/metrics';
 import { PageVisibility } from '../page-visibility';
 
 /** How far back the rise of a disk is measured. */
@@ -127,22 +117,20 @@ export class DiskForecasts {
   /** Reads the picked device's history while subscribed to, when its forecast is due. */
   readonly watch: Observable<unknown> = toObservable(this.devices.selectedId).pipe(
     switchMap((device) =>
-      this.page.ticks(CHECK_MS).pipe(
-        filter(
-          () => Date.now() - (this.reads().get(device)?.at ?? -Infinity) >= FORECAST_REFRESH_MS,
-        ),
-        exhaustMap(() => {
-          const to = Math.floor(Date.now() / 1000);
-          return this.metrics.history(to - FORECAST_DAYS * 86400, to, device).pipe(
-            map(risesOf),
-            // A failed read is tried again at the next check.
-            catchError(() => EMPTY),
-            tap((rises) =>
-              this.reads.update((reads) => new Map(reads).set(device, { at: Date.now(), rises })),
-            ),
-          );
-        }),
-      ),
+      this.page.poll(CHECK_MS, () => {
+        if (Date.now() - (this.reads().get(device)?.at ?? -Infinity) < FORECAST_REFRESH_MS) {
+          return EMPTY;
+        }
+        const to = nowSeconds();
+        return this.metrics.history(to - FORECAST_DAYS * 86400, to, device).pipe(
+          map(risesOf),
+          // A failed read is tried again at the next check.
+          catchError(() => EMPTY),
+          tap((rises) =>
+            this.reads.update((reads) => new Map(reads).set(device, { at: Date.now(), rises })),
+          ),
+        );
+      }),
     ),
     share(),
   );

@@ -40,7 +40,7 @@ type v3dReading struct {
 
 func newGPUReader() *gpuReader {
 	r := &gpuReader{
-		sysDir: hostPath("HOST_SYS", "/sys"),
+		sysDir: sysfile.HostSys(),
 		nvidia: newNvidiaSMI(),
 		v3d:    map[string]v3dReading{},
 	}

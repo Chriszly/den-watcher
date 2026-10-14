@@ -67,7 +67,7 @@ describe('wheelPixels', () => {
   imports: [ScrollRows],
   template: `
     <div class="card">
-      <h2>Temperature</h2>
+      <h2>Temperature {{ other() }}</h2>
       <app-scroll-rows>
         @for (name of names(); track $index) {
           <p class="row">{{ name }}</p>
@@ -78,6 +78,8 @@ describe('wheelPixels', () => {
 })
 class Host {
   readonly names = signal(['cpu_thermal']);
+  /** Something else on the page, outside the list. */
+  readonly other = signal(0);
 }
 
 describe('sharesRow', () => {
@@ -260,6 +262,24 @@ describe('ScrollRows', () => {
     list.dispatchEvent(new Event('scroll'));
     fixture.detectChanges();
     expect(document.activeElement).toBe(list);
+  });
+
+  it('measures again when the rows change, not with every render of the page', () => {
+    const { fixture, list, arrow } = render(MAX_ROWS);
+    // Measuring asks how wide the card is, to tell whether it shares its row.
+    const measured = vi.mocked(Element.prototype.getBoundingClientRect);
+    measured.mockClear();
+
+    // Another part of the page drew again; this list's rows are the same.
+    fixture.componentInstance.other.set(1);
+    fixture.detectChanges();
+    expect(measured).not.toHaveBeenCalled();
+
+    fixture.componentInstance.names.update((names) => [...names, 'nvme Composite']);
+    fixture.detectChanges();
+    expect(measured).toHaveBeenCalled();
+    expect(list.style.maxHeight).toBe('160px');
+    expect(arrow()).not.toBeNull();
   });
 
   it('lets the list grow again when rows go', () => {

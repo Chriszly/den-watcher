@@ -21,11 +21,12 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/addons"
 	"github.com/Chriszly/den-watcher/backend/internal/addons/power"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 func main() {
 	addons.Main("power", "UsageControlPower", func() addons.Read {
-		reader := power.NewReader(power.HostSys())
+		reader := power.NewReader(sysfile.HostSys())
 		return func(ctx context.Context, now time.Time) []metrics.Extra {
 			return power.Extras(reader.Read(ctx, now))
 		}

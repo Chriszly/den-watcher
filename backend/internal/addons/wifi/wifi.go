@@ -7,8 +7,6 @@
 package wifi
 
 import (
-	"fmt"
-	"hash/crc32"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -172,17 +170,6 @@ func label(name, what string) string {
 // adapter of the same model, such as " #2".
 var windowsNumber = regexp.MustCompile(` #[0-9]+$`)
 
-// HostProc returns where /proc is: HOST_PROC in a container that mounts the
-// host's /proc there, else /proc.
-func HostProc() string {
-	if dir := os.Getenv("HOST_PROC"); dir != "" {
-		return dir
-	}
-	return "/proc"
-}
-
-var notInID = regexp.MustCompile(`[^a-z0-9]+`)
-
 // idOf turns an interface's key into an id for an extra that ends in suffix
 // ("-quality" or "-signal"): lowercase letters and digits joined by "-", at
 // most 40 characters. Keys fit: Linux's interface names have at most 15
@@ -190,11 +177,7 @@ var notInID = regexp.MustCompile(`[^a-z0-9]+`)
 // suffixes, never the suffix, and ends in a checksum of the whole, so the ids
 // of one interface stay alike and apart from those of others.
 func idOf(key, suffix string) string {
-	id := strings.Trim(notInID.ReplaceAllString(strings.ToLower(key), "-"), "-")
-	if limit := 40 - len("-quality"); len(id) > limit {
-		sum := crc32.ChecksumIEEE([]byte(id))
-		id = fmt.Sprintf("%s-%08x", strings.TrimRight(id[:limit-9], "-"), sum)
-	}
+	id := metrics.ShortID(key, 40-len("-quality"))
 	if id == "" {
 		id = "wifi"
 	}

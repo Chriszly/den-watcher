@@ -24,7 +24,7 @@ type fanSensor struct {
 // once at start. There are none on other systems, and on many PCs whose fans
 // only the firmware knows about.
 func fanSensors() []fanSensor {
-	files, _ := filepath.Glob(filepath.Join(hostPath("HOST_SYS", "/sys"), "class", "hwmon", "hwmon*", "fan*_input"))
+	files, _ := filepath.Glob(filepath.Join(sysfile.HostSys(), "class", "hwmon", "hwmon*", "fan*_input"))
 	sensors := make([]fanSensor, 0, len(files))
 	for _, file := range files {
 		fan := strings.TrimSuffix(filepath.Base(file), "_input")

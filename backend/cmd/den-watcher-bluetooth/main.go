@@ -26,11 +26,12 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/addons"
 	"github.com/Chriszly/den-watcher/backend/internal/addons/bluetooth"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 func main() {
 	addons.Main("bluetooth", "UsageControlBluetooth", func() addons.Read {
-		read := bluetooth.NewReader(bluetooth.HostSys())
+		read := bluetooth.NewReader(sysfile.HostSys())
 		return func(ctx context.Context, _ time.Time) []metrics.Extra {
 			return bluetooth.Extras(read(ctx))
 		}

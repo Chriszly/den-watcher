@@ -211,7 +211,8 @@ When the hub cannot reach a device for a while, because the hub is updated or sw
 For every other device, the hub remembers since when it collects from it and every time the device did not answer:
 
 - An outage starts when two readings in a row fail, 5 seconds apart; it then counts from the first of them and is written to the database right away. A single failed reading, as a flaky Wi-Fi drops now and then, is no outage.
-- While it lasts, the page gets its current length from memory. The database copy is updated every 5 minutes, so a crash of the hub loses at most that much of it.
+- While it lasts, the page gets its current length from memory. The database copy is updated every 5 minutes, so a crash of the hub loses at most that much of it. When the hub stops, or the device is removed with its history kept, the outage is written up to its newest failed reading.
+- When the hub's clock is set by more than a minute while the outage lasts, as when NTP sets the clock of a Raspberry Pi that started from a saved time after a power cut, or the hub's machine was suspended, the outage ends at its last failed reading before, and a device that still does not answer starts a new one. So the jump, or the time the hub was suspended, is not counted.
 - When the device answers again, the outage's end is written.
 
 The *Availability* card shows the share of time the device answered since it was added, the total time offline, how many outages there were and the last one. Time the hub itself was not running is not counted, since the hub cannot know about it. Outages are kept as long as the device is, not only for the retention. For a device added again with its history kept, the card counts the outages since the first one, which may be before it was removed, and the share over the time it was watched.

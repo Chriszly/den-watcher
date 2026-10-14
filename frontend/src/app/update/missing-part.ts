@@ -46,7 +46,8 @@ export type ReloadOutcome = 'reloading' | 'notAgain' | 'hubAway';
  */
 @Injectable({ providedIn: 'root' })
 export class MissingParts {
-  private readonly storage = inject(DOCUMENT).defaultView?.sessionStorage;
+  // The storage is read only where it is used: a browser that blocks site data throws on reading it.
+  private readonly window = inject(DOCUMENT).defaultView;
   private readonly reloadPage = inject(PAGE_RELOAD);
   private readonly connection = inject(HubConnection);
   private readonly http = inject(HttpClient);
@@ -85,7 +86,7 @@ export class MissingParts {
       return 'hubAway';
     }
     try {
-      this.storage?.setItem(RELOAD_STORAGE_KEY, String(Date.now()));
+      this.window?.sessionStorage.setItem(RELOAD_STORAGE_KEY, String(Date.now()));
     } catch {
       return 'notAgain';
     }
@@ -96,8 +97,9 @@ export class MissingParts {
   /** Whether the page was not reloaded for a missing part within a minute. */
   private mayReload(): boolean {
     try {
-      const last = Number(this.storage?.getItem(RELOAD_STORAGE_KEY));
-      return !!this.storage && Date.now() - last >= RELOAD_GUARD_MS;
+      const storage = this.window?.sessionStorage;
+      const last = Number(storage?.getItem(RELOAD_STORAGE_KEY));
+      return !!storage && Date.now() - last >= RELOAD_GUARD_MS;
     } catch {
       // Without storage a reload could not be told from the one before, so none is tried.
       return false;

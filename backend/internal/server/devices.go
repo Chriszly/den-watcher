@@ -67,6 +67,9 @@ type deviceChanges struct {
 	// both choose the password. The password is checked before, so the wait
 	// after a wrong guess does not hold up the changes of others.
 	mu sync.Mutex
+	// backingUp makes backups one at a time, as each is a copy of the whole
+	// database next to it. They do not hold up the other changes.
+	backingUp sync.Mutex
 }
 
 type addRequest struct {
@@ -93,7 +96,7 @@ func (c *deviceChanges) add(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &request) {
 		return
 	}
-	c.change(w, r, request.Password, func() (any, error) {
+	c.change(w, r, request.Password, true, func() (any, error) {
 		kind, err := hub.ParseKind(request.Kind)
 		if err != nil {
 			return nil, err
@@ -109,7 +112,7 @@ func (c *deviceChanges) setKind(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &request) {
 		return
 	}
-	c.change(w, r, request.Password, func() (any, error) {
+	c.change(w, r, request.Password, true, func() (any, error) {
 		kind, err := hub.ParseKind(request.Kind)
 		if err != nil {
 			return nil, err
@@ -124,7 +127,7 @@ func (c *deviceChanges) remove(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &request) {
 		return
 	}
-	c.change(w, r, request.Password, func() (any, error) {
+	c.change(w, r, request.Password, true, func() (any, error) {
 		return nil, c.hub.Remove(r.Context(), r.PathValue("id"), request.KeepHistory)
 	})
 }
@@ -145,8 +148,10 @@ func (c *deviceChanges) suggest(w http.ResponseWriter, r *http.Request) {
 }
 
 // change makes a change once the password is right. Without a password yet,
-// the change chooses it, but only when the change works.
-func (c *deviceChanges) change(w http.ResponseWriter, r *http.Request, given string, makeChange func() (any, error)) {
+// the change chooses it, but only when the change works. A change that is
+// not exclusive, as a backup, which can take minutes, does not hold up the
+// other changes once the password is chosen.
+func (c *deviceChanges) change(w http.ResponseWriter, r *http.Request, given string, exclusive bool, makeChange func() (any, error)) {
 	// localNetworkOnly has already read the sender's address.
 	sender, _ := netip.ParseAddrPort(r.RemoteAddr)
 	from := sender.Addr()
@@ -170,6 +175,10 @@ func (c *deviceChanges) change(w http.ResponseWriter, r *http.Request, given str
 		writeProblem(w, err)
 		return
 	}
+	if !exclusive && !choose {
+		c.mu.Unlock()
+		locked = false
+	}
 
 	result, err := makeChange()
 	if err != nil {
@@ -185,8 +194,10 @@ func (c *deviceChanges) change(w http.ResponseWriter, r *http.Request, given str
 	}
 	if d, ok := result.(download); ok {
 		// A download may take long; other changes need not wait for it.
-		c.mu.Unlock()
-		locked = false
+		if locked {
+			c.mu.Unlock()
+			locked = false
+		}
 		d.send(w)
 		return
 	}

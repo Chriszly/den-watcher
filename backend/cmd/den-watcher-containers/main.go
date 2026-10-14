@@ -23,11 +23,12 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/addons"
 	"github.com/Chriszly/den-watcher/backend/internal/addons/containers"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 func main() {
 	addons.Main("containers", "UsageControlContainers", func() addons.Read {
-		reader := containers.NewReader(containers.HostSys(), containers.DockerDir())
+		reader := containers.NewReader(sysfile.HostSys(), containers.DockerDir())
 		return func(_ context.Context, now time.Time) []metrics.Extra {
 			return containers.Extras(reader.Read(now))
 		}

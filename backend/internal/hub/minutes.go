@@ -61,8 +61,6 @@ const (
 	// recheckAfter is how long a device too old to keep its minutes is
 	// stored the hub's way before it is asked again, as it may be updated.
 	recheckAfter = time.Hour
-	// maxMetricLength is the longest metric name stored.
-	maxMetricLength = history.MaxMetricLength
 	// maxClockJitter is how far the difference between the hub's clock and the
 	// device's may move before the minutes are moved by the new one. Measured
 	// with each reading, it varies by a second or two, which would now and
@@ -281,7 +279,7 @@ func (f *fetcher) clean(answer MinutesAnswer) ([]history.Minute, int64) {
 		if tooLong && !f.tooLong {
 			f.tooLong = true
 			slog.Warn("the device kept disks, sensors, network cards or GPUs with names too long for the history; they are left out",
-				"device", f.device, "maxMetricLength", maxMetricLength)
+				"device", f.device, "maxMetricLength", history.MaxMetricLength)
 		}
 		if len(values) > 0 {
 			minutes = append(minutes, history.Minute{Time: at.Unix(), Values: values})

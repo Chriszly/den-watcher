@@ -21,11 +21,12 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/addons"
 	"github.com/Chriszly/den-watcher/backend/internal/addons/ports"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 func main() {
 	addons.Main("ports", "UsageControlPorts", func() addons.Read {
-		reader := ports.NewReader(ports.HostProc())
+		reader := ports.NewReader(sysfile.HostProc())
 		return func(ctx context.Context, _ time.Time) []metrics.Extra {
 			return ports.Extras(reader.Read(ctx))
 		}

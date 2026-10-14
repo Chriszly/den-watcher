@@ -77,7 +77,7 @@ type UPnPReader struct {
 // NewUPnP returns a reader for the router at host, a host name or IP
 // address.
 func NewUPnP(host string) *UPnPReader {
-	return &UPnPReader{host: host, client: newClient(localNetworkOnly), ssdpPort: ssdpPort, multicast: ssdpMulticast}
+	return &UPnPReader{host: host, client: newClient(lan.Control), ssdpPort: ssdpPort, multicast: ssdpMulticast}
 }
 
 // Collect reads the router's internet traffic and connection.
@@ -166,37 +166,61 @@ func (u *UPnPReader) read(ctx context.Context) (metrics.Snapshot, error) {
 	}
 	snapshot := metrics.Snapshot{Network: []metrics.NetworkInterface{wan}}
 
-	var items []metrics.ExtraItem
-	if state := status["NewConnectionStatus"]; state != "" {
-		items = append(items, connectionState(state))
-	} else if state := link["NewPhysicalLinkStatus"]; state != "" {
-		items = append(items, connectionState(state))
+	if downErr != nil {
+		down = 0
 	}
-	if downErr == nil && down > 0 {
+	if upErr != nil {
+		up = 0
+	}
+	var connected *uint64
+	if uptimeErr == nil {
+		connected = &uptime
+	}
+	if items := lineItems(status["NewConnectionStatus"], link["NewPhysicalLinkStatus"], down, up, connected); len(items) > 0 {
+		snapshot.Extras = []metrics.Extra{internetExtra(items)}
+	}
+	return snapshot, nil
+}
+
+// lineItems returns the items of the internet card that UPnP and the
+// FRITZ!Box share: the connection's state, from status or else from the
+// link's, the line's speeds in bit/s when not 0, and how long it has been
+// connected in seconds when known.
+func lineItems(status, linkStatus string, down, up uint64, connected *uint64) []metrics.ExtraItem {
+	var items []metrics.ExtraItem
+	switch {
+	case status != "":
+		items = append(items, connectionState(status))
+	case linkStatus != "":
+		items = append(items, connectionState(linkStatus))
+	}
+	if down > 0 {
 		items = append(items, bitRate("download", "Download speed of the line", map[string]string{
 			"de": "Download-Geschwindigkeit der Leitung", "fr": "Débit descendant de la ligne", "es": "Velocidad de bajada de la línea",
 		}, down))
 	}
-	if upErr == nil && up > 0 {
+	if up > 0 {
 		items = append(items, bitRate("upload", "Upload speed of the line", map[string]string{
 			"de": "Upload-Geschwindigkeit der Leitung", "fr": "Débit montant de la ligne", "es": "Velocidad de subida de la línea",
 		}, up))
 	}
-	if uptimeErr == nil {
-		hours := float64(uptime) / 3600
+	if connected != nil {
+		hours := float64(*connected) / 3600
 		items = append(items, metrics.ExtraItem{
 			ID: "connected-hours", Label: "Connected for (hours)", Unit: metrics.UnitNumber, Value: &hours,
 			Labels: map[string]string{"de": "Verbunden seit (Stunden)", "fr": "Connecté depuis (heures)", "es": "Conectado desde hace (horas)"},
 		})
 	}
-	if len(items) > 0 {
-		snapshot.Extras = []metrics.Extra{{
-			ID: "internet", Title: "Internet connection", Items: items,
-			Titles:      map[string]string{"de": "Internetverbindung", "fr": "Connexion Internet", "es": "Conexión a Internet"},
-			Description: internetDescription, Descriptions: internetDescriptions,
-		}}
+	return items
+}
+
+// internetExtra returns the internet card with items.
+func internetExtra(items []metrics.ExtraItem) metrics.Extra {
+	return metrics.Extra{
+		ID: "internet", Title: "Internet connection", Items: items,
+		Titles:      map[string]string{"de": "Internetverbindung", "fr": "Connexion Internet", "es": "Conexión a Internet"},
+		Description: internetDescription, Descriptions: internetDescriptions,
 	}
-	return snapshot, nil
 }
 
 // connectionState is the state of the internet connection as a text value,

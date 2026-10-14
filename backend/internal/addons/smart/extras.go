@@ -1,11 +1,7 @@
 package smart
 
 import (
-	"fmt"
-	"hash/crc32"
 	"log/slog"
-	"regexp"
-	"strings"
 	"sync/atomic"
 
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
@@ -180,21 +176,12 @@ func diskID(disk Disk, used map[string]bool) string {
 	return "disk"
 }
 
-var notInID = regexp.MustCompile(`[^a-z0-9]+`)
-
 // maxDiskID is the longest start of an id, so that the longest value id,
 // with "-power-on-hours", still fits in 40 characters.
 const maxDiskID = 40 - len("-power-on-hours")
 
 // idOf turns a serial number or a device name such as "Disk 0" into the
-// start of an id: lowercase letters and digits joined by "-", at most
-// maxDiskID characters. A longer one is cut and ends in a checksum of the
-// whole, so two that start the same keep apart.
+// start of an id, at most maxDiskID characters (see metrics.ShortID).
 func idOf(name string) string {
-	id := strings.Trim(notInID.ReplaceAllString(strings.ToLower(name), "-"), "-")
-	if len(id) > maxDiskID {
-		sum := crc32.ChecksumIEEE([]byte(id))
-		id = fmt.Sprintf("%s-%08x", strings.TrimRight(id[:maxDiskID-9], "-"), sum)
-	}
-	return id
+	return metrics.ShortID(name, maxDiskID)
 }

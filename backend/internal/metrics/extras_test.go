@@ -160,3 +160,21 @@ func TestCleanExtrasKeepsLongerDescriptions(t *testing.T) {
 		t.Errorf("CleanExtras() = %q %v, want the descriptions cut to %d characters", got.Description, got.Descriptions, MaxDescriptionLength)
 	}
 }
+
+func TestShortID(t *testing.T) {
+	tests := []struct {
+		text  string
+		limit int
+		want  string
+	}{
+		{"Disk 0", 40, "disk-0"},
+		{"  WD_Red  ", 40, "wd-red"},
+		{"", 40, ""},
+		{"a-very-long-serial-number-that-does-not-fit", 25, "a-very-long-seri-84380a07"},
+	}
+	for _, tt := range tests {
+		if got := ShortID(tt.text, tt.limit); got != tt.want {
+			t.Errorf("ShortID(%q, %d) = %q, want %q", tt.text, tt.limit, got, tt.want)
+		}
+	}
+}

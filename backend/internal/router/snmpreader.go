@@ -219,18 +219,9 @@ func (s *SNMPReader) network(columns map[string]map[string]snmpValue, now time.T
 // processorLoad turns hrProcessorLoad, the usage of each core over the
 // last minute in percent, into the CPU usage.
 func processorLoad(loads map[string]snmpValue) metrics.CPU {
-	var rows []string
-	for row := range loads {
-		rows = append(rows, row)
-	}
-	slices.SortFunc(rows, func(a, b string) int {
-		x, _ := strconv.Atoi(a)
-		y, _ := strconv.Atoi(b)
-		return x - y
-	})
 	var cores []float64
 	var sum float64
-	for _, row := range rows {
+	for _, row := range sortedRows(loads) {
 		load, ok := loads[row].numeric()
 		if !ok || load > 100 {
 			continue

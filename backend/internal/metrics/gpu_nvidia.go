@@ -161,21 +161,12 @@ func (n *nvidiaSMI) temperatures(ctx context.Context) []Temperature {
 // when ctx ends.
 func readNvidiaSMI(ctx context.Context, program string) []GPU {
 	query := "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu"
-	// program is the nvidia-smi found on the PATH at start, and the arguments are fixed.
-	cmd := exec.CommandContext(ctx, program, query, "--format=csv,noheader,nounits")
-	HideWindow(cmd)
-	// Once nvidia-smi is killed, wait at most a second for its output to
-	// close, in case a child it started keeps it open.
-	cmd.WaitDelay = time.Second
-	out, err := cmd.Output()
-	// When one GPU is in an error state, nvidia-smi still prints the others
-	// but exits with an error, so what it printed is read then too; not
-	// when it was killed, as its output may end in the middle of a line.
+	out, err := RunNvidiaSMI(ctx, program, query, "--format=csv,noheader,nounits")
 	var exit *exec.ExitError
-	if err != nil && (!errors.As(err, &exit) || ctx.Err() != nil) {
+	if err != nil && !errors.As(err, &exit) {
 		return nil
 	}
-	return parseNvidiaSMI(string(out))
+	return parseNvidiaSMI(out)
 }
 
 // parseNvidiaSMI reads the CSV nvidia-smi writes for readNvidiaSMI's query,

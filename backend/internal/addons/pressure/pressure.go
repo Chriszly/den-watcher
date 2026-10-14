@@ -111,12 +111,3 @@ func parse(text string) map[string]float64 {
 	}
 	return avg10
 }
-
-// HostProc returns where /proc is: HOST_PROC in a container that mounts the
-// host's /proc there, else /proc.
-func HostProc() string {
-	if dir := os.Getenv("HOST_PROC"); dir != "" {
-		return dir
-	}
-	return "/proc"
-}

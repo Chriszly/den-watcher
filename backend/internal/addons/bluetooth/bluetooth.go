@@ -14,7 +14,6 @@ import (
 	"cmp"
 	"fmt"
 	"hash/crc32"
-	"os"
 	"slices"
 	"strings"
 
@@ -183,13 +182,4 @@ func Extras(reading *Reading) []metrics.Extra {
 // address itself.
 func idOf(key string) string {
 	return fmt.Sprintf("device-%08x", crc32.ChecksumIEEE([]byte(strings.ToUpper(key))))
-}
-
-// HostSys returns where /sys is: HOST_SYS in a container that mounts the
-// host's /sys there, else /sys.
-func HostSys() string {
-	if dir := os.Getenv("HOST_SYS"); dir != "" {
-		return dir
-	}
-	return "/sys"
 }

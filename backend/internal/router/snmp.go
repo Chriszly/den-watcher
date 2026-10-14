@@ -16,6 +16,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/Chriszly/den-watcher/backend/internal/lan"
 )
 
 const (
@@ -71,7 +73,7 @@ type snmpClient struct {
 // newSNMPv2c returns a client of the router at address (host or
 // host:port) with a community.
 func newSNMPv2c(address, community string) *snmpClient {
-	return &snmpClient{address: withPort(address, snmpPort), community: community, control: localNetworkOnly, requestID: randomID()}
+	return &snmpClient{address: withPort(address, snmpPort), community: community, control: lan.Control, requestID: randomID()}
 }
 
 // newSNMPv3 returns a client of the router at address with a user and its
@@ -81,7 +83,7 @@ func newSNMPv3(address, user, password string) *snmpClient {
 	_, _ = rand.Read(salt[:])
 	return &snmpClient{
 		address: withPort(address, snmpPort), v3: true, user: user, masterKey: passwordToKey(password),
-		control: localNetworkOnly, requestID: randomID(), salt: binary.BigEndian.Uint64(salt[:]),
+		control: lan.Control, requestID: randomID(), salt: binary.BigEndian.Uint64(salt[:]),
 	}
 }
 

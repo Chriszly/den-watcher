@@ -109,12 +109,13 @@ func (r Reader) ExtraInfo(ctx context.Context) (map[string]ExtraInfo, error) {
 
 // stepFor returns the step that splits span into at most maxPoints steps: a
 // whole number of intervals between readings, so every step averages the
-// same number of them. A step of an hour or more is a whole number of hours,
-// as Store.Range reads it from the hourly averages.
+// same number of them. A step of over 20 minutes is a whole number of hours,
+// as Store.Range reads it from the hourly averages: reading a week from the
+// minutes takes about 30 times as long, for detail a chart hardly shows.
 func stepFor(span, interval time.Duration) time.Duration {
 	readings := (span/interval + maxPoints - 1) / maxPoints
 	step := max(1, readings) * interval
-	if step >= time.Hour {
+	if step > 20*time.Minute {
 		step = (step + time.Hour - 1) / time.Hour * time.Hour
 	}
 	return step

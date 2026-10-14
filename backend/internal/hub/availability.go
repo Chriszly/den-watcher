@@ -199,6 +199,9 @@ type watchedAgent struct {
 	// lastEnd is when the previous outage ended. A new one starts after it,
 	// so the two never share the start that keys them in the database.
 	lastEnd time.Time
+	// read is when Collect was called last, with the monotonic reading
+	// clockJump needs.
+	read time.Time
 	// refusedLogged is set once the log said that the hub refuses the
 	// device's address as its own.
 	refusedLogged bool
@@ -228,9 +231,15 @@ func (w *watchedAgent) Collect(ctx context.Context) (metrics.Snapshot, error) {
 		// The hub is stopping or the device was removed; the device is not to blame.
 		return snapshot, err
 	}
-	now := w.now()
+	read := w.now()
+	// The outage is kept in the time the clock shows, as in the database.
+	now := read.Round(0)
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if !w.read.IsZero() && clockJump(w.read, read) {
+		w.split(ctx)
+	}
+	w.read = read
 	w.refused = errors.Is(err, errOwnAddress)
 	if w.refused {
 		if !w.refusedLogged {
@@ -258,6 +267,8 @@ func (w *watchedAgent) Collect(ctx context.Context) (metrics.Snapshot, error) {
 			w.outageStart = earliest
 		}
 		w.lastFailed = now
+		// Until the first write succeeds, the database has none of it.
+		w.noted = w.outageStart
 		w.note(ctx, now)
 	case err != nil:
 		w.lastFailed = now
@@ -269,6 +280,40 @@ func (w *watchedAgent) Collect(ctx context.Context) (metrics.Snapshot, error) {
 		w.outageStart, w.lastEnd = time.Time{}, now
 	}
 	return snapshot, err
+}
+
+// clockJump reports whether the clock was set between the readings at prev
+// and now, as when NTP sets the clock of a Raspberry Pi that started from a
+// saved time, or the machine was suspended in between: whether the time the
+// clock shows passed differs from the time the program ran by over a minute.
+// Times without a monotonic reading, as in tests, never jump.
+func clockJump(prev, now time.Time) bool {
+	jump := now.Round(0).Sub(prev.Round(0)) - now.Sub(prev)
+	return jump <= -time.Minute || jump >= time.Minute
+}
+
+// split ends the outage that lasts at its newest failed reading, after the
+// clock jumped, so the jump is not counted as time offline: the clock may
+// have been wrong before, or the hub was not running. A device that still
+// does not answer starts a new outage as at any other time. The caller holds
+// mu.
+func (w *watchedAgent) split(ctx context.Context) {
+	if !w.outageStart.IsZero() {
+		w.note(ctx, w.lastFailed)
+	}
+	// Times before the jump say nothing about the times after it.
+	w.firstFailed, w.outageStart, w.lastEnd = time.Time{}, time.Time{}, time.Time{}
+}
+
+// stop writes the outage that lasts up to its newest failed reading, as the
+// hub stops collecting from the device: when it stops, or the device is
+// removed. Only the device's recorder calls it, after its last Collect.
+func (w *watchedAgent) stop(ctx context.Context) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if !w.outageStart.IsZero() && w.noted.Before(w.lastFailed) {
+		w.note(context.WithoutCancel(ctx), w.lastFailed)
+	}
 }
 
 // isRefused reports whether the newest reading was refused, as the device's

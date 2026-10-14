@@ -16,21 +16,17 @@ package main
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/addons"
 	"github.com/Chriszly/den-watcher/backend/internal/addons/processes"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 func main() {
 	addons.Main("processes", "UsageControlProcesses", func() addons.Read {
-		proc := os.Getenv("HOST_PROC")
-		if proc == "" {
-			proc = "/proc"
-		}
-		reader := processes.NewReader(processes.NewSource(proc))
+		reader := processes.NewReader(processes.NewSource(sysfile.HostProc()))
 		return func(_ context.Context, now time.Time) []metrics.Extra {
 			return reader.Read(now)
 		}

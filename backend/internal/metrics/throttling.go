@@ -23,7 +23,7 @@ var throttlingConditions = []string{"undervoltage", "frequencyCapped", "throttle
 // throttlingFile returns the file a Raspberry Pi's firmware reports
 // throttling in, or "" on other machines and on kernels without it.
 func throttlingFile() string {
-	sysDir := hostPath("HOST_SYS", "/sys")
+	sysDir := sysfile.HostSys()
 	for _, pattern := range []string{
 		filepath.Join(sysDir, "devices", "platform", "soc*", "soc*firmware", "get_throttled"),
 		filepath.Join(sysDir, "devices", "platform", "*firmware", "get_throttled"),

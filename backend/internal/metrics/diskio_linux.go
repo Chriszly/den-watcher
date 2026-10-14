@@ -5,8 +5,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 	"golang.org/x/sys/unix"
+
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 // diskDevice returns the device of the filesystem holding path.
@@ -22,7 +23,7 @@ func diskDevice(path string) (deviceNumber, bool) {
 // path, by its device in devices, from /proc/diskstats. A path on a filesystem
 // without a disk of its own, such as a network share, has none.
 func readDiskCounters(_ context.Context, paths []string, devices map[string]deviceNumber) map[string]ioCounters {
-	text, err := sysfile.Read(filepath.Join(hostPath("HOST_PROC", "/proc"), "diskstats"))
+	text, err := sysfile.Read(filepath.Join(sysfile.HostProc(), "diskstats"))
 	if err != nil {
 		return nil
 	}
@@ -51,7 +52,7 @@ func readDiskCounters(_ context.Context, paths []string, devices map[string]devi
 // hostRootDevice returns the device of the host's root filesystem, read once
 // from the mounts of the host's first process.
 var hostRootDevice = sync.OnceValues(func() (deviceNumber, bool) {
-	text, err := sysfile.Read(filepath.Join(hostPath("HOST_PROC", "/proc"), "1", "mountinfo"))
+	text, err := sysfile.Read(filepath.Join(sysfile.HostProc(), "1", "mountinfo"))
 	if err != nil {
 		return deviceNumber{}, false
 	}

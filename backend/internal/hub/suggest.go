@@ -137,17 +137,17 @@ func (s suggester) suggest(ctx context.Context, from netip.Addr, known []Device,
 		// recognized by what it calls itself. When its address could be
 		// checked, the visitor is another device with the same name, such as
 		// a second Pi called raspberrypi.
-		if !knownChecked[i] && ownName != "" && idOf(ownName) == device.ID {
+		if !knownChecked[i] && ownName != "" && IDOf(ownName) == device.ID {
 			return Suggestion{}, false
 		}
 		taken[device.ID] = true
 	}
 	// A name another device has is left out, for the visitor to fill in.
 	name := usableName(ownName)
-	if name == "" || taken[idOf(name)] {
+	if name == "" || taken[IDOf(name)] {
 		name = usableName(dnsName)
 	}
-	if taken[idOf(name)] {
+	if taken[IDOf(name)] {
 		name = ""
 	}
 	return Suggestion{Address: address, Name: name, Kind: kind}, true
@@ -222,7 +222,7 @@ func usableName(name string) string {
 	if utf8.RuneCountInString(name) > maxNameLength {
 		return ""
 	}
-	if id := idOf(name); id == "" || id == LocalID {
+	if id := IDOf(name); id == "" || id == LocalID {
 		return ""
 	}
 	return name

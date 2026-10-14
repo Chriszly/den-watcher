@@ -24,7 +24,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Chriszly/den-watcher/backend/internal/lan"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
@@ -239,15 +238,6 @@ func newClient(control func(network, address string, c syscall.RawConn) error) *
 		// changes a setting.
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
-}
-
-// localNetworkOnly refuses to connect to an address outside the local
-// network, even when a host name resolves to one.
-func localNetworkOnly(_, address string, _ syscall.RawConn) error {
-	if !lan.Default.LocalAddrPort(address) {
-		return fmt.Errorf("%s is not on the local network", address)
-	}
-	return nil
 }
 
 // readBody reads an answer of at most maxResponseBytes, and fails on one

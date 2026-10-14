@@ -10,6 +10,25 @@ import (
 	"strings"
 )
 
+// HostProc returns where the host's /proc is: HOST_PROC in a container,
+// else /proc.
+func HostProc() string {
+	return hostDir("HOST_PROC", "/proc")
+}
+
+// HostSys returns where the host's /sys is: HOST_SYS in a container, else
+// /sys.
+func HostSys() string {
+	return hostDir("HOST_SYS", "/sys")
+}
+
+func hostDir(variable, fallback string) string {
+	if dir := os.Getenv(variable); dir != "" {
+		return dir
+	}
+	return fallback
+}
+
 // Read reads a file under /sys or /proc. Its path is made of a folder from
 // the settings, such as HOST_SYS, and the names the kernel gives its files,
 // with no input from a user in it.

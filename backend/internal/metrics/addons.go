@@ -119,20 +119,26 @@ func (f addOnFile) fresh(now time.Time) bool {
 // readAddOnReport reads a report file, or returns last again when the file
 // has the modification time and size it had when last was read.
 func readAddOnReport(file string, last addOnFile) addOnFile {
+	// Add-ons rename a regular file into place. Anything else is not opened:
+	// opening a named pipe would wait until something writes to it, and hold
+	// up every reading of this device meanwhile.
+	info, err := os.Stat(file)
+	if err != nil {
+		return addOnFile{err: err}
+	}
+	if !info.Mode().IsRegular() {
+		return addOnFile{err: errors.New("the report is not a regular file")}
+	}
+	read := addOnFile{modified: info.ModTime(), size: info.Size()}
+	if !last.modified.IsZero() && read.modified.Equal(last.modified) && read.size == last.size {
+		return last
+	}
 	// file is a .json file in the add-on folder, which the ADDONS_DIR setting names.
 	f, err := os.Open(file) //nolint:gosec // see above
 	if err != nil {
 		return addOnFile{err: err}
 	}
 	defer func() { _ = f.Close() }()
-	info, err := f.Stat()
-	if err != nil {
-		return addOnFile{err: err}
-	}
-	read := addOnFile{modified: info.ModTime(), size: info.Size()}
-	if !last.modified.IsZero() && read.modified.Equal(last.modified) && read.size == last.size {
-		return last
-	}
 	data, err := io.ReadAll(io.LimitReader(f, maxAddOnFileBytes+1))
 	if err != nil {
 		read.err = err

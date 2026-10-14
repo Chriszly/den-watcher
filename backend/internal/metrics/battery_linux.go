@@ -17,7 +17,7 @@ type batteryReader struct {
 // newBatteryReader looks up the machine's batteries once; a battery is part
 // of the machine, so the list does not change while it runs.
 func newBatteryReader() *batteryReader {
-	supplies, _ := filepath.Glob(filepath.Join(hostPath("HOST_SYS", "/sys"), "class", "power_supply", "*"))
+	supplies, _ := filepath.Glob(filepath.Join(sysfile.HostSys(), "class", "power_supply", "*"))
 	r := &batteryReader{}
 	for _, dir := range supplies {
 		if sysfile.Text(filepath.Join(dir, "type")) == "Battery" && sysfile.Text(filepath.Join(dir, "scope")) != "Device" {

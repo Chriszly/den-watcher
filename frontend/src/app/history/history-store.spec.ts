@@ -1,9 +1,13 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  TestRequest,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
 import { DeviceService } from '../devices/devices';
-import { History } from '../metrics/metrics';
+import { History, Point } from '../metrics/metrics';
 import { HistoryStore, refreshIntervalMs } from './history-store';
 
 const HISTORY: History = {
@@ -69,6 +73,131 @@ describe('HistoryStore', () => {
     expect(request.request.params.get('device')).toBe('nas');
 
     watching.unsubscribe();
+  });
+});
+
+describe('HistoryStore with a short range', () => {
+  /** This computer's time when a test starts, in Unix seconds. */
+  const NOW = 1_800_000_000;
+  const SPAN = 30 * 60;
+
+  let store: HistoryStore;
+  let http: HttpTestingController;
+  let watching: { unsubscribe(): void };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW * 1000);
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    store = TestBed.inject(HistoryStore);
+    http = TestBed.inject(HttpTestingController);
+    store.span.set(SPAN);
+    watching = store.watch.subscribe();
+    TestBed.tick();
+    vi.advanceTimersByTime(0);
+  });
+
+  afterEach(() => {
+    watching.unsubscribe();
+    http.verify();
+    vi.useRealTimers();
+  });
+
+  /** The one read of the history asked for now. */
+  function read(): TestRequest {
+    return http.expectOne((r) => r.url === '/api/history');
+  }
+
+  function range(request: TestRequest): [number, number] {
+    const params = request.request.params;
+    return [Number(params.get('from')), Number(params.get('to'))];
+  }
+
+  /** Answers a read as the backend does, with one CPU reading at each of `times`. */
+  function answer(request: TestRequest, times: number[], stepSeconds = 5, to?: number): void {
+    const [from, asked] = range(request);
+    const points: Point[] = times.map((time) => ({ time, value: time - NOW }));
+    request.flush({
+      from,
+      to: to ?? asked,
+      stepSeconds,
+      retentionDays: 30,
+      series: [{ metric: 'cpu', points }],
+    });
+  }
+
+  /** The next tick of the poll, 5 seconds on. */
+  function next(): TestRequest {
+    vi.advanceTimersByTime(5_000);
+    return read();
+  }
+
+  it('reads only the steps from the newest on, and adds them to the range', () => {
+    const first = read();
+    expect(range(first)).toEqual([NOW - SPAN, NOW]);
+    answer(first, [NOW - 10, NOW - 5]);
+
+    const second = next();
+    // From the newest step, which may have had only some of its readings.
+    expect(range(second)).toEqual([NOW - 5, NOW + 5]);
+    answer(second, [NOW - 5, NOW]);
+
+    const history = store.history()!;
+    expect([history.from, history.to]).toEqual([NOW + 5 - SPAN, NOW + 5]);
+    expect(history.series[0].points.map((p) => p.time)).toEqual([NOW - 10, NOW - 5, NOW]);
+    // The step read again replaces the one read before.
+    expect(history.series[0].points[1].value).toBe(-5);
+  });
+
+  it('reads the whole range every 12th time', () => {
+    answer(read(), [NOW - 5]);
+    for (let i = 1; i < 12; i++) {
+      const small = next();
+      expect(range(small)[0]).toBe(NOW - 5);
+      answer(small, []);
+    }
+    const whole = next();
+    expect(range(whole)).toEqual([NOW + 60 - SPAN, NOW + 60]);
+    answer(whole, [NOW + 55]);
+  });
+
+  it('reads the whole range at once when the newest steps cannot be added', () => {
+    answer(read(), [NOW - 5]);
+
+    // Steps of another length, as when the backend now reads the range from the database.
+    answer(next(), [NOW], 10);
+    const whole = read();
+    expect(range(whole)).toEqual([NOW + 5 - SPAN, NOW + 5]);
+    answer(whole, [NOW - 5, NOW]);
+    expect(store.history()!.series[0].points.length).toBe(2);
+  });
+
+  it('reads the whole range again after a read failed', () => {
+    answer(read(), [NOW - 5]);
+
+    next().flush('', { status: 500, statusText: 'Server Error' });
+    expect(store.unreachable()).toBe(true);
+
+    const whole = next();
+    expect(range(whole)).toEqual([NOW + 10 - SPAN, NOW + 10]);
+    answer(whole, [NOW + 5]);
+    expect(store.unreachable()).toBe(false);
+  });
+
+  it("keeps the range a whole span long when this computer's clock is ahead of the hub's", () => {
+    // The hub's clock is a minute behind, so it ends the range a minute before what was asked.
+    const hub = NOW - 60;
+    answer(read(), [hub - 5], 5, hub);
+    const whole = store.history()!;
+    expect([whole.from, whole.to]).toEqual([hub - SPAN, hub]);
+
+    const small = next();
+    expect(range(small)[0]).toBe(hub - 5);
+    answer(small, [hub], 5, hub + 5);
+    const history = store.history()!;
+    expect([history.from, history.to]).toEqual([hub + 5 - SPAN, hub + 5]);
   });
 });
 

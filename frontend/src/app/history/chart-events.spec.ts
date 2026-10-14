@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { Alert } from '../alerts/alert';
-import { DeviceService } from '../devices/devices';
+import { DeviceService, LOCAL_DEVICE } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
 import { DeviceEvent, History } from '../metrics/metrics';
 import {
@@ -130,6 +130,21 @@ describe('ChartEvents', () => {
     // Another device's marks are not shown while its own load.
     TestBed.inject(DeviceService).selectedId.set('nas');
     expect(events.markers()).toEqual([]);
+    watching.unsubscribe();
+  });
+
+  it('keeps the marks when the list of devices is read again unchanged', () => {
+    const devices = TestBed.inject(DeviceService);
+    const events = TestBed.inject(ChartEvents);
+    const watching = events.watch.subscribe();
+    show(0, 1800);
+    http
+      .expectOne((r) => r.url === '/api/events')
+      .flush({ from: 0, to: 1800, events: [{ kind: 'reboot', time: 900 }] });
+    const marks = events.markers();
+
+    devices.devices.set([{ ...LOCAL_DEVICE }]);
+    expect(events.markers()).toBe(marks);
     watching.unsubscribe();
   });
 

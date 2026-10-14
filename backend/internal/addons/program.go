@@ -1,8 +1,12 @@
 package addons
 
 import (
+	"context"
 	"errors"
+	"os/exec"
 	"time"
+
+	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
 // ErrProgramStuck is what Program.Output returns while a call of the program
@@ -53,4 +57,16 @@ func (p *Program) Output(giveUp time.Duration, run func() (string, error)) (stri
 		p.running = running
 		return "", ErrProgramStuck
 	}
+}
+
+// NvidiaSMI runs nvidia-smi as metrics.RunNvidiaSMI does, and adds its error
+// output to what it printed when it exits with an error, as that may hold the
+// message for a GPU it cannot reach, which the add-ons show.
+func NvidiaSMI(ctx context.Context, program string, args ...string) (string, error) {
+	out, err := metrics.RunNvidiaSMI(ctx, program, args...)
+	var exit *exec.ExitError
+	if errors.As(err, &exit) {
+		out += string(exit.Stderr)
+	}
+	return out, err
 }

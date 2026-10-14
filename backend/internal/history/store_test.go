@@ -431,7 +431,7 @@ func TestValuesKeepsAtMostSoManyValuesOfExtras(t *testing.T) {
 	if !last || past {
 		t.Errorf("values() = %v, want the first values by name kept, up to extra:g2/v1", got)
 	}
-	if info := extraInfo(extras, maxEntries); len(info) != stored {
-		t.Errorf("extraInfo() describes %d values, want the %d stored", len(info), stored)
+	if info := DescribeExtras(extras, maxEntries); len(info) != stored {
+		t.Errorf("DescribeExtras() describes %d values, want the %d stored", len(info), stored)
 	}
 }

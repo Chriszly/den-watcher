@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/shirou/gopsutil/v4/net"
+
+	"github.com/Chriszly/den-watcher/backend/internal/sysfile"
 )
 
 // NetworkInterface is the traffic of one network interface.
@@ -76,7 +78,7 @@ func readNetworkCounters(ctx context.Context) (map[string]counters, error) {
 // container started without HOST_PROC would read its own network here.
 func readInterfaceStats(ctx context.Context) ([]net.IOCountersStat, error) {
 	if runtime.GOOS == "linux" {
-		return readLinuxInterfaceStats(ctx, hostPath("HOST_PROC", "/proc"), os.Getenv("HOST_PROC") != "")
+		return readLinuxInterfaceStats(ctx, sysfile.HostProc(), os.Getenv("HOST_PROC") != "")
 	}
 	return net.IOCountersWithContext(ctx, true)
 }
@@ -104,7 +106,7 @@ var ownNetworkOnce sync.Once
 // adapters of Hyper-V, VPNs and the like.
 func virtualInterfaceCheck() func(name string) bool {
 	if runtime.GOOS == "linux" {
-		sysDir := hostPath("HOST_SYS", "/sys")
+		sysDir := sysfile.HostSys()
 		return func(name string) bool { return isVirtualInterface(sysDir, name) }
 	}
 	virtual := virtualInterfaces.get(time.Now())
@@ -192,13 +194,4 @@ func perSecond(before, now uint64, elapsed time.Duration) float64 {
 		return 0
 	}
 	return float64(now-before) / elapsed.Seconds()
-}
-
-// hostPath returns the value of the environment variable that says where the
-// host's /proc or /sys is mounted, or fallback when it is not set.
-func hostPath(variable, fallback string) string {
-	if path := os.Getenv(variable); path != "" {
-		return path
-	}
-	return fallback
 }

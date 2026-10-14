@@ -138,7 +138,7 @@ func checkName(name string) (string, error) {
 	if name == "" || utf8.RuneCountInString(name) > maxNameLength {
 		return "", &InputError{Problem: ProblemName, Message: fmt.Sprintf("the name must have 1 to %d characters", maxNameLength)}
 	}
-	id := idOf(name)
+	id := IDOf(name)
 	if id == "" {
 		return "", &InputError{Problem: ProblemName, Message: "the name needs at least one letter or digit"}
 	}
@@ -227,14 +227,9 @@ func (e *InputError) Error() string {
 // history is stored under.
 const LocalID = history.LocalDevice
 
-// IDOf returns the ID of a device named name, such as "living-room-pi".
-func IDOf(name string) string {
-	return idOf(name)
-}
-
-// idOf turns a name into an ID: letters and digits in lower case, with one
+// IDOf turns a name into an ID: letters and digits in lower case, with one
 // dash for every run of other characters, such as "living-room-pi".
-func idOf(name string) string {
+func IDOf(name string) string {
 	var id strings.Builder
 	dash := false
 	for _, r := range strings.ToLower(name) {

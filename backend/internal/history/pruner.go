@@ -43,6 +43,6 @@ func (p *Pruner) prune(ctx context.Context) {
 		return
 	}
 	if deleted > 0 {
-		slog.Info("deleted old history", "values", deleted)
+		slog.Info("deleted old history", "minutes", deleted)
 	}
 }

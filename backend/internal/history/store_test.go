@@ -85,7 +85,7 @@ func TestRangeReadsStepsOfAnHourAndMoreFromTheHourlyAverages(t *testing.T) {
 	}
 
 	// The hourly averages are read, not the values: they answer without them.
-	if _, err := store.DB().ExecContext(ctx, `DELETE FROM samples`); err != nil {
+	if _, err := store.DB().ExecContext(ctx, `DELETE FROM history_minutes`); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := store.Range(ctx, LocalDevice, hour, hour.Add(2*time.Hour), 2*time.Hour); err != nil || !reflect.DeepEqual(got, want) {
@@ -184,7 +184,7 @@ func TestDeleteBeforeKeepsNewerValues(t *testing.T) {
 	}
 
 	if deleted != 1 {
-		t.Errorf("DeleteBefore() deleted %d values, want 1", deleted)
+		t.Errorf("DeleteBefore() deleted %d minutes, want 1", deleted)
 	}
 	got, _ := store.Range(ctx, LocalDevice, old, recent.Add(time.Second), time.Second)
 	if len(got) != 1 || len(got[0].Points) != 1 || got[0].Points[0].Time != recent.Unix() {
@@ -242,18 +242,13 @@ func TestDeleteDeviceDeletesItsValuesAndHourlyAverages(t *testing.T) {
 	}
 }
 
-// addMany stores count values of device, one minute apart from start on, a
-// few metrics per minute, in one go.
+// addMany stores count minutes of device, one minute apart from start on,
+// with a few metrics each, in one go.
 func addMany(t *testing.T, store *Store, device string, start time.Time, count int) {
 	t.Helper()
-	metricNames := []string{MetricCPU, MetricMemory, MetricSwap, MetricBattery}
 	var minutes []Minute
-	for i := 0; i < count; i += len(metricNames) {
-		values := map[string]float64{}
-		for _, metric := range metricNames[:min(len(metricNames), count-i)] {
-			values[metric] = 1
-		}
-		minutes = append(minutes, Minute{Time: start.Unix() + int64(i/len(metricNames))*60, Values: values})
+	for i := range count {
+		minutes = append(minutes, Minute{Time: start.Unix() + int64(i)*60, Values: map[string]float64{MetricCPU: 1, MetricMemory: 1, MetricSwap: 1, MetricBattery: 1}})
 	}
 	if err := store.AddMinutes(context.Background(), device, minutes); err != nil {
 		t.Fatalf("AddMinutes() error = %v", err)
@@ -275,7 +270,7 @@ func TestDeleteBeforeDeletesMoreThanAChunk(t *testing.T) {
 	start := time.Unix(1_800_000_000, 0)
 	old := 2*deleteChunkRows + 10
 	addMany(t, store, LocalDevice, start, old)
-	cutoff := start.Add(time.Duration(old/4+1) * time.Minute)
+	cutoff := start.Add(time.Duration(old) * time.Minute)
 	addMany(t, store, LocalDevice, cutoff, 8)
 
 	deleted, err := store.DeleteBefore(ctx, cutoff)
@@ -284,10 +279,10 @@ func TestDeleteBeforeDeletesMoreThanAChunk(t *testing.T) {
 	}
 
 	if deleted != int64(old) {
-		t.Errorf("DeleteBefore() deleted %d values, want %d", deleted, old)
+		t.Errorf("DeleteBefore() deleted %d minutes, want %d", deleted, old)
 	}
-	if got := countRows(t, store, "samples", LocalDevice); got != 8 {
-		t.Errorf("after DeleteBefore, %d values are left, want the 8 newer ones", got)
+	if got := countRows(t, store, "history_minutes", LocalDevice); got != 8 {
+		t.Errorf("after DeleteBefore, %d minutes are left, want the 8 newer ones", got)
 	}
 	var older int
 	if err := store.db.QueryRow(`SELECT COUNT(*) FROM samples_hourly WHERE time < ?`, cutoff.Truncate(time.Hour).Unix()).Scan(&older); err != nil || older != 0 {
@@ -306,13 +301,13 @@ func TestDeleteDeviceDeletesMoreThanAChunk(t *testing.T) {
 		t.Fatalf("DeleteDevice() error = %v", err)
 	}
 
-	for _, table := range []string{"samples", "samples_hourly"} {
+	for _, table := range []string{"history_minutes", "samples_hourly"} {
 		if got := countRows(t, store, table, "other"); got != 0 {
 			t.Errorf("%s of the deleted device = %d rows, want none", table, got)
 		}
 	}
-	if got := countRows(t, store, "samples", LocalDevice); got != 8 {
-		t.Errorf("values of the other device = %d, want its 8 kept", got)
+	if got := countRows(t, store, "history_minutes", LocalDevice); got != 8 {
+		t.Errorf("minutes of the other device = %d, want its 8 kept", got)
 	}
 }
 

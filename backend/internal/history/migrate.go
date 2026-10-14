@@ -48,6 +48,12 @@ SELECT device, time / 3600 * 3600, metric, AVG(value), COUNT(*)
 FROM samples
 GROUP BY device, time / 3600 * 3600, metric;
 `,
+	// Version 3 moves the minutes from samples, one row per value, into
+	// history_minutes, one row per minute. Open does it after the migrations
+	// (see Store.convertSamples), in steps a stop does not harm, so it needs
+	// no copy of the database; the version only keeps older programs, which
+	// read samples, from using the file.
+	"",
 }
 
 // migrate brings the database at path up to the version of this program. It

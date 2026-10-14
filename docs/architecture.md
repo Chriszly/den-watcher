@@ -90,7 +90,7 @@ flowchart TB
     recorder["Recorder (this device)<br/>every 5 s"]
     agents["Agents (one per other device)<br/>GET /api/metrics every 5 s"]
     recent["Recent readings in memory<br/>last 30 min"]
-    store[("SQLite: samples (per minute)<br/>samples_hourly (per hour)")]
+    store[("SQLite: history_minutes (per minute)<br/>samples_hourly (per hour)")]
     pruner["Pruner<br/>at start and once a day"]
     api["HTTP server"]
 

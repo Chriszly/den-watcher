@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -195,10 +196,40 @@ func (b *Buffer) Since(ctx context.Context, hub string, after time.Time, minutes
 // whether more follow. They are its history, so unlike a Buffer's they stay
 // until the retention deletes them, whichever hub asks.
 func (r Reader) Since(ctx context.Context, _ string, after time.Time, minutes, values int) ([]Minute, bool, error) {
-	return readMinutes(ctx, r.Store.db,
-		`SELECT time, COUNT(*) FROM samples WHERE device = ?3 AND time > ?1 GROUP BY time ORDER BY time LIMIT ?2`,
-		`SELECT time, metric, value FROM samples WHERE device = ?3 AND time > ?1 AND time <= ?2 ORDER BY time`,
-		after, minutes, values, r.Device)
+	// One more than asked for tells whether more follow.
+	rows, err := r.Store.db.QueryContext(ctx, `SELECT time, data FROM history_minutes WHERE device = ? AND time > ? ORDER BY time LIMIT ?`, r.Device, after.Unix(), minutes+1)
+	if err != nil {
+		return nil, false, err
+	}
+	defer func() { _ = rows.Close() }()
+	list := []Minute{}
+	total, more := 0, false
+	for rows.Next() {
+		var at int64
+		var data []byte
+		if err := rows.Scan(&at, &data); err != nil {
+			return nil, false, err
+		}
+		stored, err := unpack(data)
+		if err != nil {
+			return nil, false, fmt.Errorf("minute %d of %s: %w", at, r.Device, err)
+		}
+		if len(list) == minutes || (len(list) > 0 && total+len(stored) > values) {
+			more = true
+			break
+		}
+		minute := Minute{Time: at, Values: make(map[string]float64, len(stored))}
+		for _, v := range stored {
+			name, err := r.Store.nameOf(ctx, v.id)
+			if err != nil {
+				return nil, false, err
+			}
+			minute.Values[name] = float64(v.value)
+		}
+		list = append(list, minute)
+		total += len(stored)
+	}
+	return list, more, rows.Err()
 }
 
 // readMinutes reads the oldest minutes after the given time, at most minutes

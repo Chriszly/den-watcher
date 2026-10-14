@@ -25,7 +25,8 @@ Every device with a website keeps its history in one SQLite file. A hub keeps th
 
 | Table | Holds | Kept |
 | --- | --- | --- |
-| `samples` | one row per device, minute and metric: `device`, `time` (Unix seconds), `metric`, `value` | for the retention |
+| `history_minutes` | one row per device and minute: `device`, `time` (Unix seconds) and `data`, the minute's values as float32, each with the id of its metric (see `history_metrics`) | for the retention |
+| `history_metrics` | the name of each metric a value is stored under: `id`, `name` | for good; a name takes about 30 bytes |
 | `samples_hourly` | the average of each hour per device and metric, with `count`, how many minute values it is over | for the retention |
 | `extra_info` | how each stored [extra](data.md#extras) is described: `device`, `metric`, `info` (title, label and unit as JSON), `written` (Unix seconds) | while the extra has values, or for the retention after it was last written |
 | `hub_devices` | devices added on the page: `id`, `name`, `address`, `added` | until removed on the page |
@@ -43,35 +44,35 @@ Every device with a website keeps its history in one SQLite file. A hub keeps th
 | `password` | the salt and PBKDF2-SHA256 hash of the password for changing devices, one row at most | until `RESET_PASSWORD=true` |
 | `page_layout` | how the page is arranged: the folded categories, the order of the cards, the hidden ones, the pinned ones, the values made into cards, the widths of the cards and whether they are grouped by category, as JSON in `layout`, one row at most; see `PUT /api/layout` in [the HTTP API](architecture.md#http-api) | until the page changes it |
 
-`samples` and `samples_hourly` use `(device, time, metric)` as the key, stored without a separate row id, plus an index by time for deleting old rows. The metric names are listed in [What is kept in the history](data.md#what-is-kept-in-the-history). A new metric or a new device needs no change to the tables. Devices from `HUB_DEVICES` are not stored; they are read from the setting at every start. Their kind is stored, though, which is why it is a table of its own rather than a column of `hub_devices`; it also needs no migration, since a database without the table holds servers only.
+A minute is one row, not one row per value: the device's and the metric's names, the row's overhead and an index are paid once per minute instead of once per value, which takes about a twentieth of the space and of what is written to the SD card. A value is a float32, about 7 digits, which is more than a chart shows. `history_minutes` uses `(device, time)` as the key, so a device's minutes and the old ones of each device are ranges of it; `samples_hourly` uses `(device, time, metric)`; both are stored without a separate row id, `samples_hourly` with an index by time for deleting old rows. The metric names are listed in [What is kept in the history](data.md#what-is-kept-in-the-history). A new metric or a new device needs no change to the tables. Devices from `HUB_DEVICES` are not stored; they are read from the setting at every start. Their kind is stored, though, which is why it is a table of its own rather than a column of `hub_devices`; it also needs no migration, since a database without the table holds servers only.
 
 ## From reading to chart
 
 ```mermaid
 flowchart LR
     r["Reading every 5 s"] --> m["Memory<br/>last 30 min"]
-    m -- "average every minute" --> s[("samples")]
+    m -- "average every minute" --> s[("history_minutes")]
     s -- "added into the hour's average" --> h[("samples_hourly")]
     m -- "ranges up to 30 min,<br/>5 s steps and up" --> chart["Chart"]
     s -- "ranges up to a few days,<br/>1 min steps and up" --> chart
     h -- "longer ranges,<br/>1 h steps and up" --> chart
 ```
 
-**Writing.** Each device's recorder takes a reading every 5 seconds and keeps the readings of the last 30 minutes in memory. Every minute, at its 55th second (a hub's recorder of another device at second 5 of the next minute, see [While the hub is away](architecture.md#while-the-hub-is-away)), it writes their average to `samples`, at the start of that minute, and, in the same transaction, adds it into the running average of the hour in `samples_hourly`. A minute that is in `samples` already, as when a hub stored a minute itself and later fetches the device's, is not written again, so it counts once in its hour. One write per device per minute keeps the SD card of a Raspberry Pi from wearing out. The first reading after a start is not kept, since its CPU usage is the average since the machine booted.
+**Writing.** Each device's recorder takes a reading every 5 seconds and keeps the readings of the last 30 minutes in memory. Every minute, at its 55th second (a hub's recorder of another device at second 5 of the next minute, see [While the hub is away](architecture.md#while-the-hub-is-away)), it writes their average to `history_minutes`, at the start of that minute, and, in the same transaction, adds it into the running average of the hour in `samples_hourly`. A value that is in its minute already, as when a hub stored a minute itself and later fetches the device's, is not written again, so it counts once in its hour; only what the minute lacks, such as how long the device took to answer, is added to it. One write per device per minute keeps the SD card of a Raspberry Pi from wearing out. The first reading after a start is not kept, since its CPU usage is the average since the machine booted.
 
 **Reading.** The page opens on the last 30 minutes. A chart asks for a range and gets at most 360 points per metric, each the average over one step:
 
 - Ranges up to 30 minutes come from memory, in steps of 5 seconds or more.
-- Longer ranges come from `samples`, in steps of whole minutes.
+- Longer ranges come from `history_minutes`, in steps of whole minutes.
 - As soon as a step would be over 20 minutes (ranges over 5 days), it is made whole hours, and the values come from `samples_hourly`, weighted by `count`, which gives the same averages from 60 times fewer rows. A 7-day range then has 168 points. The first step then has the whole step the range starts in.
 - Where memory has a gap of a few missed readings, as after the hub could not reach a device, or does not reach back far enough yet, as after a restart, only the steps of the gap come from the database: each gets the value of its minute there, such as one the hub fetched from the device since. The rest of the range still comes from memory. A minute is stored at its start but averages the readings of the minute before it was stored, so a step right next to a gap can show a value up to about a minute older than its time; it only shapes how the gap is drawn. A short range with no reading in memory at all comes from the database in 1-minute steps, so the chart is never empty.
 - Database answers are kept for up to a minute per device and step, so every open tab and every viewer of the hub share one query.
 
-A device that did not answer has no values for that time, which shows as a gap in its chart. While a device does not answer, a range that ends after its newest reading is moved back to end there, keeping its length, so its charts show the last data there is instead of an empty range. The newest reading comes from memory, or after a restart from `samples` (one row of the primary key's index).
+A device that did not answer has no values for that time, which shows as a gap in its chart. While a device does not answer, a range that ends after its newest reading is moved back to end there, keeping its length, so its charts show the last data there is instead of an empty range. The newest reading comes from memory, or after a restart from `history_minutes` (one row of the primary key).
 
 ## Retention
 
-`RETENTION_DAYS` (default 30, from 1 to 3650) sets how long values are kept, for every device on the hub alike. Once at start and then once a day, everything older is deleted from `samples` and `samples_hourly`. It is deleted 5,000 rows at a time, each in a transaction of its own, so a large cleanup (the first after a long downtime, or after shortening `RETENTION_DAYS`) never keeps the recorders from storing for long; afterwards the write-ahead log is shrunk back. The API never returns values older than the retention, so values waiting for the next cleanup are not shown. When more is kept than the longest range the page offers within it (for example 10 days, where the longest is 7 days), the page also offers an *All* range.
+`RETENTION_DAYS` (default 30, from 1 to 3650) sets how long values are kept, for every device on the hub alike. Once at start and then once a day, everything older is deleted from `history_minutes` and `samples_hourly`. It is deleted 5,000 rows at a time, each in a transaction of its own, so a large cleanup (the first after a long downtime, or after shortening `RETENTION_DAYS`) never keeps the recorders from storing for long; afterwards the write-ahead log is shrunk back. The API never returns values older than the retention, so values waiting for the next cleanup are not shown. When more is kept than the longest range the page offers within it (for example 10 days, where the longest is 7 days), the page also offers an *All* range.
 
 Changing `RETENTION_DAYS` takes effect at the next start. Shortening it deletes the older values then; lengthening it cannot bring back what was already deleted.
 
@@ -79,16 +80,18 @@ Alerts and events (reboots and updates) are deleted once they are older than the
 
 ## Size
 
-Each kept value is one row per minute plus one per hour. As a guide, measured with a SQLite file filled like a Raspberry Pi's history (15 values per minute: CPU, memory, swap, two temperatures, one disk with read and write, three network cards, GPU):
+Each kept minute is one row of a few bytes per value, and each hour has one row per value. As a guide, measured with a SQLite file filled like a Raspberry Pi's history (15 values per minute: CPU, memory, swap, two temperatures, one disk with read and write, three network cards, GPU), at about 6.5 bytes per value and minute:
 
 | Values per device | Per day | 30 days | 365 days |
 | --- | --- | --- | --- |
-| 15 (a Raspberry Pi) | about 1.5 MB | about 45 MB | about 550 MB |
-| 30 (a PC with more disks and cards) | about 3 MB | about 90 MB | about 1.1 GB |
+| 15 (a Raspberry Pi) | about 140 KB | about 4 MB | about 50 MB |
+| 30 (a PC with more disks and cards) | about 280 KB | about 8 MB | about 100 MB |
 
-A hub's file is the sum over its devices. A data-only device's buffer holds only minutes, no hours, and normally just one; while the hub cannot reach it, it grows by a little less than a history's day per day, up to `BUFFER_HOURS`: about 3 MB for a PC's 24 hours, about 20 MB for a week. `HISTORY_MAX_ENTRIES` (default 64) caps how many disks, sensors, network cards and GPUs each a device can add, and how many groups of extras and values per group, so one device with hundreds of virtual network cards cannot fill the disk. Each extra with `history: true` counts as one more value per device, at most 8 × `HISTORY_MAX_ENTRIES` (512) of them, and metric names are at most 256 bytes long.
+A hub's file is the sum over its devices. A data-only device's buffer holds only minutes, no hours, and normally just one; while the hub cannot reach it, it grows with one row per value, up to `BUFFER_HOURS`: about 3 MB for a PC's 24 hours, about 20 MB for a week. `HISTORY_MAX_ENTRIES` (default 64) caps how many disks, sensors, network cards and GPUs each a device can add, and how many groups of extras and values per group, so one device with hundreds of virtual network cards cannot fill the disk. Each extra with `history: true` counts as one more value per device, at most 8 × `HISTORY_MAX_ENTRIES` (512) of them, and metric names are at most 256 bytes long.
 
 Deleted rows leave free pages in the file, which SQLite reuses for new values; the file does not shrink on its own. The write-ahead log (`usage-control.db-wal`) does: after a cleanup that deleted more than 5,000 rows it is truncated.
+
+Metric names are never deleted from `history_metrics`; a device whose extras are named after things that come and go (containers, say) adds a name of about 30 bytes for each new one.
 
 ## Updates to the layout
 
@@ -103,6 +106,9 @@ An older version refuses to start on a file a newer version has changed, instead
 | --- | --- |
 | 1 | the first layout: `samples`, plus the hub and password tables created when first used |
 | 2 | adds `samples_hourly` and fills it from the values already kept |
+| 3 | stores a minute as one row in `history_minutes` instead of one row per value in `samples` |
+
+Version 3 moves the values already kept when the program starts, one device and one day at a time, and drops `samples` after the last one. It makes no copy of the file first: nothing is deleted before everything is converted, and a start that is cut short goes on from where it stopped. The hub does not answer while it runs: it took 3 seconds for a file of 130 MB on a PC, and takes longer on a Raspberry Pi, in proportion to the size of the file. Afterwards the file shrinks to a twentieth of its size, if the temporary folder has room for a copy of what is kept; otherwise it keeps its size and the free space is reused. It needs room for the new rows next to the old ones while it runs.
 
 ## Backups
 

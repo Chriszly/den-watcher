@@ -161,21 +161,36 @@ func (n *nvidiaSMI) temperatures(ctx context.Context) []Temperature {
 // when ctx ends.
 func readNvidiaSMI(ctx context.Context, program string) []GPU {
 	query := "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu"
-	// program is the nvidia-smi found on the PATH at start, and the arguments are fixed.
-	cmd := exec.CommandContext(ctx, program, query, "--format=csv,noheader,nounits")
+	out, err := RunNvidiaSMI(ctx, program, query, "--format=csv,noheader,nounits")
+	var exit *exec.ExitError
+	if err != nil && !errors.As(err, &exit) {
+		return nil
+	}
+	return parseNvidiaSMI(out)
+}
+
+// RunNvidiaSMI runs nvidia-smi, the program found on the PATH at start, with
+// fixed arguments, and returns what it printed. When one GPU is in an error
+// state, nvidia-smi still prints the others but exits with an error, so its
+// output is returned then too, with its error output, which may hold the
+// message for a GPU it cannot reach; the error is then an *exec.ExitError.
+// When ctx ended, as at a timeout, nothing is returned, as its output may end
+// in the middle of a line.
+func RunNvidiaSMI(ctx context.Context, program string, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, program, args...)
 	HideWindow(cmd)
 	// Once nvidia-smi is killed, wait at most a second for its output to
 	// close, in case a child it started keeps it open.
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
-	// When one GPU is in an error state, nvidia-smi still prints the others
-	// but exits with an error, so what it printed is read then too; not
-	// when it was killed, as its output may end in the middle of a line.
-	var exit *exec.ExitError
-	if err != nil && (!errors.As(err, &exit) || ctx.Err() != nil) {
-		return nil
+	if ctx.Err() != nil {
+		return "", ctx.Err()
 	}
-	return parseNvidiaSMI(string(out))
+	var exit *exec.ExitError
+	if errors.As(err, &exit) {
+		out = append(out, exit.Stderr...)
+	}
+	return string(out), err
 }
 
 // parseNvidiaSMI reads the CSV nvidia-smi writes for readNvidiaSMI's query,

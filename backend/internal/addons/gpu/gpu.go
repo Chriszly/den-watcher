@@ -10,7 +10,6 @@ package gpu
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"os/exec"
 	"regexp"
@@ -157,20 +156,7 @@ func sleeping(gpus []GPU) []GPU {
 func run(ctx context.Context, program string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, nvidiaTimeout)
 	defer cancel()
-	// program is the nvidia-smi found on the PATH at start, and the arguments are fixed.
-	cmd := exec.CommandContext(ctx, program, query, "--format=csv,noheader,nounits")
-	metrics.HideWindow(cmd)
-	// Once nvidia-smi is killed, wait at most a second for its output to
-	// close, in case a child it started keeps it open.
-	cmd.WaitDelay = time.Second
-	out, err := cmd.Output()
-	// The message for a GPU nvidia-smi cannot reach may come on its error
-	// output, which Parse needs too.
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
-		out = append(out, exit.Stderr...)
-	}
-	return string(out), err
+	return metrics.RunNvidiaSMI(ctx, program, query, "--format=csv,noheader,nounits")
 }
 
 // GPU is what nvidia-smi reports of one GPU. A value the GPU does not

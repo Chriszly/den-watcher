@@ -77,7 +77,7 @@ type UPnPReader struct {
 // NewUPnP returns a reader for the router at host, a host name or IP
 // address.
 func NewUPnP(host string) *UPnPReader {
-	return &UPnPReader{host: host, client: newClient(localNetworkOnly), ssdpPort: ssdpPort, multicast: ssdpMulticast}
+	return &UPnPReader{host: host, client: newClient(lan.Control), ssdpPort: ssdpPort, multicast: ssdpMulticast}
 }
 
 // Collect reads the router's internet traffic and connection.

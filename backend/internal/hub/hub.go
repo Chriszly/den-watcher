@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/history"
+	"github.com/Chriszly/den-watcher/backend/internal/lan"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
@@ -326,7 +327,7 @@ func (h *Hub) askNew(ctx context.Context, address string) ([]netip.Addr, error) 
 
 // refuseOwn returns the check of every address an agent of a device added on
 // the page connects to: it refuses one that is not addable, with own listing
-// more of the hub's addresses, besides localNetworkOnly. A host name that
+// more of the hub's addresses, besides lan.Control. A host name that
 // resolves to the hub itself only after the device was added is refused
 // too, so the hub does not tell which of its own ports are open.
 func (h *Hub) refuseOwn(own func() []netip.Addr) func(network, address string, c syscall.RawConn) error {
@@ -334,7 +335,7 @@ func (h *Hub) refuseOwn(own func() []netip.Addr) func(network, address string, c
 		if addrPort, err := netip.ParseAddrPort(address); err == nil && !h.addable(addrPort.Addr(), own()) {
 			return errOwnAddress
 		}
-		return localNetworkOnly(network, address, c)
+		return lan.Control(network, address, c)
 	}
 }
 

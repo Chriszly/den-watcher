@@ -17,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/lan"
@@ -127,7 +126,7 @@ type Reader struct {
 
 // New returns the reader that checks config.
 func New(config Config) *Reader {
-	dialer := &net.Dialer{Timeout: timeout, Control: localNetworkOnly}
+	dialer := &net.Dialer{Timeout: timeout, Control: lan.Control}
 	return &Reader{
 		config: config,
 		ping:   ping,
@@ -137,15 +136,6 @@ func New(config Config) *Reader {
 		local:   lan.Default.Local,
 		spacing: pingSpacing,
 	}
-}
-
-// localNetworkOnly refuses to connect to an address outside the local
-// network, even when a host name resolves to one.
-func localNetworkOnly(_, address string, _ syscall.RawConn) error {
-	if !lan.Default.LocalAddrPort(address) {
-		return fmt.Errorf("%s is not on the local network", address)
-	}
-	return nil
 }
 
 // Collect checks the thing, at most once per interval while it answers, and

@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Chriszly/den-watcher/backend/internal/lan"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
@@ -82,7 +83,7 @@ func NewFritzBox(address, user, password string) *FritzBoxReader {
 		host, port = h, p
 	}
 	return &FritzBoxReader{
-		host: host, port: port, client: newClient(localNetworkOnly),
+		host: host, port: port, client: newClient(lan.Control),
 		digest: digest{user: user, password: password},
 	}
 }

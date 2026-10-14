@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Chriszly/den-watcher/backend/internal/lan"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
@@ -63,7 +64,7 @@ type ASUSReader struct {
 // NewASUS returns a reader for the ASUS router at address (host or
 // host:port) with the login of its web interface.
 func NewASUS(address, user, password string) *ASUSReader {
-	return &ASUSReader{base: "http://" + address, user: user, password: password, client: newClient(localNetworkOnly)}
+	return &ASUSReader{base: "http://" + address, user: user, password: password, client: newClient(lan.Control)}
 }
 
 // Collect reads the router's usage, logging in first when there is no

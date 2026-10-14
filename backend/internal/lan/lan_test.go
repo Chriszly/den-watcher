@@ -134,3 +134,12 @@ func TestPrivateAddressesNeedNoInterfaces(t *testing.T) {
 		t.Error("Local(192.168.1.20) = false, want true")
 	}
 }
+
+func TestControlRefusesAddressesOutsideTheLocalNetwork(t *testing.T) {
+	if err := Control("tcp", "192.168.1.20:9393", nil); err != nil {
+		t.Errorf("Control(192.168.1.20) = %v, want nil", err)
+	}
+	if err := Control("tcp", "8.8.8.8:53", nil); err == nil {
+		t.Error("Control(8.8.8.8) = nil, want an error")
+	}
+}

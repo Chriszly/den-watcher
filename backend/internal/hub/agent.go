@@ -83,7 +83,7 @@ type Agent struct {
 
 // NewAgent returns an Agent for the device at address (host:port).
 func NewAgent(address string) *Agent {
-	return newAgent(address, localNetworkOnly)
+	return newAgent(address, lan.Control)
 }
 
 // newAgent returns an Agent that checks every address it connects to with
@@ -334,16 +334,6 @@ func (l LatestCollector) Collect(context.Context) (metrics.Snapshot, error) {
 		return metrics.Snapshot{}, ErrUnreachable
 	}
 	return l.agent.latest, nil
-}
-
-// localNetworkOnly refuses to connect to an address outside the local network,
-// even when a host name resolves to one, so the hub only ever talks to its
-// own network, as the website only answers it.
-func localNetworkOnly(_, address string, _ syscall.RawConn) error {
-	if !lan.Default.LocalAddrPort(address) {
-		return fmt.Errorf("%s is not on the local network", address)
-	}
-	return nil
 }
 
 // clockOffset returns how far the hub's clock is ahead of the device's, or

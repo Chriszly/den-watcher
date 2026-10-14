@@ -3,9 +3,11 @@
 package lan
 
 import (
+	"fmt"
 	"net"
 	"net/netip"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -56,6 +58,16 @@ func (c *Checker) LocalAddrPort(address string) bool {
 		return false
 	}
 	return c.Local(addrPort.Addr())
+}
+
+// Control is a net.Dialer's Control that refuses to connect to an address
+// outside the local network, even when a host name resolves to one, so the
+// hub only ever talks to its own network, as the website only answers it.
+func Control(_, address string, _ syscall.RawConn) error {
+	if !Default.LocalAddrPort(address) {
+		return fmt.Errorf("%s is not on the local network", address)
+	}
+	return nil
 }
 
 // ownPrefixes returns the subnets of the machine's global IPv6 addresses,

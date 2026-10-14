@@ -82,9 +82,9 @@ function vary(
   step: number,
   seed: number,
   base: number,
-  swings: [number, number][],
-  min = 0,
-  max = 100,
+  min: number,
+  max: number,
+  ...swings: [number, number][]
 ): number {
   const value = swings.reduce(
     (sum, [amplitude, period], i) =>
@@ -120,6 +120,11 @@ function charging(t: number): boolean {
 
 const cpuPackageLabels = { de: 'CPU-Paket 0', fr: 'Processeur 0', es: 'Procesador 0' };
 const memoryLabels = { de: 'Arbeitsspeicher', fr: 'Mémoire', es: 'Memoria' };
+
+/** A value of an add-on that keeps its history, with its label in English and other languages. */
+function addOnValue(id: string, unit: ExtraUnit, label: string, labels: Record<string, string>) {
+  return { id, label, labels, unit, history: true };
+}
 
 /** What the power add-on reports, with the given values; their watts come from values() as "extra:power/<id>". */
 function powerAddOn(
@@ -188,10 +193,10 @@ function ownValues(
   databaseBytes: number,
 ): Values {
   return {
-    'extra:den-watcher/cpu': vary(t, step, seed, 0.25 * programs, [[0.1 * programs, 60]], 0.05),
-    'extra:den-watcher/memory': vary(t, step, seed + 1, 12e6 * programs, [[2e6, 900]], 1e6, 1e9),
-    'extra:den-watcher/read': vary(t, step, seed + 2, 400, [[400, 60]], 0, 1e9),
-    'extra:den-watcher/written': vary(t, step, seed + 3, 30e3, [[20e3, 60]], 0, 1e9),
+    'extra:den-watcher/cpu': vary(t, step, seed, 0.25 * programs, 0.05, 100, [0.1 * programs, 60]),
+    'extra:den-watcher/memory': vary(t, step, seed + 1, 12e6 * programs, 1e6, 1e9, [2e6, 900]),
+    'extra:den-watcher/read': vary(t, step, seed + 2, 400, 0, 1e9, [400, 60]),
+    'extra:den-watcher/written': vary(t, step, seed + 3, 30e3, 0, 1e9, [20e3, 60]),
     'extra:den-watcher/database': databaseBytes * (1 + 0.01 * drift(t, 86400, seed + 4)),
     'extra:den-watcher/programs': programs,
   };
@@ -199,59 +204,38 @@ function ownValues(
 
 /** What the pressure add-on reports; its percentages come from values() as "extra:pressure/<id>". */
 function pressureAddOn(): Extra[] {
-  const items: { id: string; label: string; labels: Record<string, string> }[] = [
-    {
-      id: 'cpu-some',
-      label: 'CPU: tasks waiting',
-      labels: {
-        de: 'CPU: Prozesse warten',
-        fr: 'Processeur : tâches en attente',
-        es: 'CPU: tareas en espera',
-      },
-    },
-    {
-      id: 'memory-some',
-      label: 'Memory: tasks waiting',
-      labels: {
-        de: 'Arbeitsspeicher: Prozesse warten',
-        fr: 'Mémoire : tâches en attente',
-        es: 'Memoria: tareas en espera',
-      },
-    },
-    {
-      id: 'memory-full',
-      label: 'Memory: all tasks stalled',
-      labels: {
-        de: 'Arbeitsspeicher: alle Prozesse blockiert',
-        fr: 'Mémoire : toutes les tâches bloquées',
-        es: 'Memoria: todas las tareas bloqueadas',
-      },
-    },
-    {
-      id: 'io-some',
-      label: 'Disks and I/O: tasks waiting',
-      labels: {
-        de: 'Datenträger und E/A: Prozesse warten',
-        fr: 'Disques et E/S : tâches en attente',
-        es: 'Discos y E/S: tareas en espera',
-      },
-    },
-    {
-      id: 'io-full',
-      label: 'Disks and I/O: all tasks stalled',
-      labels: {
-        de: 'Datenträger und E/A: alle Prozesse blockiert',
-        fr: 'Disques et E/S : toutes les tâches bloquées',
-        es: 'Discos y E/S: todas las tareas bloqueadas',
-      },
-    },
-  ];
   return [
     {
       id: 'pressure',
       title: 'Pressure',
       titles: { de: 'Engpässe', fr: 'Saturation', es: 'Saturación' },
-      items: items.map((item) => ({ ...item, unit: 'percent', history: true })),
+      items: [
+        addOnValue('cpu-some', 'percent', 'CPU: tasks waiting', {
+          de: 'CPU: Prozesse warten',
+          fr: 'Processeur : tâches en attente',
+          es: 'CPU: tareas en espera',
+        }),
+        addOnValue('memory-some', 'percent', 'Memory: tasks waiting', {
+          de: 'Arbeitsspeicher: Prozesse warten',
+          fr: 'Mémoire : tâches en attente',
+          es: 'Memoria: tareas en espera',
+        }),
+        addOnValue('memory-full', 'percent', 'Memory: all tasks stalled', {
+          de: 'Arbeitsspeicher: alle Prozesse blockiert',
+          fr: 'Mémoire : toutes les tâches bloquées',
+          es: 'Memoria: todas las tareas bloqueadas',
+        }),
+        addOnValue('io-some', 'percent', 'Disks and I/O: tasks waiting', {
+          de: 'Datenträger und E/A: Prozesse warten',
+          fr: 'Disques et E/S : tâches en attente',
+          es: 'Discos y E/S: tareas en espera',
+        }),
+        addOnValue('io-full', 'percent', 'Disks and I/O: all tasks stalled', {
+          de: 'Datenträger und E/A: alle Prozesse blockiert',
+          fr: 'Disques et E/S : toutes les tâches bloquées',
+          es: 'Discos y E/S: todas las tareas bloqueadas',
+        }),
+      ],
     },
   ];
 }
@@ -374,32 +358,18 @@ function gpuAddOnValues(
  * come from values() as "extra:<group>/<id>", from kernelValues().
  */
 function kernelAddOn(): Extra[] {
-  const perSecond = (id: string, label: string, labels: Record<string, string>) => ({
-    id,
-    label,
-    labels,
-    unit: 'perSecond' as const,
-    history: true,
-  });
-  const number = (id: string, label: string, labels: Record<string, string>) => ({
-    id,
-    label,
-    labels,
-    unit: 'number' as const,
-    history: true,
-  });
   return [
     {
       id: 'kernel',
       title: 'Kernel',
       titles: { de: 'Kernel', fr: 'Noyau', es: 'Núcleo' },
       items: [
-        perSecond('context-switches', 'Context switches', {
+        addOnValue('context-switches', 'perSecond', 'Context switches', {
           de: 'Kontextwechsel',
           fr: 'Changements de contexte',
           es: 'Cambios de contexto',
         }),
-        perSecond('interrupts', 'Interrupts', {
+        addOnValue('interrupts', 'perSecond', 'Interrupts', {
           de: 'Interrupts',
           fr: 'Interruptions',
           es: 'Interrupciones',
@@ -411,7 +381,7 @@ function kernelAddOn(): Extra[] {
       title: 'Kernel: processes',
       titles: { de: 'Kernel: Prozesse', fr: 'Noyau : processus', es: 'Núcleo: procesos' },
       items: [
-        perSecond('new-processes', 'New processes and threads', {
+        addOnValue('new-processes', 'perSecond', 'New processes and threads', {
           de: 'Neue Prozesse und Threads',
           fr: 'Nouveaux processus et threads',
           es: 'Procesos e hilos nuevos',
@@ -423,12 +393,12 @@ function kernelAddOn(): Extra[] {
       title: 'Kernel: in use',
       titles: { de: 'Kernel: belegt', fr: 'Noyau : utilisés', es: 'Núcleo: en uso' },
       items: [
-        number('open-files', 'Open files', {
+        addOnValue('open-files', 'number', 'Open files', {
           de: 'Offene Dateien',
           fr: 'Fichiers ouverts',
           es: 'Archivos abiertos',
         }),
-        number('sockets', 'Sockets in use', {
+        addOnValue('sockets', 'number', 'Sockets in use', {
           de: 'Belegte Sockets',
           fr: 'Sockets utilisés',
           es: 'Sockets en uso',
@@ -440,12 +410,12 @@ function kernelAddOn(): Extra[] {
       title: 'Kernel: TCP',
       titles: { de: 'Kernel: TCP', fr: 'Noyau : TCP', es: 'Núcleo: TCP' },
       items: [
-        number('tcp-established', 'Established TCP connections', {
+        addOnValue('tcp-established', 'number', 'Established TCP connections', {
           de: 'Aufgebaute TCP-Verbindungen',
           fr: 'Connexions TCP établies',
           es: 'Conexiones TCP establecidas',
         }),
-        perSecond('tcp-retransmissions', 'TCP retransmissions', {
+        addOnValue('tcp-retransmissions', 'perSecond', 'TCP retransmissions', {
           de: 'TCP-Neuübertragungen',
           fr: 'Retransmissions TCP',
           es: 'Retransmisiones TCP',
@@ -458,17 +428,16 @@ function kernelAddOn(): Extra[] {
 /** The kernel add-on's values at t for a machine with the given CPU usage, scaled by size (1 for a Raspberry Pi). */
 function kernelValues(t: number, step: number, seed: number, cpu: number, size: number): Values {
   const count = (base: number, swing: number, period: number, i: number) =>
-    Math.round(vary(t, step, seed + i, base * size, [[swing * size, period]], 0, 1e9));
+    Math.round(vary(t, step, seed + i, base * size, 0, 1e9, [swing * size, period]));
   return {
     'extra:kernel/context-switches': (900 + cpu * 60) * size + count(0, 200, 30, 0),
     'extra:kernel/interrupts': (700 + cpu * 35) * size + count(0, 150, 30, 1),
     'extra:kernel-processes/new-processes':
-      vary(t, step, seed + 2, 1 + cpu * 0.08, [[1, 60]], 0, 1e6) * size,
+      vary(t, step, seed + 2, 1 + cpu * 0.08, 0, 1e6, [1, 60]) * size,
     'extra:kernel-in-use/open-files': count(1400, 150, 3600, 3),
     'extra:kernel-in-use/sockets': count(160, 20, 1800, 4),
     'extra:kernel-tcp/tcp-established': count(12, 6, 900, 5),
-    'extra:kernel-tcp/tcp-retransmissions':
-      vary(t, step, seed + 6, 0.2, [[0.3, 120]], 0, 1e6) * size,
+    'extra:kernel-tcp/tcp-retransmissions': vary(t, step, seed + 6, 0.2, 0, 1e6, [0.3, 120]) * size,
   };
 }
 
@@ -643,80 +612,57 @@ function memoryMetrics(values: Record<string, number>): Record<string, number> {
 
 /** What the memory add-on reports; its values come from memoryValues(). */
 function memoryAddOn(): Extra[] {
-  const bytes = (id: string, label: string, labels: Record<string, string>) => ({
-    id,
-    label,
-    labels,
-    unit: 'bytes' as const,
-    history: true,
-  });
   return inMemoryGroups([
-    bytes('dirty', 'Dirty (waiting to be written)', {
+    addOnValue('dirty', 'bytes', 'Dirty (waiting to be written)', {
       de: 'Ungeschrieben (Dirty)',
       fr: 'Modifiée, pas encore écrite (Dirty)',
       es: 'Modificada, sin escribir (Dirty)',
     }),
-    bytes('writeback', 'Being written back', {
+    addOnValue('writeback', 'bytes', 'Being written back', {
       de: 'Wird geschrieben (Writeback)',
       fr: "En cours d'écriture (Writeback)",
       es: 'Escribiéndose (Writeback)',
     }),
-    bytes('slab', 'Kernel caches (slab)', {
+    addOnValue('slab', 'bytes', 'Kernel caches (slab)', {
       de: 'Kernel-Caches (Slab)',
       fr: 'Caches du noyau (slab)',
       es: 'Cachés del núcleo (slab)',
     }),
-    bytes('shared', 'Shared memory', {
+    addOnValue('shared', 'bytes', 'Shared memory', {
       de: 'Gemeinsamer Speicher',
       fr: 'Mémoire partagée',
       es: 'Memoria compartida',
     }),
-    bytes('page-tables', 'Page tables', {
+    addOnValue('page-tables', 'bytes', 'Page tables', {
       de: 'Seitentabellen',
       fr: 'Tables de pages',
       es: 'Tablas de páginas',
     }),
-    bytes('committed', 'Committed', {
+    addOnValue('committed', 'bytes', 'Committed', {
       de: 'Zugesagt (Committed)',
       fr: 'Engagée (Committed)',
       es: 'Comprometida (Committed)',
     }),
-    {
-      id: 'page-faults',
-      label: 'Page faults',
-      labels: { de: 'Seitenfehler', fr: 'Défauts de page', es: 'Fallos de página' },
-      unit: 'perSecond',
-      history: true,
-    },
-    {
-      id: 'major-page-faults',
-      label: 'Major page faults (read from disk)',
-      labels: {
-        de: 'Schwere Seitenfehler (von der Platte)',
-        fr: 'Défauts de page majeurs (lus sur disque)',
-        es: 'Fallos de página mayores (leídos del disco)',
-      },
-      unit: 'perSecond',
-      history: true,
-    },
-    {
-      id: 'swap-in',
-      label: 'Swapped in',
-      labels: { de: 'Aus dem Swap gelesen', fr: 'Lu depuis le swap', es: 'Leído del swap' },
-      unit: 'bytesPerSecond',
-      history: true,
-    },
-    {
-      id: 'swap-out',
-      label: 'Swapped out',
-      labels: {
-        de: 'In den Swap geschrieben',
-        fr: 'Écrit dans le swap',
-        es: 'Escrito en el swap',
-      },
-      unit: 'bytesPerSecond',
-      history: true,
-    },
+    addOnValue('page-faults', 'perSecond', 'Page faults', {
+      de: 'Seitenfehler',
+      fr: 'Défauts de page',
+      es: 'Fallos de página',
+    }),
+    addOnValue('major-page-faults', 'perSecond', 'Major page faults (read from disk)', {
+      de: 'Schwere Seitenfehler (von der Platte)',
+      fr: 'Défauts de page majeurs (lus sur disque)',
+      es: 'Fallos de página mayores (leídos del disco)',
+    }),
+    addOnValue('swap-in', 'bytesPerSecond', 'Swapped in', {
+      de: 'Aus dem Swap gelesen',
+      fr: 'Lu depuis le swap',
+      es: 'Leído del swap',
+    }),
+    addOnValue('swap-out', 'bytesPerSecond', 'Swapped out', {
+      de: 'In den Swap geschrieben',
+      fr: 'Écrit dans le swap',
+      es: 'Escrito en el swap',
+    }),
   ]);
 }
 
@@ -733,16 +679,16 @@ function memoryValues(
 ): Record<string, number> {
   const m = memoryBytes;
   return memoryMetrics({
-    dirty: vary(t, step, seed, m * (0.0005 + 0.004 * load), [[m * 0.001, 30]], 0, m),
-    writeback: vary(t, step, seed + 1, m * 0.0002 * load, [[m * 0.0002, 20]], 0, m),
-    slab: vary(t, step, seed + 2, m * 0.03, [[m * 0.005, 3600]], 0, m),
-    shared: vary(t, step, seed + 3, m * 0.01, [[m * 0.003, 1800]], 0, m),
-    'page-tables': vary(t, step, seed + 4, m * 0.002 * (1 + load), [[m * 0.0005, 600]], 0, m),
-    committed: vary(t, step, seed + 5, m * (0.4 + 0.3 * load), [[m * 0.05, 900]], 0, 2 * m),
-    'page-faults': vary(t, step, seed + 6, 800 + 40e3 * load, [[600, 30]], 0, 1e7),
-    'major-page-faults': vary(t, step, seed + 7, 0.5 + 20 * load, [[1, 60]], 0, 1e5),
-    'swap-in': vary(t, step, seed + 8, 0, [[4e3, 300]], 0, 1e9),
-    'swap-out': vary(t, step, seed + 9, 0, [[6e3, 600]], 0, 1e9),
+    dirty: vary(t, step, seed, m * (0.0005 + 0.004 * load), 0, m, [m * 0.001, 30]),
+    writeback: vary(t, step, seed + 1, m * 0.0002 * load, 0, m, [m * 0.0002, 20]),
+    slab: vary(t, step, seed + 2, m * 0.03, 0, m, [m * 0.005, 3600]),
+    shared: vary(t, step, seed + 3, m * 0.01, 0, m, [m * 0.003, 1800]),
+    'page-tables': vary(t, step, seed + 4, m * 0.002 * (1 + load), 0, m, [m * 0.0005, 600]),
+    committed: vary(t, step, seed + 5, m * (0.4 + 0.3 * load), 0, 2 * m, [m * 0.05, 900]),
+    'page-faults': vary(t, step, seed + 6, 800 + 40e3 * load, 0, 1e7, [600, 30]),
+    'major-page-faults': vary(t, step, seed + 7, 0.5 + 20 * load, 0, 1e5, [1, 60]),
+    'swap-in': vary(t, step, seed + 8, 0, 0, 1e9, [4e3, 300]),
+    'swap-out': vary(t, step, seed + 9, 0, 0, 1e9, [6e3, 600]),
   });
 }
 
@@ -751,89 +697,47 @@ function memoryValues(
  * counters; its values come from windowsMemoryValues().
  */
 function windowsMemoryAddOn(): Extra[] {
-  const item = (
-    id: string,
-    label: string,
-    labels: Record<string, string>,
-    unit: 'bytes' | 'perSecond' | 'bytesPerSecond',
-  ) => ({ id, label, labels, unit, history: true });
   return inMemoryGroups([
-    item(
-      'modified',
-      'Modified (waiting to be written)',
-      {
-        de: 'Geändert, ungeschrieben (Modified)',
-        fr: 'Modifiée, pas encore écrite (Modified)',
-        es: 'Modificada, sin escribir (Modified)',
-      },
-      'bytes',
-    ),
-    item(
-      'pool-paged',
-      'Kernel paged pool',
-      {
-        de: 'Kernel-Pool, auslagerbar',
-        fr: 'Pool paginé du noyau',
-        es: 'Bloque paginado del núcleo',
-      },
-      'bytes',
-    ),
-    item(
-      'pool-nonpaged',
-      'Kernel nonpaged pool',
-      {
-        de: 'Kernel-Pool, nicht auslagerbar',
-        fr: 'Pool non paginé du noyau',
-        es: 'Bloque no paginado del núcleo',
-      },
-      'bytes',
-    ),
-    item(
-      'committed',
-      'Committed',
-      {
-        de: 'Zugesagt (Committed)',
-        fr: 'Engagée (Committed)',
-        es: 'Comprometida (Committed)',
-      },
-      'bytes',
-    ),
-    item(
-      'page-faults',
-      'Page faults',
-      { de: 'Seitenfehler', fr: 'Défauts de page', es: 'Fallos de página' },
-      'perSecond',
-    ),
-    item(
-      'page-reads',
-      'Disk reads for page faults',
-      {
-        de: 'Lesezugriffe für Seitenfehler',
-        fr: 'Lectures disque pour défauts de page',
-        es: 'Lecturas de disco por fallos de página',
-      },
-      'perSecond',
-    ),
-    item(
-      'paged-in',
-      'Paged in (page file and mapped files)',
-      {
-        de: 'Eingelagert (Auslagerungsdatei und Dateien)',
-        fr: "Pages lues (fichier d'échange et fichiers)",
-        es: 'Páginas leídas (archivo de paginación y archivos)',
-      },
-      'bytesPerSecond',
-    ),
-    item(
-      'paged-out',
-      'Paged out (page file and mapped files)',
-      {
-        de: 'Ausgelagert (Auslagerungsdatei und Dateien)',
-        fr: "Pages écrites (fichier d'échange et fichiers)",
-        es: 'Páginas escritas (archivo de paginación y archivos)',
-      },
-      'bytesPerSecond',
-    ),
+    addOnValue('modified', 'bytes', 'Modified (waiting to be written)', {
+      de: 'Geändert, ungeschrieben (Modified)',
+      fr: 'Modifiée, pas encore écrite (Modified)',
+      es: 'Modificada, sin escribir (Modified)',
+    }),
+    addOnValue('pool-paged', 'bytes', 'Kernel paged pool', {
+      de: 'Kernel-Pool, auslagerbar',
+      fr: 'Pool paginé du noyau',
+      es: 'Bloque paginado del núcleo',
+    }),
+    addOnValue('pool-nonpaged', 'bytes', 'Kernel nonpaged pool', {
+      de: 'Kernel-Pool, nicht auslagerbar',
+      fr: 'Pool non paginé du noyau',
+      es: 'Bloque no paginado del núcleo',
+    }),
+    addOnValue('committed', 'bytes', 'Committed', {
+      de: 'Zugesagt (Committed)',
+      fr: 'Engagée (Committed)',
+      es: 'Comprometida (Committed)',
+    }),
+    addOnValue('page-faults', 'perSecond', 'Page faults', {
+      de: 'Seitenfehler',
+      fr: 'Défauts de page',
+      es: 'Fallos de página',
+    }),
+    addOnValue('page-reads', 'perSecond', 'Disk reads for page faults', {
+      de: 'Lesezugriffe für Seitenfehler',
+      fr: 'Lectures disque pour défauts de page',
+      es: 'Lecturas de disco por fallos de página',
+    }),
+    addOnValue('paged-in', 'bytesPerSecond', 'Paged in (page file and mapped files)', {
+      de: 'Eingelagert (Auslagerungsdatei und Dateien)',
+      fr: "Pages lues (fichier d'échange et fichiers)",
+      es: 'Páginas leídas (archivo de paginación y archivos)',
+    }),
+    addOnValue('paged-out', 'bytesPerSecond', 'Paged out (page file and mapped files)', {
+      de: 'Ausgelagert (Auslagerungsdatei und Dateien)',
+      fr: "Pages écrites (fichier d'échange et fichiers)",
+      es: 'Páginas escritas (archivo de paginación y archivos)',
+    }),
   ]);
 }
 
@@ -850,14 +754,14 @@ function windowsMemoryValues(
 ): Record<string, number> {
   const m = memoryBytes;
   return memoryMetrics({
-    modified: vary(t, step, seed, m * (0.002 + 0.006 * load), [[m * 0.002, 60]], 0, m),
-    'pool-paged': vary(t, step, seed + 1, m * 0.008, [[m * 0.001, 3600]], 0, m),
-    'pool-nonpaged': vary(t, step, seed + 2, m * 0.004, [[m * 0.0005, 3600]], 0, m),
-    committed: vary(t, step, seed + 3, m * (0.5 + 0.3 * load), [[m * 0.05, 900]], 0, 2 * m),
-    'page-faults': vary(t, step, seed + 4, 2e3 + 30e3 * load, [[1500, 30]], 0, 1e7),
-    'page-reads': vary(t, step, seed + 5, 2 + 30 * load, [[3, 60]], 0, 1e5),
-    'paged-in': vary(t, step, seed + 6, 50e3 + 2e6 * load, [[200e3, 120]], 0, 1e9),
-    'paged-out': vary(t, step, seed + 7, 10e3 * load, [[30e3, 600]], 0, 1e9),
+    modified: vary(t, step, seed, m * (0.002 + 0.006 * load), 0, m, [m * 0.002, 60]),
+    'pool-paged': vary(t, step, seed + 1, m * 0.008, 0, m, [m * 0.001, 3600]),
+    'pool-nonpaged': vary(t, step, seed + 2, m * 0.004, 0, m, [m * 0.0005, 3600]),
+    committed: vary(t, step, seed + 3, m * (0.5 + 0.3 * load), 0, 2 * m, [m * 0.05, 900]),
+    'page-faults': vary(t, step, seed + 4, 2e3 + 30e3 * load, 0, 1e7, [1500, 30]),
+    'page-reads': vary(t, step, seed + 5, 2 + 30 * load, 0, 1e5, [3, 60]),
+    'paged-in': vary(t, step, seed + 6, 50e3 + 2e6 * load, 0, 1e9, [200e3, 120]),
+    'paged-out': vary(t, step, seed + 7, 10e3 * load, 0, 1e9, [30e3, 600]),
   });
 }
 
@@ -874,13 +778,7 @@ function portsAddOn(ports: ['tcp' | 'udp', number, string][]): Extra[] {
       title: 'Listening ports',
       titles: portsLabels,
       items: [
-        {
-          id: 'count',
-          label: 'Listening ports',
-          labels: portsLabels,
-          unit: 'number',
-          history: true,
-        },
+        addOnValue('count', 'number', 'Listening ports', portsLabels),
         ...ports.map(([protocol, port, addresses]) => ({
           id: `${protocol}-${port}`,
           label: `${protocol.toUpperCase()} ${port}`,
@@ -1013,14 +911,8 @@ function containersAddOn(names: string[]): Extra[] {
  * sorts them busiest first, as the add-on does.
  */
 function processesAddOn(cpu: [number, string][], memory: [number, string][]): Extra[] {
-  const items = (processes: [number, string][], unit: 'percent' | 'bytes') => {
-    const seen: Record<string, number> = {};
-    return processes.map(([pid, name]) => {
-      seen[name] = (seen[name] ?? 0) + 1;
-      const label = seen[name] > 1 ? `${name} (${seen[name]})` : name;
-      return { id: `pid-${pid}`, label, unit, history: false };
-    });
-  };
+  const items = (processes: [number, string][], unit: 'percent' | 'bytes') =>
+    processes.map(([pid, name]) => ({ id: `pid-${pid}`, label: name, unit, history: false }));
   return [
     {
       id: 'processes-cpu',
@@ -1134,55 +1026,30 @@ const piHub: DemoMachine = {
   ],
   bootedDaysAgo: 12.3,
   values: (t, step) => {
-    const cpu = vary(
-      t,
-      step,
-      1,
-      9,
-      [
-        [5, 40],
-        [4, 600],
-        [3, 7200],
-      ],
-      1,
-    );
+    const cpu = vary(t, step, 1, 9, 1, 100, [5, 40], [4, 600], [3, 7200]);
     return {
       cpu,
-      memory: vary(t, step, 2, 38, [
-        [3, 900],
-        [2, 86400],
-      ]),
-      swap: vary(t, step, 3, 4, [[2, 86400]]),
-      'temperature:cpu_thermal': 44 + cpu * 0.35 + vary(t, step, 4, 0, [[2, 300]], -5, 5),
-      'disk:/': vary(t, step, 5, 21, [[0.3, 86400 * 5]]),
+      memory: vary(t, step, 2, 38, 0, 100, [3, 900], [2, 86400]),
+      swap: vary(t, step, 3, 4, 0, 100, [2, 86400]),
+      'temperature:cpu_thermal': 44 + cpu * 0.35 + vary(t, step, 4, 0, -5, 5, [2, 300]),
+      'disk:/': vary(t, step, 5, 21, 0, 100, [0.3, 86400 * 5]),
       // Recordings fill the USB disk by about 1.6 % (15 GB) a day, so it is full in under two weeks.
-      'disk:/mnt/usb': vary(t, step, 6, 79 + (1.6 * (t - openedAt)) / 86400, [[0.3, 86400]]),
-      'disk.read:/': vary(t, step, 7, 40e3, [[35e3, 60]], 0, 1e9),
-      'disk.write:/': vary(t, step, 8, 180e3, [[150e3, 30]], 0, 1e9),
-      'disk.read:/mnt/usb': vary(t, step, 9, 5e3, [[5e3, 120]], 0, 1e9),
-      'disk.write:/mnt/usb': vary(t, step, 10, 175e3, [[55e3, 90]], 0, 1e9),
-      'network.receive:eth0': vary(
-        t,
-        step,
-        11,
-        90e3,
-        [
-          [60e3, 30],
-          [30e3, 900],
-        ],
-        0,
-        1e9,
-      ),
-      'network.send:eth0': vary(t, step, 12, 35e3, [[25e3, 45]], 0, 1e9),
-      'gpu:VideoCore VII': vary(t, step, 13, 3, [[3, 120]]),
+      'disk:/mnt/usb': vary(t, step, 6, 79 + (1.6 * (t - openedAt)) / 86400, 0, 100, [0.3, 86400]),
+      'disk.read:/': vary(t, step, 7, 40e3, 0, 1e9, [35e3, 60]),
+      'disk.write:/': vary(t, step, 8, 180e3, 0, 1e9, [150e3, 30]),
+      'disk.read:/mnt/usb': vary(t, step, 9, 5e3, 0, 1e9, [5e3, 120]),
+      'disk.write:/mnt/usb': vary(t, step, 10, 175e3, 0, 1e9, [55e3, 90]),
+      'network.receive:eth0': vary(t, step, 11, 90e3, 0, 1e9, [60e3, 30], [30e3, 900]),
+      'network.send:eth0': vary(t, step, 12, 35e3, 0, 1e9, [25e3, 45]),
+      'gpu:VideoCore VII': vary(t, step, 13, 3, 0, 100, [3, 120]),
       'extra:power/raspberry-pi': 2.6 + cpu * 0.045,
-      'extra:inodes/root': vary(t, step, 14, 9, [[0.2, 86400 * 5]]),
-      'extra:inodes/mnt-usb': vary(t, step, 15, 3, [[0.1, 86400 * 9]]),
+      'extra:inodes/root': vary(t, step, 14, 9, 0, 100, [0.2, 86400 * 5]),
+      'extra:inodes/mnt-usb': vary(t, step, 15, 3, 0, 100, [0.1, 86400 * 9]),
       'extra:pressure/cpu-some': Math.max(0, cpu * 0.12 - 0.3),
       'extra:pressure/memory-some': 0,
       'extra:pressure/memory-full': 0,
       // The SD card makes the Pi wait for I/O now and then.
-      ...ioPressure(vary(t, step, 301, 1.5, [[2, 120]]), 0.5),
+      ...ioPressure(vary(t, step, 301, 1.5, 0, 100, [2, 120]), 0.5),
       ...kernelValues(t, step, 900, cpu, 1),
       ...memoryValues(t, step, 140, 8 * GB, cpu / 100),
       // The keyboard stays connected; the speaker comes and goes, and is on now.
@@ -1244,48 +1111,33 @@ const windowsPc: DemoMachine = {
   bootedDaysAgo: 0.4,
   values: (t, step) => {
     const busy = workday(t);
-    const gpu = vary(t, step, 21, 8 + 35 * busy, [
-      [25, 1800],
-      [10, 60],
-    ]);
+    const gpu = vary(t, step, 21, 8 + 35 * busy, 0, 100, [25, 1800], [10, 60]);
     return {
-      cpu: vary(
-        t,
-        step,
-        22,
-        6 + 22 * busy,
-        [
-          [12, 30],
-          [8, 900],
-        ],
-        1,
-      ),
-      memory: vary(t, step, 23, 41 + 15 * busy, [[6, 1200]]),
-      swap: vary(t, step, 24, 11, [[4, 7200]]),
-      'disk:C:\\': vary(t, step, 25, 63, [[0.5, 86400 * 4]]),
-      'disk:D:\\': vary(t, step, 26, 78, [[1, 86400 * 7]]),
-      'disk.read:C:\\': vary(t, step, 27, 2e6 * busy + 300e3, [[1.5e6, 20]], 0, 2e9),
-      'disk.write:C:\\': vary(t, step, 28, 1e6 * busy + 200e3, [[900e3, 25]], 0, 2e9),
-      'disk.read:D:\\': vary(t, step, 29, 400e3 * busy, [[3e6, 300]], 0, 2e9),
-      'disk.write:D:\\': vary(t, step, 30, 100e3, [[500e3, 400]], 0, 2e9),
+      cpu: vary(t, step, 22, 6 + 22 * busy, 1, 100, [12, 30], [8, 900]),
+      memory: vary(t, step, 23, 41 + 15 * busy, 0, 100, [6, 1200]),
+      swap: vary(t, step, 24, 11, 0, 100, [4, 7200]),
+      'disk:C:\\': vary(t, step, 25, 63, 0, 100, [0.5, 86400 * 4]),
+      'disk:D:\\': vary(t, step, 26, 78, 0, 100, [1, 86400 * 7]),
+      'disk.read:C:\\': vary(t, step, 27, 2e6 * busy + 300e3, 0, 2e9, [1.5e6, 20]),
+      'disk.write:C:\\': vary(t, step, 28, 1e6 * busy + 200e3, 0, 2e9, [900e3, 25]),
+      'disk.read:D:\\': vary(t, step, 29, 400e3 * busy, 0, 2e9, [3e6, 300]),
+      'disk.write:D:\\': vary(t, step, 30, 100e3, 0, 2e9, [500e3, 400]),
       'network.receive:Ethernet': vary(
         t,
         step,
         31,
         600e3 + 3e6 * busy,
-        [
-          [2.5e6, 120],
-          [500e3, 15],
-        ],
         0,
         3e8,
+        [2.5e6, 120],
+        [500e3, 15],
       ),
-      'network.send:Ethernet': vary(t, step, 32, 120e3 + 300e3 * busy, [[200e3, 60]], 0, 3e8),
-      'network.receive:vEthernet (WSL)': vary(t, step, 33, 4e3, [[4e3, 300]], 0, 1e9),
-      'network.send:vEthernet (WSL)': vary(t, step, 34, 2e3, [[2e3, 300]], 0, 1e9),
+      'network.send:Ethernet': vary(t, step, 32, 120e3 + 300e3 * busy, 0, 3e8, [200e3, 60]),
+      'network.receive:vEthernet (WSL)': vary(t, step, 33, 4e3, 0, 1e9, [4e3, 300]),
+      'network.send:vEthernet (WSL)': vary(t, step, 34, 2e3, 0, 1e9, [2e3, 300]),
       'gpu:NVIDIA GeForce RTX 4070': gpu,
       'gpu.memory:NVIDIA GeForce RTX 4070': 18 + gpu * 0.5,
-      ...gpuAddOnValues(gpu, 2475, 10501, 200, vary(t, step, 35, 4 * busy, [[6, 900]], 0, 100)),
+      ...gpuAddOnValues(gpu, 2475, 10501, 200, vary(t, step, 35, 4 * busy, 0, 100, [6, 900])),
       // The keyboard stays connected; the headphones join in the working day, and are on now.
       'extra:bluetooth/connected': t >= openedAt - 40 * 60 || busy > 0.3 ? 2 : 1,
     };
@@ -1329,53 +1181,17 @@ const windowsLaptop: DemoMachine = {
   ),
   bootedDaysAgo: 2.1,
   values: (t, step) => ({
-    cpu: vary(
-      t,
-      step,
-      41,
-      14,
-      [
-        [10, 20],
-        [8, 600],
-      ],
-      1,
-    ),
-    memory: vary(t, step, 42, 58, [[7, 1500]]),
-    swap: vary(t, step, 43, 9, [[3, 7200]]),
+    cpu: vary(t, step, 41, 14, 1, 100, [10, 20], [8, 600]),
+    memory: vary(t, step, 42, 58, 0, 100, [7, 1500]),
+    swap: vary(t, step, 43, 9, 0, 100, [3, 7200]),
     battery: batteryPercent(t),
-    'disk:C:\\': vary(t, step, 44, 52, [[0.5, 86400 * 3]]),
-    'disk.read:C:\\': vary(t, step, 45, 700e3, [[600e3, 20]], 0, 2e9),
-    'disk.write:C:\\': vary(t, step, 46, 400e3, [[350e3, 30]], 0, 2e9),
-    'network.receive:WLAN': vary(
-      t,
-      step,
-      47,
-      400e3,
-      [
-        [350e3, 40],
-        [200e3, 600],
-      ],
-      0,
-      1e9,
-    ),
-    'network.send:WLAN': vary(t, step, 48, 60e3, [[50e3, 30]], 0, 1e9),
-    'gpu:Qualcomm Adreno X1-85 GPU': vary(t, step, 49, 9, [[7, 90]]),
-    ...wifiValues(
-      WINDOWS_WIFI,
-      vary(
-        t,
-        step,
-        50,
-        -62,
-        [
-          [5, 90],
-          [6, 3600],
-        ],
-        -88,
-        -40,
-      ),
-      'windows',
-    ),
+    'disk:C:\\': vary(t, step, 44, 52, 0, 100, [0.5, 86400 * 3]),
+    'disk.read:C:\\': vary(t, step, 45, 700e3, 0, 2e9, [600e3, 20]),
+    'disk.write:C:\\': vary(t, step, 46, 400e3, 0, 2e9, [350e3, 30]),
+    'network.receive:WLAN': vary(t, step, 47, 400e3, 0, 1e9, [350e3, 40], [200e3, 600]),
+    'network.send:WLAN': vary(t, step, 48, 60e3, 0, 1e9, [50e3, 30]),
+    'gpu:Qualcomm Adreno X1-85 GPU': vary(t, step, 49, 9, 0, 100, [7, 90]),
+    ...wifiValues(WINDOWS_WIFI, vary(t, step, 50, -62, -88, -40, [5, 90], [6, 3600]), 'windows'),
   }),
 };
 
@@ -1415,32 +1231,19 @@ const windowsServer: DemoMachine = {
   values: (t, step) => {
     const busy = workday(t);
     return {
-      cpu: vary(
-        t,
-        step,
-        51,
-        12 + 18 * busy,
-        [
-          [8, 60],
-          [6, 1200],
-        ],
-        1,
-      ),
-      memory: vary(t, step, 52, 71, [
-        [4, 3600],
-        [3, 86400],
-      ]),
-      swap: vary(t, step, 53, 6, [[2, 86400]]),
-      'disk:C:\\': vary(t, step, 54, 48, [[0.5, 86400 * 6]]),
-      'disk:E:\\': vary(t, step, 55, 64, [[2, 86400 * 10]]),
-      'disk.read:C:\\': vary(t, step, 56, 300e3, [[250e3, 30]], 0, 2e9),
-      'disk.write:C:\\': vary(t, step, 57, 600e3, [[400e3, 20]], 0, 2e9),
-      'disk.read:E:\\': vary(t, step, 58, 4e6 + 20e6 * busy, [[8e6, 120]], 0, 2e9),
-      'disk.write:E:\\': vary(t, step, 59, 1e6 + 6e6 * busy, [[3e6, 180]], 0, 2e9),
-      'network.receive:Ethernet 1': vary(t, step, 60, 1.5e6 + 6e6 * busy, [[3e6, 60]], 0, 1e9),
-      'network.send:Ethernet 1': vary(t, step, 61, 3e6 + 22e6 * busy, [[10e6, 90]], 0, 1e9),
-      'network.receive:Ethernet 2': vary(t, step, 62, 800e3, [[600e3, 300]], 0, 1e9),
-      'network.send:Ethernet 2': vary(t, step, 63, 300e3, [[250e3, 300]], 0, 1e9),
+      cpu: vary(t, step, 51, 12 + 18 * busy, 1, 100, [8, 60], [6, 1200]),
+      memory: vary(t, step, 52, 71, 0, 100, [4, 3600], [3, 86400]),
+      swap: vary(t, step, 53, 6, 0, 100, [2, 86400]),
+      'disk:C:\\': vary(t, step, 54, 48, 0, 100, [0.5, 86400 * 6]),
+      'disk:E:\\': vary(t, step, 55, 64, 0, 100, [2, 86400 * 10]),
+      'disk.read:C:\\': vary(t, step, 56, 300e3, 0, 2e9, [250e3, 30]),
+      'disk.write:C:\\': vary(t, step, 57, 600e3, 0, 2e9, [400e3, 20]),
+      'disk.read:E:\\': vary(t, step, 58, 4e6 + 20e6 * busy, 0, 2e9, [8e6, 120]),
+      'disk.write:E:\\': vary(t, step, 59, 1e6 + 6e6 * busy, 0, 2e9, [3e6, 180]),
+      'network.receive:Ethernet 1': vary(t, step, 60, 1.5e6 + 6e6 * busy, 0, 1e9, [3e6, 60]),
+      'network.send:Ethernet 1': vary(t, step, 61, 3e6 + 22e6 * busy, 0, 1e9, [10e6, 90]),
+      'network.receive:Ethernet 2': vary(t, step, 62, 800e3, 0, 1e9, [600e3, 300]),
+      'network.send:Ethernet 2': vary(t, step, 63, 300e3, 0, 1e9, [250e3, 300]),
       ...windowsMemoryValues(t, step, 170, 64 * GB, busy),
       // The program, the add-on host and the memory add-on.
       ...ownValues(t, step, 330, 3, 25e6),
@@ -1487,38 +1290,25 @@ const linuxDesktop: DemoMachine = {
   bootedDaysAgo: 1.2,
   values: (t, step) => {
     const busy = workday(t);
-    const cpu = vary(
-      t,
-      step,
-      71,
-      5 + 25 * busy,
-      [
-        [15, 45],
-        [8, 1200],
-      ],
-      1,
-    );
-    const gpu = vary(t, step, 72, 4 + 30 * busy, [
-      [25, 2400],
-      [8, 60],
-    ]);
+    const cpu = vary(t, step, 71, 5 + 25 * busy, 1, 100, [15, 45], [8, 1200]);
+    const gpu = vary(t, step, 72, 4 + 30 * busy, 0, 100, [25, 2400], [8, 60]);
     return {
       cpu,
-      memory: vary(t, step, 73, 34 + 20 * busy, [[5, 1800]]),
-      swap: vary(t, step, 74, 2, [[2, 86400]]),
-      'temperature:k10temp Tctl': 42 + cpu * 0.4 + vary(t, step, 75, 0, [[2, 120]], -5, 5),
+      memory: vary(t, step, 73, 34 + 20 * busy, 0, 100, [5, 1800]),
+      swap: vary(t, step, 74, 2, 0, 100, [2, 86400]),
+      'temperature:k10temp Tctl': 42 + cpu * 0.4 + vary(t, step, 75, 0, -5, 5, [2, 120]),
       'temperature:amdgpu edge': 38 + gpu * 0.35,
-      'temperature:nvme Composite': 38 + vary(t, step, 76, 0, [[4, 900]], -10, 10),
-      'disk:/': vary(t, step, 77, 37, [[0.5, 86400 * 4]]),
-      'disk:/home': vary(t, step, 78, 58, [[1, 86400 * 8]]),
-      'disk.read:/': vary(t, step, 79, 500e3 + 3e6 * busy, [[2e6, 30]], 0, 3e9),
-      'disk.write:/': vary(t, step, 80, 300e3 + 1e6 * busy, [[800e3, 40]], 0, 3e9),
-      'disk.read:/home': vary(t, step, 81, 200e3, [[1e6, 200]], 0, 3e9),
-      'disk.write:/home': vary(t, step, 82, 100e3, [[400e3, 300]], 0, 3e9),
-      'network.receive:enp5s0': vary(t, step, 83, 300e3 + 2e6 * busy, [[1.5e6, 90]], 0, 1.2e8),
-      'network.send:enp5s0': vary(t, step, 84, 80e3 + 200e3 * busy, [[150e3, 60]], 0, 1.2e8),
-      'network.receive:docker0': vary(t, step, 85, 20e3, [[20e3, 120]], 0, 1e9),
-      'network.send:docker0': vary(t, step, 86, 25e3, [[25e3, 120]], 0, 1e9),
+      'temperature:nvme Composite': 38 + vary(t, step, 76, 0, -10, 10, [4, 900]),
+      'disk:/': vary(t, step, 77, 37, 0, 100, [0.5, 86400 * 4]),
+      'disk:/home': vary(t, step, 78, 58, 0, 100, [1, 86400 * 8]),
+      'disk.read:/': vary(t, step, 79, 500e3 + 3e6 * busy, 0, 3e9, [2e6, 30]),
+      'disk.write:/': vary(t, step, 80, 300e3 + 1e6 * busy, 0, 3e9, [800e3, 40]),
+      'disk.read:/home': vary(t, step, 81, 200e3, 0, 3e9, [1e6, 200]),
+      'disk.write:/home': vary(t, step, 82, 100e3, 0, 3e9, [400e3, 300]),
+      'network.receive:enp5s0': vary(t, step, 83, 300e3 + 2e6 * busy, 0, 1.2e8, [1.5e6, 90]),
+      'network.send:enp5s0': vary(t, step, 84, 80e3 + 200e3 * busy, 0, 1.2e8, [150e3, 60]),
+      'network.receive:docker0': vary(t, step, 85, 20e3, 0, 1e9, [20e3, 120]),
+      'network.send:docker0': vary(t, step, 86, 25e3, 0, 1e9, [25e3, 120]),
       'gpu:AMD Radeon RX 7800 XT': gpu,
       'gpu.memory:AMD Radeon RX 7800 XT': 10 + gpu * 0.45,
       // The headphones and the mouse are on through the working day, the controller joins in the evening.
@@ -1575,30 +1365,20 @@ const linuxNas: DemoMachine = {
       Math.max(0, 1 - workday(x) * 3) * Math.max(0, drift(x, 7200, 99));
     const backup = backupAt(t);
     const drivesAt = (x: number) => ({
-      sda: 34 + 4 * backupAt(x) + vary(x, step, 93, 0, [[1.5, 1800]], -5, 5),
-      sdb: 35 + 4 * backupAt(x) + vary(x, step, 94, 0, [[1.5, 1800]], -5, 5),
+      sda: 34 + 4 * backupAt(x) + vary(x, step, 93, 0, -5, 5, [1.5, 1800]),
+      sdb: 35 + 4 * backupAt(x) + vary(x, step, 94, 0, -5, 5, [1.5, 1800]),
     });
     const drives = drivesAt(t);
     const smart = drivesAt(smartReadAt(t));
-    const cpu = vary(
-      t,
-      step,
-      91,
-      4 + 30 * backup,
-      [
-        [3, 60],
-        [3, 900],
-      ],
-      1,
-    );
+    const cpu = vary(t, step, 91, 4 + 30 * backup, 1, 100, [3, 60], [3, 900]);
     return {
       cpu,
-      memory: vary(t, step, 92, 27, [[3, 3600]]),
+      memory: vary(t, step, 92, 27, 0, 100, [3, 3600]),
       'extra:pressure/cpu-some': Math.max(0, cpu * 0.15 - 0.4),
-      'extra:pressure/memory-some': vary(t, step, 303, 0, [[0.4, 600]]),
+      'extra:pressure/memory-some': vary(t, step, 303, 0, 0, 100, [0.4, 600]),
       'extra:pressure/memory-full': 0,
       // The backup keeps the disks busy, so tasks wait for them.
-      ...ioPressure(vary(t, step, 304, 0.5 + 35 * backup, [[1, 300]]), 0.55),
+      ...ioPressure(vary(t, step, 304, 0.5 + 35 * backup, 0, 100, [1, 300]), 0.55),
       'temperature:coretemp Package id 0': 39 + cpu * 0.3,
       'temperature:drivetemp sda': drives.sda,
       'temperature:drivetemp sdb': drives.sdb,
@@ -1611,61 +1391,34 @@ const linuxNas: DemoMachine = {
       'extra:smart/zrt0abcd-power-on-hours':
         Math.floor((smartReadAt(t) - openedAt) / 3600) + 21_395,
       'extra:smart/zrt0abcd-reallocated': t < openedAt - 9 * 86400 ? 0 : 8,
-      'disk:/': vary(t, step, 95, 31, [[0.3, 86400 * 5]]),
+      'disk:/': vary(t, step, 95, 31, 0, 100, [0.3, 86400 * 5]),
       // The photos and videos fill the data disk slowly, so it is full in about a month.
-      'disk:/srv/data': vary(t, step, 96, 71 + (0.9 * (t - openedAt)) / 86400, [[0.3, 86400]]),
-      'disk:/srv/backup': vary(t, step, 97, 96.5, [[1.2, 86400 * 6]]),
-      'disk.read:/': vary(t, step, 98, 20e3, [[20e3, 60]], 0, 1e9),
-      'disk.write:/': vary(t, step, 99, 60e3, [[50e3, 30]], 0, 1e9),
-      'disk.read:/srv/data': vary(t, step, 100, 3e6 + 60e6 * backup, [[4e6, 120]], 0, 1e9),
-      'disk.write:/srv/data': vary(t, step, 101, 500e3, [[1e6, 300]], 0, 1e9),
-      'disk.read:/srv/backup': vary(t, step, 102, 100e3, [[200e3, 300]], 0, 1e9),
-      'disk.write:/srv/backup': vary(t, step, 103, 200e3 + 60e6 * backup, [[300e3, 120]], 0, 1e9),
-      'network.receive:enp1s0': vary(
+      'disk:/srv/data': vary(
         t,
         step,
-        104,
-        800e3,
-        [
-          [600e3, 60],
-          [400e3, 1800],
-        ],
+        96,
+        71 + (0.9 * (t - openedAt)) / 86400,
         0,
-        3e8,
+        100,
+        [0.3, 86400],
       ),
-      'network.send:enp1s0': vary(
-        t,
-        step,
-        105,
-        3e6,
-        [
-          [3e6, 120],
-          [2e6, 1800],
-        ],
-        0,
-        3e8,
-      ),
-      'extra:containers-cpu/jellyfin': vary(t, step, 106, 1.5, [[1.5, 300]]),
-      'extra:containers-cpu/nextcloud': vary(t, step, 107, 0.8, [[0.6, 120]]),
+      'disk:/srv/backup': vary(t, step, 97, 96.5, 0, 100, [1.2, 86400 * 6]),
+      'disk.read:/': vary(t, step, 98, 20e3, 0, 1e9, [20e3, 60]),
+      'disk.write:/': vary(t, step, 99, 60e3, 0, 1e9, [50e3, 30]),
+      'disk.read:/srv/data': vary(t, step, 100, 3e6 + 60e6 * backup, 0, 1e9, [4e6, 120]),
+      'disk.write:/srv/data': vary(t, step, 101, 500e3, 0, 1e9, [1e6, 300]),
+      'disk.read:/srv/backup': vary(t, step, 102, 100e3, 0, 1e9, [200e3, 300]),
+      'disk.write:/srv/backup': vary(t, step, 103, 200e3 + 60e6 * backup, 0, 1e9, [300e3, 120]),
+      'network.receive:enp1s0': vary(t, step, 104, 800e3, 0, 3e8, [600e3, 60], [400e3, 1800]),
+      'network.send:enp1s0': vary(t, step, 105, 3e6, 0, 3e8, [3e6, 120], [2e6, 1800]),
+      'extra:containers-cpu/jellyfin': vary(t, step, 106, 1.5, 0, 100, [1.5, 300]),
+      'extra:containers-cpu/nextcloud': vary(t, step, 107, 0.8, 0, 100, [0.6, 120]),
       'extra:containers-cpu/restic-backup': 0.1 + 20 * backup,
-      'extra:containers-memory/jellyfin': vary(
-        t,
-        step,
-        108,
-        1.1 * GB,
-        [[0.2 * GB, 3600]],
-        0,
-        GB * 4,
-      ),
-      'extra:containers-memory/nextcloud': vary(
-        t,
-        step,
-        109,
-        0.6 * GB,
-        [[0.1 * GB, 1800]],
-        0,
-        GB * 4,
-      ),
+      'extra:containers-memory/jellyfin': vary(t, step, 108, 1.1 * GB, 0, GB * 4, [0.2 * GB, 3600]),
+      'extra:containers-memory/nextcloud': vary(t, step, 109, 0.6 * GB, 0, GB * 4, [
+        0.1 * GB,
+        1800,
+      ]),
       'extra:containers-memory/restic-backup': 30e6 + 0.5 * GB * backup,
     };
   },
@@ -1758,44 +1511,41 @@ const linuxServer: DemoMachine = {
     // Builds come in bursts of a few minutes.
     const buildAt = (x: number) => Math.max(0, drift(x, 240, 111)) ** 0.7;
     const build = buildAt(t);
-    const cpu = vary(t, step, 112, 6 + 80 * build, [[5, 20]], 1);
-    const gpu = vary(t, step, 113, 10, [
-      [40, 3600],
-      [10, 120],
-    ]);
+    const cpu = vary(t, step, 112, 6 + 80 * build, 1, 100, [5, 20]);
+    const gpu = vary(t, step, 113, 10, 0, 100, [40, 3600], [10, 120]);
     return {
       cpu,
-      memory: vary(t, step, 114, 30 + 35 * build, [[4, 600]]),
-      swap: vary(t, step, 115, 3, [[2, 86400]]),
+      memory: vary(t, step, 114, 30 + 35 * build, 0, 100, [4, 600]),
+      swap: vary(t, step, 115, 3, 0, 100, [2, 86400]),
       'temperature:k10temp Tctl': 45 + cpu * 0.38,
       'temperature:NVIDIA GeForce RTX 3090': 36 + gpu * 0.4,
       'temperature:nvme Composite': 41 + 8 * build,
-      'disk:/': vary(t, step, 116, 44, [[0.5, 86400 * 3]]),
-      'disk:/var/lib/docker': vary(t, step, 117, 61, [[4, 86400 * 2]]),
-      'disk.read:/': vary(t, step, 118, 1e6 + 40e6 * build, [[2e6, 15]], 0, 4e9),
-      'disk.write:/': vary(t, step, 119, 500e3 + 25e6 * build, [[1e6, 15]], 0, 4e9),
-      'disk.read:/var/lib/docker': vary(t, step, 120, 300e3 + 15e6 * build, [[1e6, 30]], 0, 4e9),
-      'disk.write:/var/lib/docker': vary(t, step, 121, 200e3 + 30e6 * build, [[1e6, 30]], 0, 4e9),
-      'network.receive:eno1': vary(t, step, 122, 1e6 + 40e6 * build, [[2e6, 30]], 0, 1.2e9),
-      'network.send:eno1': vary(t, step, 123, 500e3 + 8e6 * build, [[1e6, 30]], 0, 1.2e9),
-      'network.receive:docker0': vary(t, step, 124, 50e3 + 3e6 * build, [[100e3, 60]], 0, 1e9),
-      'network.send:docker0': vary(t, step, 125, 80e3 + 5e6 * build, [[100e3, 60]], 0, 1e9),
+      'disk:/': vary(t, step, 116, 44, 0, 100, [0.5, 86400 * 3]),
+      'disk:/var/lib/docker': vary(t, step, 117, 61, 0, 100, [4, 86400 * 2]),
+      'disk.read:/': vary(t, step, 118, 1e6 + 40e6 * build, 0, 4e9, [2e6, 15]),
+      'disk.write:/': vary(t, step, 119, 500e3 + 25e6 * build, 0, 4e9, [1e6, 15]),
+      'disk.read:/var/lib/docker': vary(t, step, 120, 300e3 + 15e6 * build, 0, 4e9, [1e6, 30]),
+      'disk.write:/var/lib/docker': vary(t, step, 121, 200e3 + 30e6 * build, 0, 4e9, [1e6, 30]),
+      'network.receive:eno1': vary(t, step, 122, 1e6 + 40e6 * build, 0, 1.2e9, [2e6, 30]),
+      'network.send:eno1': vary(t, step, 123, 500e3 + 8e6 * build, 0, 1.2e9, [1e6, 30]),
+      'network.receive:docker0': vary(t, step, 124, 50e3 + 3e6 * build, 0, 1e9, [100e3, 60]),
+      'network.send:docker0': vary(t, step, 125, 80e3 + 5e6 * build, 0, 1e9, [100e3, 60]),
       'gpu:NVIDIA GeForce RTX 3090': gpu,
       'gpu.memory:NVIDIA GeForce RTX 3090': 6 + gpu * 0.6,
       'extra:power/rapl-0-package-0': 18 + cpu * 1.4,
       'extra:power/rapl-0-2-dram': 6 + 4 * build,
       'extra:power/nvidia-0': 32 + gpu * 3.1,
       ...gpuAddOnValues(gpu, 1695, 9751, 350, 0),
-      'extra:inodes/root': vary(t, step, 126, 6, [[0.3, 86400 * 3]]),
-      'extra:inodes/var-lib-docker': vary(t, step, 127, 38 + 2 * build, [[5, 86400 * 2]]),
+      'extra:inodes/root': vary(t, step, 126, 6, 0, 100, [0.3, 86400 * 3]),
+      'extra:inodes/var-lib-docker': vary(t, step, 127, 38 + 2 * build, 0, 100, [5, 86400 * 2]),
       ...kernelValues(t, step, 950, cpu, 8),
       ...memoryValues(t, step, 160, 128 * GB, build),
       'extra:ports/count': 8,
       // The runner does the builds.
       'extra:containers-cpu/gitea-runner': 0.2 + 70 * build,
-      'extra:containers-cpu/registry': vary(t, step, 128, 0.3, [[0.3, 60]]) + 2 * build,
+      'extra:containers-cpu/registry': vary(t, step, 128, 0.3, 0, 100, [0.3, 60]) + 2 * build,
       'extra:containers-memory/gitea-runner': 0.3 * GB + 30 * GB * build,
-      'extra:containers-memory/registry': vary(t, step, 129, 0.15 * GB, [[0.05 * GB, 3600]], 0, GB),
+      'extra:containers-memory/registry': vary(t, step, 129, 0.15 * GB, 0, GB, [0.05 * GB, 3600]),
       // The smart add-on reads the disk every 30 minutes.
       'extra:smart/s69enx0t123456a-temperature': Math.round(41 + 8 * buildAt(smartReadAt(t))),
       'extra:smart/s69enx0t123456a-power-on-hours':
@@ -1873,43 +1623,19 @@ const linuxLaptop: DemoMachine = {
   bootedDaysAgo: 0.3,
   online: laptopOnline,
   values: (t, step) => {
-    const cpu = vary(
-      t,
-      step,
-      131,
-      12,
-      [
-        [9, 30],
-        [6, 900],
-      ],
-      1,
-    );
+    const cpu = vary(t, step, 131, 12, 1, 100, [9, 30], [6, 900]);
     return {
       cpu,
-      memory: vary(t, step, 132, 46, [[6, 1200]]),
-      swap: vary(t, step, 133, 1, [[1, 86400]]),
+      memory: vary(t, step, 132, 46, 0, 100, [6, 1200]),
+      swap: vary(t, step, 133, 1, 0, 100, [1, 86400]),
       battery: batteryPercent(t + 4000),
       'temperature:coretemp Package id 0': 46 + cpu * 0.45,
-      'disk:/': vary(t, step, 134, 68, [[0.5, 86400 * 4]]),
-      'disk.read:/': vary(t, step, 135, 400e3, [[350e3, 25]], 0, 2e9),
-      'disk.write:/': vary(t, step, 136, 250e3, [[200e3, 25]], 0, 2e9),
-      'network.receive:wlp1s0': vary(t, step, 137, 300e3, [[250e3, 60]], 0, 1e9),
-      'network.send:wlp1s0': vary(t, step, 138, 50e3, [[40e3, 60]], 0, 1e9),
-      ...wifiValues(
-        'wlp1s0',
-        vary(
-          t,
-          step,
-          139,
-          -58,
-          [
-            [6, 120],
-            [5, 3600],
-          ],
-          -85,
-          -35,
-        ),
-      ),
+      'disk:/': vary(t, step, 134, 68, 0, 100, [0.5, 86400 * 4]),
+      'disk.read:/': vary(t, step, 135, 400e3, 0, 2e9, [350e3, 25]),
+      'disk.write:/': vary(t, step, 136, 250e3, 0, 2e9, [200e3, 25]),
+      'network.receive:wlp1s0': vary(t, step, 137, 300e3, 0, 1e9, [250e3, 60]),
+      'network.send:wlp1s0': vary(t, step, 138, 50e3, 0, 1e9, [40e3, 60]),
+      ...wifiValues('wlp1s0', vary(t, step, 139, -58, -85, -35, [6, 120], [5, 3600])),
     };
   },
 };
@@ -1951,13 +1677,7 @@ const homeRouter: DemoMachine = {
       title: 'Clients',
       titles: { de: 'Geräte im Netz', fr: 'Appareils connectés', es: 'Dispositivos conectados' },
       items: [
-        {
-          id: 'online',
-          label: 'Online',
-          labels: clientLabels.online,
-          unit: 'number',
-          history: true,
-        },
+        addOnValue('online', 'number', 'Online', clientLabels.online),
         { id: 'wired', label: 'On a cable', labels: clientLabels.wired, unit: 'number' },
         { id: 'wireless', label: 'On Wi-Fi', labels: clientLabels.wireless, unit: 'number' },
       ],
@@ -1978,25 +1698,14 @@ const homeRouter: DemoMachine = {
   bootedDaysAgo: 23,
   values: (t, step) => {
     const busy = workday(t);
-    const wan = vary(
-      t,
-      step,
-      141,
-      1.5e6 + busy * 4e6,
-      [
-        [1.2e6, 40],
-        [2e6, 1800],
-      ],
-      2e4,
-      1e8,
-    );
-    const wireless = Math.round(vary(t, step, 142, 9 + busy * 5, [[2, 3600]], 4, 30));
+    const wan = vary(t, step, 141, 1.5e6 + busy * 4e6, 2e4, 1e8, [1.2e6, 40], [2e6, 1800]);
+    const wireless = Math.round(vary(t, step, 142, 9 + busy * 5, 4, 30, [2, 3600]));
     return {
-      cpu: vary(t, step, 143, 6 + wan / 4e5, [[3, 20]], 1, 100),
-      memory: vary(t, step, 144, 58, [[2, 7200]]),
-      'temperature:Wi-Fi 2.4 GHz': vary(t, step, 145, 49, [[1.5, 900]], 30, 90),
-      'temperature:Wi-Fi 5 GHz': vary(t, step, 146, 54, [[1.5, 900]], 30, 90),
-      'temperature:CPU': vary(t, step, 147, 63 + wan / 1e6, [[2, 600]], 30, 100),
+      cpu: vary(t, step, 143, 6 + wan / 4e5, 1, 100, [3, 20]),
+      memory: vary(t, step, 144, 58, 0, 100, [2, 7200]),
+      'temperature:Wi-Fi 2.4 GHz': vary(t, step, 145, 49, 30, 90, [1.5, 900]),
+      'temperature:Wi-Fi 5 GHz': vary(t, step, 146, 54, 30, 90, [1.5, 900]),
+      'temperature:CPU': vary(t, step, 147, 63 + wan / 1e6, 30, 100, [2, 600]),
       'network.receive:WAN': wan,
       'network.send:WAN': wan / 8,
       'network.receive:LAN': wan * 0.3,
@@ -2033,13 +1742,11 @@ const printer: DemoMachine = {
       title: 'Reachability',
       titles: { de: 'Erreichbarkeit', fr: 'Accessibilité', es: 'Accesibilidad' },
       items: [
-        {
-          id: 'response-time',
-          label: 'Response time',
-          labels: { de: 'Antwortzeit', fr: 'Temps de réponse', es: 'Tiempo de respuesta' },
-          unit: 'milliseconds',
-          history: true,
-        },
+        addOnValue('response-time', 'milliseconds', 'Response time', {
+          de: 'Antwortzeit',
+          fr: 'Temps de réponse',
+          es: 'Tiempo de respuesta',
+        }),
         {
           id: 'method',
           label: 'Checked with',
@@ -2053,7 +1760,7 @@ const printer: DemoMachine = {
   ],
   bootedDaysAgo: 0,
   values: (t, step) => ({
-    'extra:reachability/response-time': vary(t, step, 151, 2.4, [[1.2, 60]], 0.6, 40),
+    'extra:reachability/response-time': vary(t, step, 151, 2.4, 0.6, 40, [1.2, 60]),
   }),
 };
 
@@ -2080,27 +1787,21 @@ const camera: DemoMachine = {
       titles: { de: 'Erreichbarkeit', fr: 'Accessibilité', es: 'Accesibilidad' },
       ...pingReachability,
       items: [
-        {
-          id: 'response-time',
-          label: 'Response time',
-          labels: { de: 'Antwortzeit', fr: 'Temps de réponse', es: 'Tiempo de respuesta' },
-          unit: 'milliseconds',
-          history: true,
-        },
-        {
-          id: 'packet-loss',
-          label: 'Packet loss',
-          labels: { de: 'Paketverlust', fr: 'Perte de paquets', es: 'Pérdida de paquetes' },
-          unit: 'percent',
-          history: true,
-        },
-        {
-          id: 'jitter',
-          label: 'Jitter',
-          labels: { de: 'Jitter', fr: 'Gigue', es: 'Fluctuación' },
-          unit: 'milliseconds',
-          history: true,
-        },
+        addOnValue('response-time', 'milliseconds', 'Response time', {
+          de: 'Antwortzeit',
+          fr: 'Temps de réponse',
+          es: 'Tiempo de respuesta',
+        }),
+        addOnValue('packet-loss', 'percent', 'Packet loss', {
+          de: 'Paketverlust',
+          fr: 'Perte de paquets',
+          es: 'Pérdida de paquetes',
+        }),
+        addOnValue('jitter', 'milliseconds', 'Jitter', {
+          de: 'Jitter',
+          fr: 'Gigue',
+          es: 'Fluctuación',
+        }),
         {
           id: 'method',
           label: 'Checked with',
@@ -2114,11 +1815,11 @@ const camera: DemoMachine = {
   bootedDaysAgo: 0,
   values: (t, step) => {
     // A camera on Wi-Fi now and then loses one of the 5 pings of a check, 20 % of them.
-    const loss = vary(t, step, 167, -6, [[22, 900]], 0, 40);
+    const loss = vary(t, step, 167, -6, 0, 40, [22, 900]);
     return {
-      'extra:reachability/response-time': vary(t, step, 163, 4.2, [[2.1, 120]], 1.1, 60),
+      'extra:reachability/response-time': vary(t, step, 163, 4.2, 1.1, 60, [2.1, 120]),
       'extra:reachability/packet-loss': step <= 60 ? Math.round(loss / 20) * 20 : loss,
-      'extra:reachability/jitter': vary(t, step, 165, 1.3, [[0.9, 120]], 0.1, 20),
+      'extra:reachability/jitter': vary(t, step, 165, 1.3, 0.1, 20, [0.9, 120]),
     };
   },
 };
@@ -2144,7 +1845,7 @@ function answersIn(machine: DemoMachine, ms: number, wifi = false): DemoMachine 
     values: (t, step) => {
       const values = machine.values(t, step);
       const busy = (values['cpu'] ?? 0) / 100;
-      return { ...values, response: vary(t, step, seed, ms * (1 + busy), swings, ms / 3, 2000) };
+      return { ...values, response: vary(t, step, seed, ms * (1 + busy), ms / 3, 2000, ...swings) };
     },
   };
 }
@@ -2189,7 +1890,8 @@ function timeZone(machine: DemoMachine, t: number): TimeZone {
 /** What GET /api/metrics answers for the machine at t, in Unix seconds, running version. */
 export function snapshotOf(machine: DemoMachine, t: number, version: string): Snapshot {
   const v = machine.values(t, 0);
-  const linux = machine.os === 'linux';
+  // A router tells no clock, load, version or time zone.
+  const linux = machine.os === 'linux' && !machine.router;
   const uptimeSeconds = Math.round(machine.bootedDaysAgo * 86400 + (t - openedAt));
   const seed = machine.device.id.length * 17;
   const percentOf = (total: number, percent: number) => Math.round((total * percent) / 100);
@@ -2255,47 +1957,30 @@ export function snapshotOf(machine: DemoMachine, t: number, version: string): Sn
     };
   }
 
-  if (machine.router) {
-    return {
-      time: new Date(t * 1000).toISOString(),
-      uptimeSeconds,
-      cpu: {
-        usagePercent: v['cpu'],
-        cores: machine.cores,
-        coreUsagePercent: Array.from({ length: machine.cores }, (_, core) =>
-          vary(t, 0, seed + core, v['cpu'], [[v['cpu'] * 0.8 + 4, 6]], 0, 100),
-        ),
-      },
-      memory: {
-        totalBytes: machine.memoryBytes,
-        usedBytes: memoryUsed,
-        usedPercent: v['memory'],
-        availableBytes: machine.memoryBytes - memoryUsed,
-      },
-      temperatures,
-      disks: [],
-      network,
-      gpus: [],
-      extras,
-    };
-  }
-
   return {
-    version,
+    ...(machine.router
+      ? {}
+      : {
+          version,
+          timeZone: timeZone(machine, t),
+          system: machine.system,
+          responseMilliseconds: v['response'],
+        }),
     time: new Date(t * 1000).toISOString(),
-    timeZone: timeZone(machine, t),
     uptimeSeconds,
-    system: machine.system,
-    responseMilliseconds: v['response'],
     cpu: {
       usagePercent: v['cpu'],
       cores: machine.cores,
       coreUsagePercent: Array.from({ length: machine.cores }, (_, core) =>
-        vary(t, 0, seed + core, v['cpu'], [[v['cpu'] * 0.8 + 4, 6]], 0, 100),
+        vary(t, 0, seed + core, v['cpu'], 0, 100, [v['cpu'] * 0.8 + 4, 6]),
       ),
-      clockMHz: Math.round(
-        machine.maxClockMHz * (0.45 + (0.55 * Math.min(100, v['cpu'] * 3)) / 100),
-      ),
+      ...(machine.router
+        ? {}
+        : {
+            clockMHz: Math.round(
+              machine.maxClockMHz * (0.45 + (0.55 * Math.min(100, v['cpu'] * 3)) / 100),
+            ),
+          }),
       ...(linux
         ? {
             loadAverage: { one: load(60), five: load(300), fifteen: load(900) },
@@ -2378,7 +2063,7 @@ function busiestFirst(items: Extra['items']): Extra['items'] {
   return [...items]
     .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
     .map((item) => {
-      const name = item.label.replace(/ \(\d+\)$/, '');
+      const name = item.label;
       seen[name] = (seen[name] ?? 0) + 1;
       return { ...item, label: seen[name] > 1 ? `${name} (${seen[name]})` : name };
     });

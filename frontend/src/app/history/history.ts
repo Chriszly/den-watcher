@@ -64,6 +64,11 @@ export class DeviceCharts {
   }
 }
 
+/** The lines, each labelled label(its label). */
+function relabeled(lines: ChartLine[], label: (old: string) => string): ChartLine[] {
+  return lines.map((line) => ({ ...line, label: label(line.label) }));
+}
+
 function groupByCategory(charts: Chart[]): Map<Category, Chart[]> {
   return new Map(byCategory(charts, (chart) => chart.category).map((g) => [g.category, g.items]));
 }
@@ -85,14 +90,8 @@ function networkLines(
     const wan = (lines: ChartLine[]) => lines.filter((line) => isWan(line.label));
     if (wan(received).length === 0 && wan(sent).length === 0) {
       return [
-        ...received.map((line) => ({
-          ...line,
-          label: t('history.interfaceReceived', { name: line.label }),
-        })),
-        ...sent.map((line) => ({
-          ...line,
-          label: t('history.interfaceSent', { name: line.label }),
-        })),
+        ...relabeled(received, (name) => t('history.interfaceReceived', { name })),
+        ...relabeled(sent, (name) => t('history.interfaceSent', { name })),
       ];
     }
     received = wan(received);
@@ -161,10 +160,7 @@ export function chartsOf(
       max: 100,
       lines: [
         ...named('gpu'),
-        ...named('gpu.memory').map((line) => ({
-          ...line,
-          label: t('history.gpuMemory', { name: line.label }),
-        })),
+        ...relabeled(named('gpu.memory'), (name) => t('history.gpuMemory', { name })),
       ],
     },
     {
@@ -202,14 +198,8 @@ export function chartsOf(
       card: 'diskActivity',
       unit: 'bytesPerSecond',
       lines: [
-        ...named('disk.read').map((line) => ({
-          ...line,
-          label: t('history.diskRead', { path: line.label }),
-        })),
-        ...named('disk.write').map((line) => ({
-          ...line,
-          label: t('history.diskWritten', { path: line.label }),
-        })),
+        ...relabeled(named('disk.read'), (path) => t('history.diskRead', { path })),
+        ...relabeled(named('disk.write'), (path) => t('history.diskWritten', { path })),
       ],
     },
   ];

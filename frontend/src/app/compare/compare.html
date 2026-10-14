@@ -33,36 +33,30 @@
                 type="button"
                 class="device"
                 [title]="i18n.t('compare.open')"
-                (click)="open(row.device)"
+                (click)="devices.show(row.device.id)"
               >
                 <app-status-dot [state]="state(row.device)" />
-                {{ deviceName(row.device) }}
+                {{ deviceName(row.device, i18n) }}
               </button>
             </th>
             @if (row.summary; as s) {
-              <td>
-                @if (s.cpu !== undefined) {
-                  {{ s.cpu | number: '1.1-1' : i18n.language() }} %
-                  <progress max="100" [value]="s.cpu"></progress>
-                } @else {
-                  <span class="none">–</span>
-                }
-              </td>
-              <td>
-                @if (s.memory !== undefined) {
-                  {{ s.memory | number: '1.1-1' : i18n.language() }} %
-                  <progress max="100" [value]="s.memory"></progress>
-                } @else {
-                  <span class="none">–</span>
-                }
-              </td>
+              @for (percent of [s.cpu, s.memory]; track $index) {
+                <td>
+                  @if (percent !== undefined) {
+                    {{ percent | number: '1.1-1' : i18n.language() }} %
+                    <progress max="100" [value]="percent"></progress>
+                  } @else {
+                    <span class="hint">–</span>
+                  }
+                </td>
+              }
               <td>
                 @if (s.disk; as d) {
                   {{ d.percent | number: '1.1-1' : i18n.language() }} %
                   <span class="what" [title]="d.path">{{ d.path }}</span>
                   <progress max="100" [value]="d.percent"></progress>
                 } @else {
-                  <span class="none">–</span>
+                  <span class="hint">–</span>
                 }
               </td>
               <td>
@@ -70,7 +64,7 @@
                   {{ t.celsius | number: '1.1-1' : i18n.language() }} °C
                   <span class="what" [title]="t.sensor">{{ t.sensor }}</span>
                 } @else {
-                  <span class="none">–</span>
+                  <span class="hint">–</span>
                 }
               </td>
               <td>
@@ -78,21 +72,21 @@
                   <span class="rate">↓ {{ n.receive | bytes: i18n.language() }}/s</span>
                   <span class="rate">↑ {{ n.send | bytes: i18n.language() }}/s</span>
                 } @else {
-                  <span class="none">–</span>
+                  <span class="hint">–</span>
                 }
               </td>
               <td>
                 @if (s.uptimeSeconds; as up) {
-                  {{ uptime(up) }}
+                  {{ formatUptime(up, i18n) }}
                 } @else {
-                  <span class="none">–</span>
+                  <span class="hint">–</span>
                 }
               </td>
             } @else {
-              <td colspan="6" class="none">{{ noValues(row) }}</td>
+              <td colspan="6" class="hint">{{ noValues(row) }}</td>
             }
             <td>
-              @if (alertLevel(row.device); as level) {
+              @if (worstLevel(row.device.alerts ?? []); as level) {
                 <span class="alerts">
                   <app-alert-icon [level]="level" aria-hidden="true" />
                   {{
@@ -100,7 +94,7 @@
                   }}
                 </span>
               } @else {
-                <span class="none">–</span>
+                <span class="hint">–</span>
               }
             </td>
           </tr>
@@ -121,7 +115,7 @@
       }
     </div>
   </div>
-  @if (chartRange(); as h) {
+  @if (histories(); as h) {
     <div class="charts" appEvenColumns [class.stale]="connection.lost()">
       @for (chart of charts(); track chart.title) {
         <div class="card">
@@ -159,9 +153,9 @@
                   type="button"
                   class="device"
                   [title]="i18n.t('compare.open')"
-                  (click)="open(row.device)"
+                  (click)="devices.show(row.device.id)"
                 >
-                  {{ deviceName(row.device) }}
+                  {{ deviceName(row.device, i18n) }}
                 </button>
               </th>
               @for (value of row.values; track $index) {
@@ -169,7 +163,7 @@
                   @if (value) {
                     <span class="fact" [title]="value">{{ value }}</span>
                   } @else {
-                    <span class="none">–</span>
+                    <span class="hint">–</span>
                   }
                 </td>
               }

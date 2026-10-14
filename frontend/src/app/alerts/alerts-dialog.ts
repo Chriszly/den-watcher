@@ -36,8 +36,10 @@ import { AlertService, alertDeviceName, alertText } from './alerts';
 export class AlertsDialog {
   protected readonly i18n = inject(I18n);
   protected readonly notifications = inject(AlertNotifications);
-  private readonly devices = inject(DeviceService);
+  protected readonly devices = inject(DeviceService);
   private readonly changes = inject(ChangeDetectorRef);
+  protected readonly alertText = alertText;
+  protected readonly alertDeviceName = alertDeviceName;
 
   /** Null while the log is read. */
   protected readonly log = signal<Alert[] | null>(null);
@@ -64,14 +66,6 @@ export class AlertsDialog {
     this.changes.detectChanges();
     await this.notifications.set(change.checked ? 'started' : 'off');
     change.source.checked = this.notifications.on();
-  }
-
-  protected text(alert: Alert): string {
-    return alertText(alert, this.i18n);
-  }
-
-  protected deviceName(alert: Alert): string {
-    return alertDeviceName(alert, this.devices, this.i18n);
   }
 
   /** When the alert started and ended, or since when it lasts. */

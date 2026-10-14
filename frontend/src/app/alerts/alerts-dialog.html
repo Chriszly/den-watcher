@@ -34,13 +34,11 @@
             <app-alert-icon [level]="alert.level" />
             <span class="what">
               <span class="text">
-                <span class="device">{{ deviceName(alert) }}</span>
-                {{ text(alert) }}
+                <span class="device">{{ alertDeviceName(alert, devices, i18n) }}</span>
+                {{ alertText(alert, i18n) }}
               </span>
-              <span class="when">
-                {{
-                  i18n.t(alert.level === 'alert' ? 'alerts.level.alert' : 'alerts.level.warning')
-                }}
+              <span class="when hint">
+                {{ i18n.t(`alerts.level.${alert.level}`) }}
                 · {{ when(alert) }}
               </span>
             </span>

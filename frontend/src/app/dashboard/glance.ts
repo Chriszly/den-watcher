@@ -7,30 +7,12 @@ import { worstLevel } from '../alerts/alerts';
 import { DeviceService, readByHub } from '../devices/devices';
 import { HistoryStore } from '../history/history-store';
 import { isWan, linesOf, pointsOf, sum } from '../history/history';
-import { ChartUnit } from '../history/line-chart';
 import { Sparkline } from '../history/sparkline';
 import { I18n } from '../i18n/i18n';
 import { formatBytes } from '../metrics/bytes.pipe';
 import { cpuDetail, loadAverageText, usedOfTotal } from '../metrics/format';
-import { Point, Snapshot } from '../metrics/metrics';
-import { GlanceTile } from './glance-tile';
-
-/** One tile of the glance row: a main value now and its history. */
-export interface Tile {
-  id: 'cpu' | 'memory' | 'disk' | 'temperature' | 'network';
-  label: string;
-  value: string;
-  unit: string;
-  detail: string;
-  sub: string;
-  alert: AlertLevel | null;
-  /** The value over the range the charts show; empty while it loads. */
-  points: Point[];
-  chartUnit: ChartUnit;
-  max?: number;
-  /** The color of its chart. */
-  series: number;
-}
+import { Snapshot } from '../metrics/metrics';
+import { GlanceTile, Tile } from './glance-tile';
 
 /**
  * The main values of the device in a row of large tiles above its cards: CPU, memory, the fullest
@@ -45,14 +27,7 @@ export interface Tile {
   template: `
     @let h = store.history();
     @for (tile of tiles(); track tile.id) {
-      <app-glance-tile
-        [label]="tile.label"
-        [value]="tile.value"
-        [unit]="tile.unit"
-        [detail]="tile.detail"
-        [sub]="tile.sub"
-        [alert]="tile.alert"
-      >
+      <app-glance-tile [tile]="tile">
         @if (h) {
           <app-sparkline
             [points]="tile.points"

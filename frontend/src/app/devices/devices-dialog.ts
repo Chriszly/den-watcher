@@ -89,6 +89,7 @@ export class DevicesDialog {
   protected readonly address = signal('');
   protected readonly kind = signal<DeviceKind>('server');
   protected readonly kinds = DEVICE_KINDS;
+  protected readonly kindName = kindName;
   protected readonly problem = signal('');
   protected readonly busy = signal(false);
   /** Emits when a change starts, to stop a failed change's reading of the list. */
@@ -165,10 +166,6 @@ export class DevicesDialog {
       this.address.set('');
       this.kind.set('server');
     });
-  }
-
-  protected kindName(kind: DeviceKind): string {
-    return kindName(kind, this.i18n);
   }
 
   protected setKind(device: Device, kind: DeviceKind): void {

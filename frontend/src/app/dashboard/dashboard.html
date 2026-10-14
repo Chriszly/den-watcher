@@ -11,7 +11,7 @@
         {{ i18n.t('dashboard.uptime') }}
         <app-card-info [text]="uptimeInfo(a)" />
       </h3>
-      <p class="value">{{ formatUptime(s.uptimeSeconds) }}</p>
+      <p class="value">{{ formatUptime(s.uptimeSeconds, i18n) }}</p>
       @if (s.version) {
         <p class="detail">{{ i18n.t('dashboard.version', { version: s.version }) }}</p>
       }
@@ -37,14 +37,14 @@
         @if (a.kind === 'pc') {
           {{
             i18n.t(a.outages > 0 ? 'dashboard.notInUseSince' : 'dashboard.alwaysInUseSince', {
-              duration: formatDuration(a.offlineSeconds),
+              duration: formatDuration(a.offlineSeconds, i18n),
               date: when(a.since),
             })
           }}
         } @else if (a.outages > 0) {
           {{
             i18n.t('dashboard.offlineSince', {
-              duration: formatDuration(a.offlineSeconds),
+              duration: formatDuration(a.offlineSeconds, i18n),
               date: when(a.since),
             })
           }}
@@ -106,9 +106,6 @@
 <!-- A wall display shows the alerts of every device above the page instead. -->
 @if (!kiosk.on) {
   <app-alert-chips [alerts]="deviceAlerts()" />
-}
-
-@if (!kiosk.on) {
   <app-range-picker />
 }
 
@@ -170,7 +167,7 @@
                         [pinned]="section.category === 'pinned'"
                         (pin)="pinCard(card.id)"
                         [made]="card.kind === 'value'"
-                        [charts]="hasCharts(card)"
+                        [charts]="!!chartOf(card)"
                         (hide)="hideCard(card)"
                       />
                     }
@@ -213,11 +210,11 @@
                             </div>
                           }
                           <p class="detail">
-                            {{ cpuDetail(s.cpu) }}
+                            {{ cpuDetail(s.cpu, i18n) }}
                           </p>
                           @if (s.cpu.loadAverage; as load) {
                             <p class="detail" [title]="i18n.t('dashboard.loadAverageHint')">
-                              {{ loadAverageText(load) }}
+                              {{ loadAverageText(load, i18n) }}
                             </p>
                           }
                           @if (s.cpu.processes; as p) {
@@ -271,7 +268,7 @@
                             [attr.aria-label]="i18n.t('dashboard.memoryUsage')"
                           ></progress>
                           <p class="detail">
-                            {{ usedOfTotal(s.memory.usedBytes, s.memory.totalBytes) }}
+                            {{ usedOfTotal(s.memory.usedBytes, s.memory.totalBytes, i18n) }}
                           </p>
                           @if (s.memory.availableBytes) {
                             <p class="detail">
@@ -303,7 +300,7 @@
                               [attr.aria-label]="i18n.t('dashboard.swapUsage')"
                             ></progress>
                             <p class="detail">
-                              {{ usedOfTotal(swap.usedBytes, swap.totalBytes) }}
+                              {{ usedOfTotal(swap.usedBytes, swap.totalBytes, i18n) }}
                             </p>
                           }
                           <app-card-charts [chart]="chartOf(card)" />
@@ -342,7 +339,7 @@
                                   "
                                 ></progress>
                                 <p class="detail">
-                                  {{ usedOfTotal(d.usedBytes, d.totalBytes) }}
+                                  {{ usedOfTotal(d.usedBytes, d.totalBytes, i18n) }}
                                 </p>
                                 <app-disk-forecast [path]="d.path" [percent]="d.usedPercent" />
                               </div>

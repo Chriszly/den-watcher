@@ -17,6 +17,8 @@ import { AlertLevel } from './alert';
       width: var(--alert-icon-size, 1.25rem);
       height: var(--alert-icon-size, 1.25rem);
       vertical-align: middle;
+      --alert-color: var(--alert-level);
+      --alert-on-color: #fff;
     }
 
     svg {
@@ -31,11 +33,6 @@ import { AlertLevel } from './alert';
     rect,
     circle:last-child {
       fill: var(--alert-on-color);
-    }
-
-    :host {
-      --alert-color: var(--alert-level);
-      --alert-on-color: #fff;
     }
 
     :host(.warning) {

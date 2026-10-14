@@ -79,10 +79,6 @@ progress {
   text-overflow: ellipsis;
 }
 
-.none {
-  color: var(--mat-sys-on-surface-variant);
-}
-
 .alerts {
   display: inline-flex;
   align-items: center;

@@ -32,7 +32,6 @@ import { ScrollRows } from '../layout/scroll-rows';
 import { BytesPipe } from '../metrics/bytes.pipe';
 import { Extra, ExtraItem, ExtraUnit, formatExtra, localized } from '../metrics/extras';
 import {
-  LoadAverage,
   MetricsService,
   NetworkInterface,
   Snapshot,
@@ -483,6 +482,11 @@ export class Dashboard {
   protected readonly coreColumns = coreColumns;
   protected readonly hottestFirst = hottestFirst;
   protected readonly extraSections = extraSections;
+  protected readonly formatDuration = formatDuration;
+  protected readonly formatUptime = formatUptime;
+  protected readonly usedOfTotal = usedOfTotal;
+  protected readonly cpuDetail = cpuDetail;
+  protected readonly loadAverageText = loadAverageText;
 
   constructor() {
     toObservable(this.devices.selectedId)
@@ -623,11 +627,6 @@ export class Dashboard {
     return ownsChart(card, chartId(card)) ? charts.get(chartId(card))?.[0] : undefined;
   }
 
-  /** Whether a card draws a chart, which a wider card shows larger. */
-  protected hasCharts(card: Card): boolean {
-    return !!this.chartOf(card);
-  }
-
   /**
    * What the card of one unit of a group of extras holds, after the group's title: the label its
    * values share, such as "Temperature" for that of each disk, or else the kind of value.
@@ -746,32 +745,12 @@ export class Dashboard {
 
   /** The length of an outage, from its start and end as ISO times. */
   protected outageLength(outage: { start: string; end: string }): string {
-    return this.formatDuration((Date.parse(outage.end) - Date.parse(outage.start)) / 1000);
+    return formatDuration((Date.parse(outage.end) - Date.parse(outage.start)) / 1000, this.i18n);
   }
 
   /** A date and time in the page's language, from an ISO time. */
   protected when(time: string): string {
     return formatDate(time, 'short', this.i18n.language());
-  }
-
-  protected formatDuration(seconds: number): string {
-    return formatDuration(seconds, this.i18n);
-  }
-
-  protected formatUptime(seconds: number): string {
-    return formatUptime(seconds, this.i18n);
-  }
-
-  protected usedOfTotal(usedBytes: number, totalBytes: number): string {
-    return usedOfTotal(usedBytes, totalBytes, this.i18n);
-  }
-
-  protected cpuDetail(cpu: Snapshot['cpu']): string {
-    return cpuDetail(cpu, this.i18n);
-  }
-
-  protected loadAverageText(load: LoadAverage): string {
-    return loadAverageText(load, this.i18n);
   }
 
   /**

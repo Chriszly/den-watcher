@@ -19,11 +19,7 @@ export class Mascot {
   private readonly svg = viewChild.required<ElementRef<SVGSVGElement>>('svg');
 
   constructor() {
-    afterNextRender(() => this.updateFavicon());
-  }
-
-  private updateFavicon(): void {
-    this.tab.icon.set(svgMarkup(this.svg().nativeElement));
+    afterNextRender(() => this.tab.icon.set(svgMarkup(this.svg().nativeElement)));
   }
 }
 

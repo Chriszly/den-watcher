@@ -23,10 +23,10 @@
       <li>
         <span class="who">
           <span class="name">{{ device.name }}</span>
-          <span class="address">{{ device.address }}</span>
+          <span class="hint">{{ device.address }}</span>
         </span>
         @if (device.router) {
-          <span class="router">{{ i18n.t('devicesDialog.router') }}</span>
+          <span class="router hint">{{ i18n.t('devicesDialog.router') }}</span>
         } @else {
           <span
             class="choices kind"
@@ -40,7 +40,7 @@
                 [disabled]="busy()"
                 (click)="setKind(device, option)"
               >
-                {{ kindName(option) }}
+                {{ kindName(option, i18n) }}
               </button>
             }
           </span>
@@ -50,7 +50,7 @@
             {{ i18n.t('devicesDialog.remove') }}
           </button>
         } @else {
-          <span class="fixed">{{ i18n.t('devicesDialog.fixed') }}</span>
+          <span class="fixed hint">{{ i18n.t('devicesDialog.fixed') }}</span>
         }
       </li>
     } @empty {
@@ -81,7 +81,7 @@
     <div class="choices kind" role="group" [attr.aria-label]="i18n.t('devicesDialog.kind')">
       @for (option of kinds; track option) {
         <button type="button" [attr.aria-pressed]="option === kind()" (click)="kind.set(option)">
-          {{ kindName(option) }}
+          {{ kindName(option, i18n) }}
         </button>
       }
     </div>

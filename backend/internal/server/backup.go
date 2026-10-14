@@ -60,7 +60,7 @@ func (c *deviceChanges) backup(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
-	c.change(w, r, request.Password, func() (any, error) {
+	c.change(w, r, request.Password, false, func() (any, error) {
 		path, err := c.backups.Backup(r.Context())
 		if err != nil {
 			if r.Context().Err() != nil {

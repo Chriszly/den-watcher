@@ -466,7 +466,7 @@ func (d hubDevices) List() []server.Device {
 
 // alertTargets lists this device, read by local, and the devices the hub
 // collects from, for the alerts watcher.
-func alertTargets(localName string, local alerts.Usage, others *hub.Hub) []alerts.Target {
+func alertTargets(localName string, local metrics.Source, others *hub.Hub) []alerts.Target {
 	targets := []alerts.Target{{ID: hub.LocalID, Name: localName, Usage: local}}
 	for _, remote := range others.Remotes() {
 		since, unreachable := remote.Unreachable()
@@ -484,7 +484,7 @@ func alertTargets(localName string, local alerts.Usage, others *hub.Hub) []alert
 
 // eventTargets lists this device, read by local, and the devices the hub
 // collects from, for the events log.
-func eventTargets(local events.Usage, others *hub.Hub) []events.Target {
+func eventTargets(local metrics.Source, others *hub.Hub) []events.Target {
 	targets := []events.Target{{ID: hub.LocalID, Usage: local}}
 	for _, remote := range others.Remotes() {
 		targets = append(targets, events.Target{ID: remote.ID, Usage: remote.Agent.Latest()})

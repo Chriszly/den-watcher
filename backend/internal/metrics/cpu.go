@@ -130,11 +130,7 @@ func readLoadAverage(ctx context.Context) (*LoadAverage, *Processes) {
 		return nil, nil
 	case "linux":
 		procDir := sysfile.HostProc()
-		text, err := sysfile.Read(filepath.Join(procDir, "loadavg"))
-		if err != nil {
-			return nil, nil
-		}
-		avg, running, ok := parseLoadavg(string(text))
+		avg, running, ok := parseLoadavg(sysfile.Text(filepath.Join(procDir, "loadavg")))
 		if !ok {
 			return nil, nil
 		}

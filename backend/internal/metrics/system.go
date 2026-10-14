@@ -89,12 +89,12 @@ func CleanSystem(s *System) *System {
 		return nil
 	}
 	clean := System{
-		OS:           cut(s.OS),
-		Kernel:       cut(s.Kernel),
-		Architecture: cut(s.Architecture),
-		CPU:          cut(s.CPU),
-		Maker:        cut(s.Maker),
-		Model:        cut(s.Model),
+		OS:           CleanText(s.OS),
+		Kernel:       CleanText(s.Kernel),
+		Architecture: CleanText(s.Architecture),
+		CPU:          CleanText(s.CPU),
+		Maker:        CleanText(s.Maker),
+		Model:        CleanText(s.Model),
 	}
 	if clean == (System{}) {
 		return nil
@@ -106,5 +106,5 @@ func CleanSystem(s *System) *System {
 // to MaxTextLength characters with invalid UTF-8 replaced, as a hub shows and
 // stores it.
 func CleanText(text string) string {
-	return cut(text)
+	return cutTo(text, MaxTextLength)
 }

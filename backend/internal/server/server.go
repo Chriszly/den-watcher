@@ -23,11 +23,6 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/update"
 )
 
-// Collector reads the current usage of the machine.
-type Collector interface {
-	Collect(ctx context.Context) (metrics.Snapshot, error)
-}
-
 // Device is a machine whose usage the site shows: the one it runs on and, in
 // hub mode, the other devices it collects from.
 type Device struct {
@@ -62,7 +57,7 @@ type Device struct {
 	// Alerts are the values of the device that need attention now, most
 	// serious first.
 	Alerts  []alerts.Alert `json:"alerts,omitempty"`
-	Metrics Collector      `json:"-"`
+	Metrics metrics.Source `json:"-"`
 	History HistoryReader  `json:"-"`
 	// Availability is set for the devices the hub collects from.
 	Availability AvailabilityReader `json:"-"`
@@ -197,7 +192,7 @@ func New(site Site) http.Handler {
 // (left out when minutes is nil), and GET /api/hub, where that hub's page is.
 // Requests from outside the local network, and requests that address the
 // machine by a name it does not know, are refused.
-func NewDataOnly(collector Collector, minutes MinuteSource, allowedHosts []string) http.Handler {
+func NewDataOnly(collector metrics.Source, minutes MinuteSource, allowedHosts []string) http.Handler {
 	mux := http.NewServeMux()
 	link := &hubLink{}
 	mux.HandleFunc("GET /api/metrics", link.remember(metricsHandler(Device{ID: hub.LocalID, Metrics: collector})))

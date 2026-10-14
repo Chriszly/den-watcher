@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"maps"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -115,9 +116,5 @@ func (s *sensorsReported) keep(files []string) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for file := range s.reported {
-		if !listed[file] {
-			delete(s.reported, file)
-		}
-	}
+	maps.DeleteFunc(s.reported, func(file string, _ bool) bool { return !listed[file] })
 }

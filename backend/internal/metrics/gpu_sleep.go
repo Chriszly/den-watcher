@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"maps"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -181,21 +182,9 @@ func (d *deviceReads) prune(now time.Time) {
 		return
 	}
 	d.pruned = now
-	for device, state := range d.devices {
-		if now.Sub(state.decided) >= forgetTime {
-			delete(d.devices, device)
-		}
-	}
-	for device, link := range d.links {
-		if now.Sub(link.resolved) >= forgetTime {
-			delete(d.links, device)
-		}
-	}
-	for file, value := range d.values {
-		if now.Sub(value.asked) >= forgetTime {
-			delete(d.values, file)
-		}
-	}
+	maps.DeleteFunc(d.devices, func(_ string, state deviceState) bool { return now.Sub(state.decided) >= forgetTime })
+	maps.DeleteFunc(d.links, func(_ string, link deviceLink) bool { return now.Sub(link.resolved) >= forgetTime })
+	maps.DeleteFunc(d.values, func(_ string, value fileContent) bool { return now.Sub(value.asked) >= forgetTime })
 }
 
 // amdgpuParams returns the amdgpu driver's runpm and dc settings. They are

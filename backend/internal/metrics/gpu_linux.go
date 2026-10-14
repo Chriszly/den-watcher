@@ -87,11 +87,7 @@ func (r *gpuReader) readCard(card string) (GPU, bool) {
 			return readAMDGPU(device, busy, true), true
 		}
 	}
-	stats, err := sysfile.Read(filepath.Join(device, "gpu_stats"))
-	if err != nil {
-		return GPU{}, false
-	}
-	current, err := parseV3DStats(string(stats))
+	current, err := parseV3DStats(sysfile.Text(filepath.Join(device, "gpu_stats")))
 	if err != nil {
 		return GPU{}, false
 	}
@@ -108,8 +104,8 @@ func (r *gpuReader) readCard(card string) (GPU, bool) {
 // driver keeps, so reading them does not wake it.
 func readAMDGPU(device string, busy uint64, awake bool) GPU {
 	gpu := GPU{Name: "AMD GPU", UsagePercent: min(100, float64(busy))}
-	if name, err := sysfile.Read(filepath.Join(device, "product_name")); err == nil && strings.TrimSpace(string(name)) != "" {
-		gpu.Name = strings.TrimSpace(string(name))
+	if name := sysfile.Text(filepath.Join(device, "product_name")); name != "" {
+		gpu.Name = name
 	}
 	total, totalOK := sysfile.Uint(filepath.Join(device, "mem_info_vram_total"))
 	used, usedOK := sysfile.Uint(filepath.Join(device, "mem_info_vram_used"))

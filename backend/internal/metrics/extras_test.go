@@ -123,7 +123,7 @@ func TestCleanTranslationsKeepsTheSameLanguagesEveryTime(t *testing.T) {
 	for _, language := range []string{"zu", "de", "fr", "es", "it", "nl", "pl", "pt", "sv", "da", "fi"} {
 		texts[language] = "text " + language
 	}
-	want := cleanTranslations(texts)
+	want := cleanTranslations(texts, MaxTextLength)
 
 	if len(want) != maxTranslations {
 		t.Fatalf("cleanTranslations() kept %d languages, want %d", len(want), maxTranslations)
@@ -132,7 +132,7 @@ func TestCleanTranslationsKeepsTheSameLanguagesEveryTime(t *testing.T) {
 		t.Error("cleanTranslations() kept an empty text")
 	}
 	for range 20 {
-		if got := cleanTranslations(texts); !reflect.DeepEqual(got, want) {
+		if got := cleanTranslations(texts, MaxTextLength); !reflect.DeepEqual(got, want) {
 			t.Fatalf("cleanTranslations() = %v, then %v, want the same languages every time", want, got)
 		}
 	}

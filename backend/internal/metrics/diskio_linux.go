@@ -52,9 +52,5 @@ func readDiskCounters(_ context.Context, paths []string, devices map[string]devi
 // hostRootDevice returns the device of the host's root filesystem, read once
 // from the mounts of the host's first process.
 var hostRootDevice = sync.OnceValues(func() (deviceNumber, bool) {
-	text, err := sysfile.Read(filepath.Join(sysfile.HostProc(), "1", "mountinfo"))
-	if err != nil {
-		return deviceNumber{}, false
-	}
-	return parseMountinfoRoot(string(text))
+	return parseMountinfoRoot(sysfile.Text(filepath.Join(sysfile.HostProc(), "1", "mountinfo")))
 })

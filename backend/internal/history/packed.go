@@ -205,7 +205,7 @@ func storeMinute(ctx context.Context, tx *sql.Tx, device string, at int64, list 
 }
 
 // rangeMinutes is Range for steps under an hour: the average of each metric
-// over each step, from the stored minutes.
+// over each step, from the stored minutes and those that wait to be written.
 func (s *Store) rangeMinutes(ctx context.Context, device string, from, to, stepSeconds int64) ([]Series, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT time, data FROM history_minutes WHERE device = ? AND time >= ? AND time < ? ORDER BY time`, device, from, to)
 	if err != nil {
@@ -213,20 +213,23 @@ func (s *Store) rangeMinutes(ctx context.Context, device string, from, to, stepS
 	}
 	defer func() { _ = rows.Close() }()
 
-	// Minutes come in order of time, so a metric's step only ever moves on.
-	type average struct {
-		points []Point
-		step   int64
-		sum    float64
-		count  int
+	// The sum and the number of values of each metric (by id from the
+	// database, by name from memory) in each step.
+	type total struct {
+		sum   float64
+		count int
 	}
-	flush := func(a *average) {
-		if a.count > 0 {
-			a.points = append(a.points, Point{Time: a.step, Value: a.sum / float64(a.count)})
+	byID := map[int64]map[int64]*total{}
+	byName := map[string]map[int64]*total{}
+	add := func(steps map[int64]*total, step int64, value float64) {
+		t := steps[step]
+		if t == nil {
+			t = &total{}
+			steps[step] = t
 		}
-		a.sum, a.count = 0, 0
+		t.sum += value
+		t.count++
 	}
-	averages := map[int64]*average{}
 	for rows.Next() {
 		var at int64
 		var data []byte
@@ -239,30 +242,48 @@ func (s *Store) rangeMinutes(ctx context.Context, device string, from, to, stepS
 		}
 		step := at / stepSeconds * stepSeconds
 		for _, v := range values {
-			a := averages[v.id]
-			if a == nil {
-				a = &average{step: step}
-				averages[v.id] = a
+			if byID[v.id] == nil {
+				byID[v.id] = map[int64]*total{}
 			}
-			if a.step != step {
-				flush(a)
-				a.step = step
-			}
-			a.sum += float64(v.value)
-			a.count++
+			add(byID[v.id], step, float64(v.value))
 		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	series := make([]Series, 0, len(averages))
-	for id, a := range averages {
-		flush(a)
+	for _, minute := range s.pend.between(device, from, to) {
+		step := minute.Time / stepSeconds * stepSeconds
+		for metric, value := range minute.Values {
+			if byName[metric] == nil {
+				byName[metric] = map[int64]*total{}
+			}
+			add(byName[metric], step, value)
+		}
+	}
+	for id, steps := range byID {
 		name, err := s.nameOf(ctx, id)
 		if err != nil {
 			return nil, err
 		}
-		series = append(series, Series{Metric: name, Points: a.points})
+		if other := byName[name]; other != nil {
+			for step, t := range other {
+				if steps[step] == nil {
+					steps[step] = &total{}
+				}
+				steps[step].sum += t.sum
+				steps[step].count += t.count
+			}
+		}
+		byName[name] = steps
+	}
+	series := make([]Series, 0, len(byName))
+	for name, steps := range byName {
+		points := make([]Point, 0, len(steps))
+		for step, t := range steps {
+			points = append(points, Point{Time: step, Value: t.sum / float64(t.count)})
+		}
+		slices.SortFunc(points, func(a, b Point) int { return cmp.Compare(a.Time, b.Time) })
+		series = append(series, Series{Metric: name, Points: points})
 	}
 	slices.SortFunc(series, func(a, b Series) int { return strings.Compare(a.Metric, b.Metric) })
 	return series, nil

@@ -253,30 +253,11 @@ func (f *FritzBoxReader) read(ctx context.Context) (metrics.Snapshot, error) {
 	}
 	snapshot.Network = []metrics.NetworkInterface{wan}
 
-	var items []metrics.ExtraItem
-	switch {
-	case status["NewConnectionStatus"] != "":
-		items = append(items, connectionState(status["NewConnectionStatus"]))
-	case link["NewPhysicalLinkStatus"] != "":
-		items = append(items, connectionState(link["NewPhysicalLinkStatus"]))
+	var connected *uint64
+	if seconds, err := strconv.ParseUint(status["NewUptime"], 10, 64); err == nil {
+		connected = &seconds
 	}
-	if down > 0 {
-		items = append(items, bitRate("download", "Download speed of the line", map[string]string{
-			"de": "Download-Geschwindigkeit der Leitung", "fr": "Débit descendant de la ligne", "es": "Velocidad de bajada de la línea",
-		}, down))
-	}
-	if up > 0 {
-		items = append(items, bitRate("upload", "Upload speed of the line", map[string]string{
-			"de": "Upload-Geschwindigkeit der Leitung", "fr": "Débit montant de la ligne", "es": "Velocidad de subida de la línea",
-		}, up))
-	}
-	if connected, err := strconv.ParseUint(status["NewUptime"], 10, 64); err == nil {
-		hours := float64(connected) / 3600
-		items = append(items, metrics.ExtraItem{
-			ID: "connected-hours", Label: "Connected for (hours)", Unit: metrics.UnitNumber, Value: &hours,
-			Labels: map[string]string{"de": "Verbunden seit (Stunden)", "fr": "Connecté depuis (heures)", "es": "Conectado desde hace (horas)"},
-		})
-	}
+	items := lineItems(status["NewConnectionStatus"], link["NewPhysicalLinkStatus"], down, up, connected)
 	// The noise margins of a DSL line, in tenths of a dB: the lower, the
 	// closer the line is to losing its sync.
 	for _, margin := range []struct{ id, value, label string }{
@@ -295,11 +276,7 @@ func (f *FritzBoxReader) read(ctx context.Context) (metrics.Snapshot, error) {
 		items = append(items, metrics.ExtraItem{ID: margin.id, Label: margin.label, Labels: labels, Unit: metrics.UnitNumber, Value: &decibels, History: true})
 	}
 	if len(items) > 0 {
-		snapshot.Extras = append(snapshot.Extras, metrics.Extra{
-			ID: "internet", Title: "Internet connection", Items: items,
-			Titles:      map[string]string{"de": "Internetverbindung", "fr": "Connexion Internet", "es": "Conexión a Internet"},
-			Description: internetDescription, Descriptions: internetDescriptions,
-		})
+		snapshot.Extras = append(snapshot.Extras, internetExtra(items))
 	}
 	if clients, ok := f.clients(ctx); ok {
 		snapshot.Extras = append(snapshot.Extras, clients...)

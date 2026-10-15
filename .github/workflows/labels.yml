@@ -1,0 +1,53 @@
+name: Labels
+
+# Makes the repository's labels match .github/labels.json: creates the missing
+# ones, updates their color and description, and deletes every label not in the
+# file. The first word of a description is the label's type ("Change", "Area");
+# the PR Template Validation workflow asks for a label of every type.
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/labels.json
+      - .github/workflows/labels.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Sync the labels with .github/labels.json
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const wanted = JSON.parse(fs.readFileSync('.github/labels.json', 'utf8'));
+            const existing = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              ...context.repo,
+              per_page: 100
+            });
+            const byName = new Map(existing.map(label => [label.name, label]));
+
+            for (const { name, color, description } of wanted) {
+              const label = byName.get(name);
+              if (!label) {
+                await github.rest.issues.createLabel({ ...context.repo, name, color, description });
+                console.log(`Created ${name}`);
+              } else if (label.color !== color || (label.description || '') !== description) {
+                await github.rest.issues.updateLabel({ ...context.repo, name, color, description });
+                console.log(`Updated ${name}`);
+              }
+            }
+
+            const names = new Set(wanted.map(label => label.name));
+            for (const label of existing.filter(label => !names.has(label.name))) {
+              await github.rest.issues.deleteLabel({ ...context.repo, name: label.name });
+              console.log(`Deleted ${label.name}`);
+            }

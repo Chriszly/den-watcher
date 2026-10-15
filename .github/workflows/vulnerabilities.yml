@@ -22,6 +22,8 @@ concurrency:
 
 env:
   BRANCH: security/nightly-fixes
+  # A label of each type (.github/labels.json), as PR Template Validation asks.
+  LABELS: dependencies,server,ui
 
 jobs:
   fix:
@@ -94,11 +96,6 @@ jobs:
             echo
             echo "Opened by the [Vulnerability fixes]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID) workflow."
             echo
-            echo "## Type of change"
-            echo
-            echo "- [x] Bug fix"
-            echo "- [x] Build / CI / tooling"
-            echo
             echo "## Checklist"
             echo
             echo "- [x] No secrets, passwords or personal info added"
@@ -109,9 +106,9 @@ jobs:
           } >"$body"
 
           if [[ -n "$open_pr" ]]; then
-            gh pr edit "$open_pr" --body-file "$body"
+            gh pr edit "$open_pr" --body-file "$body" --add-label "$LABELS"
           else
-            gh pr create --base main --head "$BRANCH" \
+            gh pr create --base main --head "$BRANCH" --label "$LABELS" \
               --title "Fix known vulnerabilities in dependencies" --body-file "$body"
           fi
 

@@ -1,0 +1,15 @@
+[
+  { "name": "feature", "color": "1d76db", "description": "Change: adds something new (bumps the patch number)" },
+  { "name": "bugfix", "color": "1d76db", "description": "Change: fixes something that was broken (adds a letter to the version)" },
+  { "name": "documentation", "color": "1d76db", "description": "Change: only the docs, README or AGENTS.md" },
+  { "name": "maintenance", "color": "1d76db", "description": "Change: refactor, cleanup or tooling, nothing the user sees" },
+  { "name": "dependencies", "color": "1d76db", "description": "Change: updates a dependency" },
+  { "name": "ui", "color": "0e8a16", "description": "Area: the page in the browser" },
+  { "name": "hub", "color": "0e8a16", "description": "Area: hub mode, collecting from other devices and routers" },
+  { "name": "tracking", "color": "0e8a16", "description": "Area: what is measured, the metrics and the add-ons" },
+  { "name": "alerts", "color": "0e8a16", "description": "Area: alerts, events and notifications" },
+  { "name": "storage", "color": "0e8a16", "description": "Area: the database, history and retention" },
+  { "name": "server", "color": "0e8a16", "description": "Area: the backend's API, settings and access rules" },
+  { "name": "install", "color": "0e8a16", "description": "Area: the Docker image, the Linux install, the Windows installer and updates" },
+  { "name": "repo", "color": "0e8a16", "description": "Area: CI, workflows, repo checks and project docs" }
+]

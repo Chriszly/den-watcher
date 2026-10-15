@@ -55,6 +55,7 @@ Before submitting changes:
 ## PR Requirements
 
 - Fill in `.github/PULL_REQUEST_TEMPLATE.md` (checked by the PR Template Validation workflow)
+- Add at least one label of each type, Change and Area (`.github/labels.json`; the type is the first word of the description), also checked by the PR Template Validation workflow
 - Small, independent pull requests; each one should be green on its own
 - Pull requests are squash-merged into `main`
 

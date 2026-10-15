@@ -107,16 +107,15 @@ export class TimelineMode {
             (pointercancel)="brush.set(null)"
             (dblclick)="zoom.back()"
           >
-            @if (marked().length > 0) {
-              <app-timeline-marks
-                [markers]="marked()"
-                [from]="h.from"
-                [to]="h.to"
-                [step]="h.stepSeconds"
-                [cursor]="shownCursor()"
-                (hover)="cursor.set($event)"
-              />
-            }
+            <!-- Always there, also without marks, so the rows never move down when one comes in. -->
+            <app-timeline-marks
+              [markers]="marked()"
+              [from]="h.from"
+              [to]="h.to"
+              [step]="h.stepSeconds"
+              [cursor]="shownCursor()"
+              (hover)="cursor.set($event)"
+            />
             @for (line of lines(); track $index) {
               <app-timeline-row
                 [line]="line"

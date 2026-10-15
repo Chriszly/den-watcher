@@ -98,7 +98,7 @@ describe('Timeline', () => {
   it('marks what happened in a row above the values, and tells it at the pointer', () => {
     show();
     const host = fixture.nativeElement as HTMLElement;
-    expect(host.querySelector('app-timeline-marks')).toBeNull();
+    expect(host.querySelector('app-timeline-marks .label')!.textContent!.trim()).toBe('Events');
     http
       .expectOne((r) => r.url === '/api/events')
       .flush({
@@ -111,11 +111,11 @@ describe('Timeline', () => {
       });
     fixture.detectChanges();
     const marks = host.querySelector('app-timeline-marks')!;
-    expect(marks.querySelector('.label')!.textContent).toBe('Events');
+    expect(marks.querySelector('.label')!.textContent!.trim()).toBe('Events');
     expect(marks.querySelectorAll('.marker').length).toBe(1);
 
     point(0, 0.5);
-    expect(marks.querySelector('.value')!.textContent).toBe('Restarted');
+    expect(marks.querySelector('.label')!.textContent!.trim()).toBe('Restarted');
     expect(rows()[0]).toBe('CPU: 50 %');
   });
 

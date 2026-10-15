@@ -1,6 +1,5 @@
 version: 2
-# Every update gets a "Change" and an "Area" label (.github/labels.json), as
-# the PR Template Validation workflow asks.
+# Every update gets a "Change" and an "Area" label (.github/labels.json).
 updates:
   # Keep the actions in .github/workflows current.
   - package-ecosystem: github-actions

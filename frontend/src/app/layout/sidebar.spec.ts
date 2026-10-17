@@ -116,4 +116,37 @@ describe('Sidebar', () => {
     element().querySelector<HTMLButtonElement>('.collapse')!.click();
     expect(state.open()).toBe(true);
   });
+
+  it('gives the focus back to what opened it when it closes with the focus in it', () => {
+    create();
+    const state = TestBed.inject(SidebarState);
+    const menu = document.body.appendChild(document.createElement('button'));
+    const open = () => {
+      menu.focus();
+      state.open.set(true);
+      fixture.detectChanges();
+    };
+
+    open();
+    element().querySelector<HTMLButtonElement>('.pick')!.click();
+    expect(document.activeElement).toBe(menu);
+
+    open();
+    element().querySelector<HTMLElement>('.scrim')!.click();
+    expect(document.activeElement).toBe(menu);
+
+    open();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(document.activeElement).toBe(menu);
+
+    // With the focus moved out of the sidebar, closing it leaves the focus where it is.
+    open();
+    const elsewhere = document.body.appendChild(document.createElement('input'));
+    elsewhere.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(document.activeElement).toBe(elsewhere);
+
+    menu.remove();
+    elsewhere.remove();
+  });
 });

@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { filter, finalize } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EMPTY, Subject, finalize, startWith, switchMap, timer } from 'rxjs';
 
 import { PageVisibility } from '../page-visibility';
 
@@ -75,6 +76,9 @@ export function withinLimits(layout: Layout): Layout {
   };
 }
 
+/** How long after the host did not answer the layout is read again while the page is shown. */
+export const LAYOUT_RETRY_MS = 30_000;
+
 type Change = (layout: Layout) => Layout;
 
 /**
@@ -89,26 +93,44 @@ export class PageLayout {
   private readonly current = signal<Layout>(EMPTY_LAYOUT);
   readonly layout = this.current.asReadonly();
 
-  /** The changes made while the host's layout is being read, or before it has ever been read. */
+  /**
+   * The changes the host has not kept yet, oldest first. They are made again over each layout read
+   * from the host until it keeps them.
+   */
   private pending: Change[] = [];
+  /** Whether the layout was read from the host since the host last failed to answer. */
   private read = false;
+  /** Emits when the host did not answer, so the layout is read again after a while. */
+  private readonly failed = new Subject<void>();
   private reading = false;
   private sending = false;
   /** Whether the layout changed while it was being sent, so it is sent again after. */
   private changedWhileSending = false;
 
   constructor() {
+    // Read each time the page is shown and, while it stays shown, again a while after the host did
+    // not answer, so a wall display that is never hidden still gets the layout and sends its
+    // changes once the host is back.
     inject(PageVisibility)
-      .visible.pipe(filter(Boolean))
+      .visible.pipe(
+        switchMap((visible) =>
+          visible
+            ? this.failed.pipe(
+                switchMap(() => timer(LAYOUT_RETRY_MS)),
+                startWith(0),
+              )
+            : EMPTY,
+        ),
+        takeUntilDestroyed(),
+      )
       .subscribe(() => this.load());
   }
 
   /** Changes the layout and keeps it on the host. */
   change(change: Change): void {
     this.current.update((layout) => withinLimits(change(layout)));
-    if (!this.read || this.reading) {
-      this.pending.push(change);
-    } else {
+    this.pending.push(change);
+    if (this.read && !this.reading) {
       this.send();
     }
   }
@@ -125,18 +147,16 @@ export class PageLayout {
       .subscribe({
         next: (layout) => {
           this.read = true;
-          const changes = this.pending;
-          this.pending = [];
           this.current.set(
-            withinLimits(changes.reduce((l, change) => change(l), fromHost(layout))),
+            withinLimits(this.pending.reduce((l, change) => change(l), fromHost(layout))),
           );
-          if (changes.length > 0) {
+          if (this.pending.length > 0) {
             this.send();
           }
         },
-        // The changes wait for the host to answer when the page is shown next; until then they
-        // last for this visit.
-        error: () => undefined,
+        // The changes wait for the host to answer when it is read again; until then they last for
+        // this visit.
+        error: () => this.failed.next(),
       });
   }
 
@@ -147,6 +167,7 @@ export class PageLayout {
       return;
     }
     this.sending = true;
+    const sent = this.pending.length;
     this.http
       .put('/api/layout', this.current())
       .pipe(
@@ -158,7 +179,15 @@ export class PageLayout {
           }
         }),
       )
-      // A change the host cannot keep lasts for this visit.
-      .subscribe({ error: () => undefined });
+      .subscribe({
+        next: () => (this.pending = this.pending.slice(sent)),
+        // A change the host did not keep lasts for this visit: the layout is read again, the
+        // change made over it and sent again.
+        error: () => {
+          this.read = false;
+          this.changedWhileSending = false;
+          this.failed.next();
+        },
+      });
   }
 }

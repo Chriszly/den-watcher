@@ -73,6 +73,31 @@ func TestGPUsFromCounters(t *testing.T) {
 	}
 }
 
+func TestGPUsFromCountersKeepsTheNumbersOfIdenticalGPUs(t *testing.T) {
+	const (
+		first  = "luid_0x00000000_0x0000A001_phys_0"
+		second = "luid_0x00000000_0x0000B002_phys_0"
+	)
+	engines := map[string]float64{
+		"pid_100_" + first + "_eng_0_engtype_3D":  90,
+		"pid_100_" + second + "_eng_0_engtype_3D": 5,
+	}
+	adapters := map[luid]adapter{
+		0xA001: {name: "NVIDIA GeForce RTX 3090"},
+		0xB002: {name: "NVIDIA GeForce RTX 3090"},
+	}
+	want := []GPU{
+		{Name: "NVIDIA GeForce RTX 3090 1", UsagePercent: 90},
+		{Name: "NVIDIA GeForce RTX 3090 2", UsagePercent: 5},
+	}
+	// The map's order changes from run to run, so one reading could pass by chance.
+	for range 50 {
+		if got := gpusFromCounters(engines, nil, adapters); !reflect.DeepEqual(got, want) {
+			t.Fatalf("gpusFromCounters() = %+v, want %+v", got, want)
+		}
+	}
+}
+
 func TestNvidiaGPUKey(t *testing.T) {
 	uuid := "GPU-1A2B3C4D-5e6f-7a8b-9c0d-112233445566"
 	tests := []struct {

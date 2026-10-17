@@ -6,30 +6,58 @@ import (
 	"net/netip"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 )
 
+// hubLinkTakeover is how long the remembered hub must not have asked before
+// a hub with another id replaces it. The hub asks every 5 seconds, so another
+// program on the network that sends a made-up id cannot take the link over
+// from a hub that is running, while a hub that replaced it still does.
+const hubLinkTakeover = 10 * time.Minute
+
 // hubLink remembers where the page of the hub that collects from this machine
 // is: the address its requests come from, with the port it sends in the
-// hub.PagePortHeader header. The tray icon on Windows asks for it, to open
-// the hub's page.
+// hub.PagePortHeader header. Only requests with a hub id count, and the hub
+// keeps the link by its id when its address changes. The tray icon on
+// Windows asks for it, to open the hub's page.
 type hubLink struct {
-	mu  sync.Mutex
-	url string
+	// now returns the time; nil means time.Now.
+	now func() time.Time
+
+	mu    sync.Mutex
+	url   string
+	id    string
+	asked time.Time
 }
 
-// remember notes the hub's page from a request that carries the header, then
+// remember notes the hub's page from a request that carries the headers, then
 // passes the request on.
 func (l *hubLink) remember(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if url, ok := hubURL(r); ok {
-			l.mu.Lock()
-			l.url = url
-			l.mu.Unlock()
+			if id := hubAsking(r); id != "" {
+				l.note(id, url)
+			}
 		}
 		next(w, r)
 	}
+}
+
+// note remembers url as the page of the hub with this id, unless another hub
+// asked less than hubLinkTakeover ago.
+func (l *hubLink) note(id, url string) {
+	now := time.Now
+	if l.now != nil {
+		now = l.now
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if id != l.id && l.id != "" && now().Sub(l.asked) < hubLinkTakeover {
+		return
+	}
+	l.url, l.id, l.asked = url, id, now()
 }
 
 // hubURL builds the hub's page address from a request, if it is from a hub.

@@ -1,6 +1,6 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { catchError, of, switchMap } from 'rxjs';
+import { catchError, map, of, switchMap } from 'rxjs';
 
 import { DeviceService } from '../devices/devices';
 import { History, MetricsService } from '../metrics/metrics';
@@ -38,28 +38,51 @@ export class TimelineZoom {
    */
   readonly history = signal<History | null>(null);
 
+  /** The stretch whose latest read failed, or null. */
+  private readonly unread = signal<Stretch | null>(null);
+  /** Counts the reads again of a stretch that could not be read. */
+  private readonly retries = signal(0);
+
+  /** Whether the stretch shown could not be read; it is read again when the whole range is. */
+  readonly failed = computed(() => this.unread() !== null && this.unread() === this.stretch());
+
   constructor() {
     effect(() => {
       this.store.span();
       this.devices.selectedId();
       untracked(() => this.trail.set([]));
     });
-    toObservable(computed(() => ({ stretch: this.stretch(), device: this.devices.selectedId() })))
+    effect(() => {
+      this.store.history();
+      if (untracked(this.failed)) {
+        untracked(() => this.retries.update((n) => n + 1));
+      }
+    });
+    toObservable(
+      computed(() => ({
+        stretch: this.stretch(),
+        device: this.devices.selectedId(),
+        retry: this.retries(),
+      })),
+    )
       .pipe(
         switchMap(({ stretch, device }) =>
           stretch
-            ? this.metrics
-                .history(stretch.from, stretch.to, device)
-                .pipe(catchError(() => of(undefined)))
-            : of(null),
+            ? this.metrics.history(stretch.from, stretch.to, device).pipe(
+                map((history) => ({ stretch, history })),
+                catchError(() => of({ stretch, history: undefined })),
+              )
+            : of({ stretch, history: null }),
         ),
         takeUntilDestroyed(),
       )
-      .subscribe((history) => {
-        // A stretch that cannot be read is left again, so the rows never show another under its name.
+      .subscribe(({ stretch, history }) => {
+        // A stretch that cannot be read stays in the trail, marked so the rows never show another
+        // under its name; it is read again with the whole range, or left with Back.
         if (history === undefined) {
-          this.back();
+          this.unread.set(stretch);
         } else {
+          this.unread.set(null);
           this.history.set(history);
         }
       });

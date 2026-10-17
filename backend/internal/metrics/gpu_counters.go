@@ -1,7 +1,9 @@
 package metrics
 
 import (
+	"maps"
 	"regexp"
+	"slices"
 	"strconv"
 )
 
@@ -80,7 +82,10 @@ func gpusFromCounters(engines, memory map[string]float64, adapters map[luid]adap
 	}
 
 	gpus := []GPU{}
-	for id, usages := range engineUsage {
+	// By LUID, so two GPUs with the same name keep their numbers from one
+	// reading to the next instead of following the map's random order.
+	for _, id := range slices.Sorted(maps.Keys(engineUsage)) {
+		usages := engineUsage[id]
 		info, known := adapters[id]
 		if info.name == softwareAdapter {
 			continue

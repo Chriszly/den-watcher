@@ -5,17 +5,29 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 )
 
+// otherHubID is the id of a second hub, besides testHubID.
+const otherHubID = "fedcba9876543210fedcba9876543210"
+
 // askAsHub asks for the metrics like a hub does, from remoteAddr, telling
 // the port of its page.
 func askAsHub(handler http.Handler, remoteAddr, port string) {
+	askAs(handler, remoteAddr, port, testHubID)
+}
+
+// askAs asks like askAsHub, with this hub id; empty sends none.
+func askAs(handler http.Handler, remoteAddr, port, id string) {
 	req := httptest.NewRequest(http.MethodGet, "/api/metrics", nil)
 	req.RemoteAddr = remoteAddr
 	req.Host = "192.168.1.9:9393"
 	req.Header.Set(hub.PagePortHeader, port)
+	if id != "" {
+		req.Header.Set(hub.HubIDHeader, id)
+	}
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 }
 
@@ -62,6 +74,52 @@ func TestIgnoresInvalidHubPorts(t *testing.T) {
 	if got, want := hubLinkOf(t, handler), "http://192.168.1.20:8090/"; got != want {
 		t.Errorf("link = %q, want %q kept", got, want)
 	}
+}
+
+func TestIgnoresRequestsWithoutAValidHubID(t *testing.T) {
+	handler := NewDataOnly(fakeCollector{}, nil, nil)
+	for _, id := range []string{"", "not-an-id", "0123456789ABCDEF0123456789ABCDEF"} {
+		askAs(handler, "192.168.1.30:5000", "8090", id)
+	}
+	if got := hubLinkOf(t, handler); got != "" {
+		t.Errorf("link = %q, want none", got)
+	}
+}
+
+func TestKeepsTheHubAnotherIDAsksAfter(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	link := &hubLink{now: func() time.Time { return now }}
+	ask := func(remoteAddr, port, id string) {
+		req := httptest.NewRequest(http.MethodGet, "/api/metrics", nil)
+		req.RemoteAddr = remoteAddr
+		req.Header.Set(hub.PagePortHeader, port)
+		req.Header.Set(hub.HubIDHeader, id)
+		link.remember(func(http.ResponseWriter, *http.Request) {})(httptest.NewRecorder(), req)
+	}
+	want := func(step, url string) {
+		t.Helper()
+		link.mu.Lock()
+		defer link.mu.Unlock()
+		if link.url != url {
+			t.Errorf("%s: link = %q, want %q", step, link.url, url)
+		}
+	}
+
+	ask("192.168.1.20:5000", "8090", testHubID)
+	ask("192.168.1.30:5000", "9393", otherHubID)
+	want("another id while the hub asks", "http://192.168.1.20:8090/")
+
+	now = now.Add(time.Minute)
+	ask("192.168.1.21:5000", "8090", testHubID)
+	want("the hub from a new address", "http://192.168.1.21:8090/")
+
+	now = now.Add(hubLinkTakeover - time.Second)
+	ask("192.168.1.30:5000", "9393", otherHubID)
+	want("another id just before the hub is silent long enough", "http://192.168.1.21:8090/")
+
+	now = now.Add(time.Second)
+	ask("192.168.1.30:5000", "9393", otherHubID)
+	want("another id once the hub stopped asking", "http://192.168.1.30:9393/")
 }
 
 func TestHubLinkOnlyForThisMachine(t *testing.T) {

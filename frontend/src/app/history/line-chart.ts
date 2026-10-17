@@ -17,6 +17,11 @@ export type ChartUnit = Exclude<ExtraUnit, 'text'>;
 export interface ChartLine {
   label: string;
   points: Point[];
+  /**
+   * The place the line takes its color by, when that is not its place among the lines: so a line
+   * keeps its color in every chart, also where a line before it is left out.
+   */
+  place?: number;
 }
 
 /** What a chart draws, as the history and the comparison make it. */
@@ -60,11 +65,14 @@ export class LineChart {
   protected readonly top = computed(() => chartTop(this.lines(), this.unit(), this.chart().max));
 
   protected readonly canvasLines = computed(() =>
-    this.lines().map((line, index): CanvasLine => ({
-      segments: lineSegments(line.points, this.from(), this.to(), this.step(), this.top()),
-      series: index % COLORS,
-      dashed: index >= COLORS,
-    })),
+    this.lines().map((line, index): CanvasLine => {
+      const place = line.place ?? index;
+      return {
+        segments: lineSegments(line.points, this.from(), this.to(), this.step(), this.top()),
+        series: place % COLORS,
+        dashed: place >= COLORS,
+      };
+    }),
   );
 
   /** Whether the chart's dates need their year, so dates a year apart are told apart. */
@@ -136,8 +144,9 @@ export class LineChart {
   });
 
   /** The color of a line by its place, dashed once every color is taken. */
-  protected seriesClass(index: number): string {
-    return `series-${index % COLORS}` + (index >= COLORS ? ' dashed' : '');
+  protected seriesClass(line: ChartLine, index: number): string {
+    const place = line.place ?? index;
+    return `series-${place % COLORS}` + (place >= COLORS ? ' dashed' : '');
   }
 
   /** A value with the chart's unit, in the page's language. */

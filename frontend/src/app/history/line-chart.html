@@ -3,7 +3,7 @@
 @if (lines().length > 1) {
   <ul class="legend">
     @for (line of lines(); track $index; let i = $index) {
-      <li><span class="swatch" [class]="seriesClass(i)"></span>{{ line.label }}</li>
+      <li><span class="swatch" [class]="seriesClass(line, i)"></span>{{ line.label }}</li>
     }
   </ul>
 }
@@ -35,7 +35,7 @@
         </p>
         @for (line of lines(); track $index; let i = $index) {
           <p>
-            <span class="swatch" [class]="seriesClass(i)"></span>
+            <span class="swatch" [class]="seriesClass(line, i)"></span>
             <strong>
               @if (r.values[i] !== null) {
                 <ng-container *ngTemplateOutlet="formatted; context: { $implicit: r.values[i] }" />

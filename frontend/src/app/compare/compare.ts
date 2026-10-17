@@ -219,6 +219,8 @@ export class Compare {
     if (!h) {
       return [];
     }
+    // Each device's line takes its color by the device's place, so it keeps it in every chart.
+    const places = new Map(this.charted().map((device, place) => [device.id, place]));
     return CHARTS.map((chart) => ({
       title: this.i18n.t(chart.title),
       unit: chart.unit,
@@ -227,6 +229,7 @@ export class Compare {
         .map(({ device, history }): ChartLine => ({
           label: deviceName(device, this.i18n),
           points: within(chart.points(history.series, !!device.router), h),
+          place: places.get(device.id),
         }))
         .filter((line) => line.points.length > 0),
     })).filter((chart) => chart.lines.length > 0);

@@ -8,7 +8,7 @@ import (
 )
 
 func TestKnownHostsAllows(t *testing.T) {
-	hosts := knownHosts{hostname: "raspberrypi", allowed: []string{"pi.fritz.box", "usage.home.lan"}}
+	hosts := knownHosts{hostname: "raspberrypi", allowed: []string{"pi.fritz.box", "usage.home.lan", "xn--kche-0ra.lan"}}
 	tests := []struct {
 		host string
 		want bool
@@ -26,7 +26,8 @@ func TestKnownHostsAllows(t *testing.T) {
 		{"pi.fritz.box:9393", true},
 		{"PI.FRITZ.BOX.", true},
 		{"usage.home.lan", true},
-		{"", true}, // an HTTP/1.0 request without a Host header
+		{"xn--kche-0ra.lan", true}, // küche.lan, as a browser sends it
+		{"", true},                 // an HTTP/1.0 request without a Host header
 		{"evil.example:9393", false},
 		{"raspberrypi.evil.example", false},
 		{"fritz.box", false},
@@ -58,8 +59,8 @@ func TestNewKnownHostsCleansTheAllowedNames(t *testing.T) {
 }
 
 func TestSplitAllowedHosts(t *testing.T) {
-	valid := []string{"pi.fritz.box", " Pi.Fritz.Box:9393 ", "home.lan.", "raspberrypi", "my_pc", "192.168.1.9", "[fd00::9]:9393", "fd00::9"}
-	invalid := []string{"http://pi.lan", "https://pi.lan:9393/", "pi.lan/", "pi.lan:", "pi.lan:web", "pi lan", "user@pi.lan", "pi..lan", ".", "[]"}
+	valid := []string{"pi.fritz.box", " Pi.Fritz.Box:9393 ", "home.lan.", "raspberrypi", "my_pc", "xn--kche-0ra.lan", "192.168.1.9", "[fd00::9]:9393", "fd00::9"}
+	invalid := []string{"http://pi.lan", "https://pi.lan:9393/", "pi.lan/", "pi.lan:", "pi.lan:web", "pi lan", "user@pi.lan", "pi..lan", ".", "[]", "küche.lan"}
 	gotValid, gotInvalid := SplitAllowedHosts(slices.Concat(valid, invalid))
 	if !slices.Equal(gotValid, valid) || !slices.Equal(gotInvalid, invalid) {
 		t.Errorf("SplitAllowedHosts() = %q, %q; want %q, %q", gotValid, gotInvalid, valid, invalid)

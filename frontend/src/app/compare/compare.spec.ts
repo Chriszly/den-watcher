@@ -166,11 +166,11 @@ describe('Compare', () => {
   let fixture: ComponentFixture<Compare>;
   let http: HttpTestingController;
 
-  const history = (cpu: number, time: number): History => ({
+  const history = (cpu: number, time: number, retentionDays = 30): History => ({
     from: time - 60,
     to: time + 3600,
     stepSeconds: 60,
-    retentionDays: 30,
+    retentionDays,
     series: [{ metric: 'cpu', points: [{ time, value: cpu }] }],
   });
 
@@ -206,7 +206,7 @@ describe('Compare', () => {
   });
 
   /** Answers the reads; the PC's history ends a day before the range when it is `asleep`. */
-  function answer(asleep = false): void {
+  function answer(asleep = false, retentionDays = 30): void {
     // The printer's usage could not be read.
     http.expectOne('/api/devices/metrics').flush({ local: snapshot, router });
     const cpu: Record<string, number> = { local: 40, router: 0, pc: 70 };
@@ -219,7 +219,9 @@ describe('Compare', () => {
     for (const r of requests) {
       const device = r.request.params.get('device') ?? 'local';
       const from = Number(r.request.params.get('from'));
-      r.flush(history(cpu[device], device === 'pc' && asleep ? from - 86400 : from + 60));
+      r.flush(
+        history(cpu[device], device === 'pc' && asleep ? from - 86400 : from + 60, retentionDays),
+      );
     }
     fixture.detectChanges();
   }
@@ -310,6 +312,41 @@ describe('Compare', () => {
     // With one line left, the chart needs no legend.
     expect(legend()).toEqual([]);
   });
+
+  it('offers only the ranges within the history the hub keeps', () => {
+    expect(ranges()).toEqual(['1 h', '6 h', '1 d', '7 d', '30 d']);
+    // A range picked before the hub said how long it keeps history.
+    http.match((r) => r.url === '/api/history');
+    const choices = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
+      '.choices button',
+    );
+    choices[4].click();
+    fixture.detectChanges();
+    vi.advanceTimersByTime(0);
+
+    answer(false, 7);
+    expect(ranges()).toEqual(['1 h', '6 h', '1 d', '7 d']);
+    // The longest range offered stands in for the one picked, and the charts are read for it.
+    expect(pressed()).toBe('7 d');
+    vi.advanceTimersByTime(0);
+    const [read] = http.match((r) => r.url === '/api/history');
+    expect(Number(read.request.params.get('to')) - Number(read.request.params.get('from'))).toBe(
+      7 * 86400,
+    );
+  });
+
+  function ranges(): string[] {
+    return Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.choices button'),
+      (b) => b.textContent!.trim(),
+    );
+  }
+
+  function pressed(): string | undefined {
+    return (fixture.nativeElement as HTMLElement)
+      .querySelector('.choices button[aria-pressed="true"]')
+      ?.textContent!.trim();
+  }
 
   function legend(): string[] {
     return Array.from(

@@ -27,10 +27,14 @@ type fakeUPnPRouter struct {
 
 	mu      sync.Mutex
 	actions []string
-	// descriptions counts the reads of the description; fail makes every
-	// action fail.
+	// searches counts the search messages answered, one for each version of
+	// the router's device per search, and descriptions the reads of the
+	// description; fail makes every action fail, and gone every request over
+	// HTTP, as of a router that is switched off.
+	searches     int
 	descriptions int
 	fail         bool
+	gone         bool
 	received     uint64
 	sent         uint64
 	uptime       uint64
@@ -44,6 +48,13 @@ func newFakeUPnPRouter(t *testing.T) *fakeUPnPRouter {
 	}
 	f := &fakeUPnPRouter{t: t, received: 1<<32 - 4000, sent: 5000, uptime: 600}
 	f.web = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f.mu.Lock()
+		gone := f.gone
+		f.mu.Unlock()
+		if gone {
+			http.Error(w, "gone", http.StatusServiceUnavailable)
+			return
+		}
 		if r.Method == http.MethodGet && r.URL.Path == "/rootDesc.xml" {
 			f.mu.Lock()
 			f.descriptions++
@@ -99,6 +110,7 @@ func newFakeUPnPRouter(t *testing.T) *fakeUPnPRouter {
 				continue
 			}
 			f.mu.Lock()
+			f.searches++
 			location := f.location
 			f.mu.Unlock()
 			answer := "HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=120\r\nST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\nEXT:\r\nLOCATION: " + location + "\r\n\r\n"
@@ -233,26 +245,52 @@ func TestUPnPDoesNotSearchAgainAtOnce(t *testing.T) {
 	}
 }
 
-func TestUPnPDoesNotSearchAgainAtOnceAfterAFailedRead(t *testing.T) {
+func TestUPnPSearchesAgainAtOnceAfterFailedReads(t *testing.T) {
 	router := newFakeUPnPRouter(t)
 	router.mu.Lock()
 	router.fail = true
 	router.mu.Unlock()
 	reader := router.reader()
-	for range upnpReadFailures + 1 {
+	for range upnpReadFailures {
 		if _, err := reader.Collect(t.Context()); err == nil {
 			t.Fatal("read a router whose actions fail")
 		}
 	}
+	// Back, maybe with its services elsewhere: the next reading finds them.
+	router.mu.Lock()
+	router.fail = false
+	router.mu.Unlock()
+	if _, err := reader.Collect(t.Context()); err != nil {
+		t.Fatalf("the reading after the router is back: %v", err)
+	}
 	router.mu.Lock()
 	defer router.mu.Unlock()
-	if router.descriptions != 1 {
-		t.Errorf("read the description %d times, want once", router.descriptions)
+	if router.descriptions != 2 {
+		t.Errorf("read the description %d times, want twice", router.descriptions)
 	}
-	// Each failed reading asked the router once, but not the last: its
-	// services are looked for again, not before upnpSearchBackoff.
-	if len(router.actions) != upnpReadFailures {
-		t.Errorf("called %d actions, want %d", len(router.actions), upnpReadFailures)
+}
+
+func TestUPnPDoesNotSearchAgainAtOnceForARouterThatIsGone(t *testing.T) {
+	router := newFakeUPnPRouter(t)
+	reader := router.reader()
+	if _, err := reader.Collect(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	router.mu.Lock()
+	router.gone = true
+	search := router.searches
+	router.mu.Unlock()
+	// The readings fail, then the search after them, and then the router is
+	// not searched for with every reading.
+	for range upnpReadFailures + 2 {
+		if _, err := reader.Collect(t.Context()); err == nil {
+			t.Fatal("read a router that is gone")
+		}
+	}
+	router.mu.Lock()
+	defer router.mu.Unlock()
+	if router.searches != 2*search {
+		t.Errorf("sent %d search messages, want %d: at the start and once after the failed readings", router.searches, 2*search)
 	}
 }
 

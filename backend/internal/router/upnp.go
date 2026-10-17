@@ -30,7 +30,8 @@ const (
 	// ssdpWait is how long answers to a search are waited for.
 	ssdpWait = 2 * time.Second
 	// upnpSearchBackoff is how long a router that was not found is not
-	// searched for again.
+	// searched for again. It follows only a failed search: a router whose
+	// readings failed is searched for at the next one.
 	upnpSearchBackoff = time.Minute
 	// upnpReadFailures is how many readings in a row must fail before the
 	// router's services are looked for again: one lost answer is not a
@@ -63,9 +64,9 @@ type UPnPReader struct {
 	// common and connection are the control URLs of the services, and their
 	// types, found in the description; empty until it was read.
 	common, connection upnpService
-	// notFound is when the router was last looked for or read in vain, and
-	// why: it is looked for again only after upnpSearchBackoff, as each
-	// search goes to every device on the local network.
+	// notFound is when the router was last looked for in vain, and why: it
+	// is looked for again only after upnpSearchBackoff, as each search goes
+	// to every device on the local network.
 	notFoundAt           time.Time
 	notFound             error
 	readFailures         int
@@ -97,13 +98,14 @@ func (u *UPnPReader) Collect(ctx context.Context) (metrics.Snapshot, error) {
 	snapshot, err := u.read(ctx)
 	if err != nil {
 		// After readings that keep failing, the router may have restarted
-		// with its services elsewhere, so they are looked for again, but
-		// not before upnpSearchBackoff: a router whose actions keep failing
-		// is not searched for with every reading.
+		// with its services elsewhere, so they are looked for again at the
+		// next reading, which finds a router that is back at once. A router
+		// that is gone is not found, and then not searched for again before
+		// upnpSearchBackoff; one whose actions keep failing is searched for
+		// only every upnpReadFailures readings.
 		u.readFailures++
 		if u.readFailures >= upnpReadFailures {
 			u.common, u.connection = upnpService{}, upnpService{}
-			u.notFoundAt, u.notFound = time.Now(), err
 			u.readFailures = 0
 		}
 		return metrics.Snapshot{}, err

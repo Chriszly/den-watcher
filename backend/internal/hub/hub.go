@@ -94,9 +94,14 @@ type Hub struct {
 	// see Forgetter.
 	forgetters []Forgetter
 
-	// mu guards remotes and removing.
+	// mu guards remotes, hidden and removing.
 	mu      sync.Mutex
 	remotes []*Remote
+	// hidden has the ids of the devices added on the page that are not
+	// collected from at this start, as another device has their address
+	// and port. They stay saved, for when the other one goes, so their
+	// names stay taken.
+	hidden map[string]bool
 	// removing has a channel for each removed device whose recorder may still
 	// run or whose data is still being deleted, closed once that is done.
 	removing map[string]chan struct{}
@@ -210,6 +215,10 @@ func newHub(ctx context.Context, store *history.Store, fixed []Device, complete 
 		// Devices added before each address and port could be added only once.
 		if other := h.findAddress(device.Address); other != nil {
 			slog.Warn("a device added on the page has the same address and port as another; collecting from it only once", "name", device.Name, "other", other.Name, "address", device.Address)
+			if h.hidden == nil {
+				h.hidden = map[string]bool{}
+			}
+			h.hidden[device.ID] = true
 			continue
 		}
 		h.start(device, false, own)
@@ -870,10 +879,13 @@ func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
 }
 
 // taken refuses a device whose name or whose address and port another
-// device has. The caller holds mu.
+// device has, a hidden one's name too. The caller holds mu.
 func (h *Hub) taken(device Device) error {
 	if h.find(device.ID) != nil {
 		return &InputError{Problem: ProblemNameTaken, Message: "another device has the same name; give each device its own name"}
+	}
+	if h.hidden[device.ID] {
+		return &InputError{Problem: ProblemNameTaken, Message: "a device added earlier has the same name; it is not collected from, as another device has its address and port, but it stays saved; give each device its own name"}
 	}
 	if h.removing[device.ID] != nil {
 		return errRemoving

@@ -1221,3 +1221,28 @@ func TestASavedDeviceAtAnAddressInUseIsSkipped(t *testing.T) {
 		t.Errorf("devices = %q, want only office-pc from HUB_DEVICES", got)
 	}
 }
+
+func TestTheNameOfASkippedSavedDeviceStaysTaken(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t)
+	address := startDevice(t)
+	h := openTestHub(t, store, nil)
+	if _, err := h.Add(ctx, "PC", address, KindPC); err != nil {
+		t.Fatalf("Add() error = %v", err)
+	}
+	// Listed in HUB_DEVICES later, at the same address under another name.
+	h = openTestHub(t, store, []Device{{ID: "office-pc", Name: "Office PC", Address: address}})
+	_, err := h.Add(ctx, "PC", startDevice(t), KindPC)
+	var input *InputError
+	if !errors.As(err, &input) || input.Problem != ProblemNameTaken {
+		t.Fatalf("Add() under the skipped device's name error = %v, want ProblemNameTaken", err)
+	}
+	if got := ids(h.Remotes()); len(got) != 1 || got[0] != "office-pc" {
+		t.Errorf("devices = %q, want only office-pc", got)
+	}
+
+	// Collected from again once the other one is gone from HUB_DEVICES.
+	if got := ids(openTestHub(t, store, nil).Remotes()); len(got) != 1 || got[0] != "pc" {
+		t.Errorf("devices without HUB_DEVICES = %q, want the saved pc", got)
+	}
+}

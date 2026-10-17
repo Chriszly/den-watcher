@@ -280,7 +280,7 @@ The hub applies the same address check to its outgoing connections. In Docker, t
 
 ## HTTP API
 
-All answers under `/api/` are JSON with `Cache-Control: no-store`, except the files of `GET /api/history.csv` and `POST /api/backup`. Times in the history are Unix seconds; other times are RFC 3339 in UTC. `?device=<id>` picks a device from `GET /api/devices`; without it the API answers for the device it runs on.
+Answers under `/api/` with a body are JSON with `Cache-Control: no-store`, except the files of `GET /api/history.csv` and `POST /api/backup`, which carry `no-store` too, and errors: a refused change answers in JSON (`{ problem, message }`, see below), every other error in plain text, without `Cache-Control`. Times in the history are Unix seconds; other times are RFC 3339 in UTC. `?device=<id>` picks a device from `GET /api/devices`; without it the API answers for the device it runs on.
 
 | Method and path | Answers | Errors |
 | --- | --- | --- |

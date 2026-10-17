@@ -97,7 +97,7 @@ Metric names are never deleted from `history_metrics`; a device whose extras are
 
 The file's layout version is kept in SQLite's `user_version`. When a new version of den-watcher changes the layout:
 
-1. It copies the file to `usage-control.db.backup` next to it, replacing an older copy.
+1. It copies the file to `usage-control.db.backup` next to it, replacing an older copy; not for version 3, see below.
 2. It updates the file in one transaction.
 
 An older version refuses to start on a file a newer version has changed, instead of damaging it, and says so in its log. To go back, put the old version and the `.backup` copy in place.

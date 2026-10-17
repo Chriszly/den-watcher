@@ -22,7 +22,9 @@ type fanSensor struct {
 
 // fanSensors returns the fans Linux reports in /sys/class/hwmon, looked up
 // once at start. There are none on other systems, and on many PCs whose fans
-// only the firmware knows about.
+// only the firmware knows about. Fans with the same name, such as those of
+// two identical GPUs, are numbered here, so each keeps its name while
+// another sleeps or cannot be read.
 func fanSensors() []fanSensor {
 	files, _ := filepath.Glob(filepath.Join(sysfile.HostSys(), "class", "hwmon", "hwmon*", "fan*_input"))
 	sensors := make([]fanSensor, 0, len(files))
@@ -34,7 +36,14 @@ func fanSensors() []fanSensor {
 		}
 		sensors = append(sensors, fanSensor{name: name, file: file})
 	}
-	slices.SortFunc(sensors, func(a, b fanSensor) int { return strings.Compare(a.name, b.name) })
+	slices.SortStableFunc(sensors, func(a, b fanSensor) int { return strings.Compare(a.name, b.name) })
+	names := make([]string, len(sensors))
+	for i, s := range sensors {
+		names[i] = s.name
+	}
+	for i, name := range NumberDuplicates(names) {
+		sensors[i].name = name
+	}
 	return sensors
 }
 

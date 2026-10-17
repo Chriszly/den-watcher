@@ -326,25 +326,26 @@ func (r *temperatureReader) read(ctx context.Context, now time.Time) []Temperatu
 // machines, and most containers without the host's /sys), so a failure means
 // an empty list, not an error.
 func readTemperatures(ctx context.Context) []Temperature {
-	// readSensors leaves out the sensors it cannot read; those of a sleeping
-	// device come back unread, marked in asleep, and temperaturesOf numbers
+	// readSensors leaves out the sensors that have never reported; those of
+	// a sleeping device, and those that reported before but cannot be read
+	// now, come back unread, marked in unread, and temperaturesOf numbers
 	// them with the others and then drops them.
-	readings, asleep := readSensors(ctx)
-	return temperaturesOf(readings, asleep)
+	readings, unread := readSensors(ctx)
+	return temperaturesOf(readings, unread)
 }
 
 // temperaturesOf turns the sensor readings into temperatures, leaving out the
 // sensors that report none. Sensors with the same name, such as one coretemp
 // per core, are numbered, so each name stands for one sensor in the history.
-// asleep tells, by the index of a reading, which sensors belong to a device
-// that sleeps and were not read: they are numbered with the others, so the
-// others keep their names, and then left out.
-func temperaturesOf(readings []sensors.TemperatureStat, asleep []bool) []Temperature {
+// unread tells, by the index of a reading, which sensors were not read, as
+// their device sleeps or the read failed: they are numbered with the others,
+// so the others keep their names, and then left out.
+func temperaturesOf(readings []sensors.TemperatureStat, unread []bool) []Temperature {
 	temperatures := make([]Temperature, 0, len(readings))
 	sleeping := make([]bool, 0, len(readings))
 	names := make([]string, 0, len(readings))
 	for i, r := range readings {
-		sleeps := i < len(asleep) && asleep[i]
+		sleeps := i < len(unread) && unread[i]
 		if !sleeps && r.Temperature <= 0 {
 			continue
 		}

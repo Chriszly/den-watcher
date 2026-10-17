@@ -153,6 +153,10 @@ func TestUPnPReadsTheInternetTraffic(t *testing.T) {
 	router.mu.Lock()
 	router.received, router.sent, router.uptime = 4000, 7000, 605
 	router.mu.Unlock()
+	// Move the first reading back, so the traffic is not faster than the
+	// line however quickly the second one follows.
+	reader.received.at = reader.received.at.Add(-10 * time.Second)
+	reader.sent.at = reader.sent.at.Add(-10 * time.Second)
 	second, err := reader.Collect(t.Context())
 	if err != nil {
 		t.Fatal(err)

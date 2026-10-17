@@ -525,14 +525,14 @@ func routerDevices(databasePath string) ([]hub.Device, error) {
 	if needsSecret != "" {
 		switch {
 		case source != "":
-			passwords, err = router.ReadPasswords(source)
+			passwords, err = router.ReadPasswords(source, hub.IDOf)
 			// SNMPv2c with the community public needs no file.
 			if err != nil && (!errors.Is(err, fs.ErrNotExist) || needsLogin != "") {
 				return nil, fmt.Errorf("read the router passwords: %w", err)
 			}
 		default:
 			var stored bool
-			passwords, stored, err = router.StoredPasswords(filepath.Dir(databasePath))
+			passwords, stored, err = router.StoredPasswords(filepath.Dir(databasePath), hub.IDOf)
 			if err != nil {
 				return nil, fmt.Errorf("read the router passwords the installer stored: %w", err)
 			}
@@ -542,17 +542,13 @@ func routerDevices(databasePath string) ([]hub.Device, error) {
 			}
 		}
 	}
-	byID := map[string]string{}
-	for name, password := range passwords {
-		byID[hub.IDOf(name)] = password
-	}
 	var devices []hub.Device
 	for _, config := range configs {
 		device, err := hub.NewRouter(config.Name, config.Address, nil)
 		if err != nil {
 			return nil, fmt.Errorf("check HUB_ROUTERS: %w", err)
 		}
-		password, ok := byID[device.ID]
+		password, ok := passwords[device.ID]
 		if config.Protocol.NeedsLogin() && !ok {
 			return nil, fmt.Errorf("the router %q needs a password, but %s has none for it; run the installer again to enter it", config.Name, source)
 		}

@@ -158,20 +158,21 @@ const maxPasswordsBytes = 64 << 10
 
 // ReadPasswords reads the passwords of the routers from the file at path,
 // with one "router name=password" per line; empty lines and lines starting
-// with # are skipped. The names are compared as device ids, so case and
-// spaces do not matter.
-func ReadPasswords(path string) (map[string]string, error) {
+// with # are skipped. The passwords are keyed by id(name), the router's
+// device id, so case and spaces do not matter, and a later line for the
+// same router replaces an earlier one.
+func ReadPasswords(path string, id func(name string) string) (map[string]string, error) {
 	file, err := os.Open(path) //nolint:gosec // the file the hub's owner set up for this
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = file.Close() }()
-	return parsePasswords(file, path)
+	return parsePasswords(file, path, id)
 }
 
 // parsePasswords reads lines of "router name=password" from r, which source
-// names in errors.
-func parsePasswords(r io.Reader, source string) (map[string]string, error) {
+// names in errors, keyed by id(name), the last line for an id winning.
+func parsePasswords(r io.Reader, source string, id func(name string) string) (map[string]string, error) {
 	passwords := map[string]string{}
 	scanner := bufio.NewScanner(io.LimitReader(r, maxPasswordsBytes))
 	for line := 1; scanner.Scan(); line++ {
@@ -184,7 +185,7 @@ func parsePasswords(r io.Reader, source string) (map[string]string, error) {
 			// The line is not shown, as it may hold a password.
 			return nil, fmt.Errorf("%s, line %d: write each router as name=password", source, line)
 		}
-		passwords[strings.TrimSpace(name)] = password
+		passwords[id(strings.TrimSpace(name))] = password
 	}
 	return passwords, scanner.Err()
 }

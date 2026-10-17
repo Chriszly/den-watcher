@@ -215,6 +215,10 @@ func storeMinute(ctx context.Context, tx *sql.Tx, device string, at int64, list 
 // rangeMinutes is Range for steps under an hour: the average of each metric
 // over each step, from the stored minutes and those that wait to be written.
 func (s *Store) rangeMinutes(ctx context.Context, device string, from, to, stepSeconds int64) ([]Series, error) {
+	// The waiting minutes are read before the stored ones: a flush between
+	// the two then only makes a minute both waiting and stored, rather than
+	// neither. Of a minute that is both, what the database has counts.
+	waiting := s.pend.between(device, from, to)
 	rows, err := s.db.QueryContext(ctx, `SELECT time, data FROM history_minutes WHERE device = ? AND time >= ? AND time < ? ORDER BY time`, device, from, to)
 	if err != nil {
 		return nil, err
@@ -229,9 +233,6 @@ func (s *Store) rangeMinutes(ctx context.Context, device string, from, to, stepS
 	}
 	byID := map[int64]map[int64]*total{}
 	byName := map[string]map[int64]*total{}
-	// A minute can be both stored and waiting, as while a flush that wrote
-	// it has not forgotten it yet: of those, what the database has counts.
-	waiting := s.pend.between(device, from, to)
 	waitingAt := make(map[int64]bool, len(waiting))
 	for _, minute := range waiting {
 		waitingAt[minute.Time] = true

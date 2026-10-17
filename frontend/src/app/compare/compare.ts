@@ -91,7 +91,10 @@ export function sortRows(rows: readonly Row[], column: Column | null): Row[] {
   return [...rows].sort((a, b) => value(b) - value(a));
 }
 
-/** The time ranges of the charts, fewer than the history has, as they chart every device. */
+/**
+ * The time ranges of the charts, fewer than the history has, as they chart every device. Only those
+ * within the history the hub keeps are offered.
+ */
 const RANGES: Range[] = [
   { label: 'history.range1h', seconds: 3600 },
   { label: 'history.range6h', seconds: 6 * 3600 },
@@ -175,7 +178,13 @@ export class Compare {
 
   protected readonly columns = COLUMNS;
   protected readonly factLabels = SYSTEM_FACTS;
-  protected readonly ranges = RANGES;
+  /** How many days of history the hub keeps, as its answers tell; until then every range is offered. */
+  private readonly retentionDays = signal<number | null>(null);
+  protected readonly ranges = computed(() => {
+    const days = this.retentionDays();
+    const ranges = days ? RANGES.filter((r) => r.seconds <= days * 86400) : RANGES;
+    return ranges.length > 0 ? ranges : RANGES.slice(0, 1);
+  });
   protected readonly deviceName = deviceName;
   protected readonly state = deviceState;
   protected readonly worstLevel = worstLevel;
@@ -235,7 +244,21 @@ export class Compare {
         ),
         takeUntilDestroyed(),
       )
-      .subscribe((histories) => this.histories.set(histories));
+      .subscribe((histories) => this.received(histories));
+  }
+
+  private received(histories: Histories): void {
+    this.histories.set(histories);
+    const days = histories.devices[0]?.history.retentionDays;
+    if (days) {
+      this.retentionDays.set(days);
+      // A range picked before the hub said how long it keeps history may be longer than that; the
+      // longest range offered stands in for it.
+      const ranges = this.ranges();
+      if (!ranges.includes(this.range())) {
+        this.range.set(ranges[ranges.length - 1]);
+      }
+    }
   }
 
   private readHistories(seconds: number, devices: Device[]): Observable<Histories> {

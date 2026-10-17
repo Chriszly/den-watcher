@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Chriszly/den-watcher/backend/internal/hub"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
 )
 
@@ -61,12 +62,26 @@ func TestReadPasswords(t *testing.T) {
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	passwords, err := ReadPasswords(path)
+	passwords, err := ReadPasswords(path, hub.IDOf)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if passwords["Office router"] != "se=cret " || passwords["Router"] != "x" || len(passwords) != 2 {
+	if passwords["office-router"] != "se=cret " || passwords["router"] != "x" || len(passwords) != 2 {
 		t.Errorf("got %q", passwords)
+	}
+}
+
+func TestReadPasswordsTakesTheLastLineForARouter(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "router-passwords")
+	if err := os.WriteFile(path, []byte("Router=old\nrouter=new\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	passwords, err := ReadPasswords(path, hub.IDOf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if passwords["router"] != "new" || len(passwords) != 1 {
+		t.Errorf("got %q, want only router=new", passwords)
 	}
 }
 
@@ -75,7 +90,7 @@ func TestReadPasswordsDoesNotShowAWrongLine(t *testing.T) {
 	if err := os.WriteFile(path, []byte("secret-without-name\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err := ReadPasswords(path)
+	_, err := ReadPasswords(path, hub.IDOf)
 	if err == nil {
 		t.Fatal("a line without a name was taken")
 	}

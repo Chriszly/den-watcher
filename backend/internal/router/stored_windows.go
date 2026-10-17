@@ -34,8 +34,9 @@ const (
 // for the service, and whether there are any. The installer puts new ones in
 // the registry; the first start after it encrypts them with DPAPI, adds them
 // to those encrypted before, in dir, the data folder, and deletes them from
-// the registry.
-func StoredPasswords(dir string) (map[string]string, bool, error) {
+// the registry. As with ReadPasswords, they are keyed by id(name), and a new
+// one replaces the one encrypted before for the same router.
+func StoredPasswords(dir string, id func(name string) string) (map[string]string, bool, error) {
 	path := filepath.Join(dir, protectedFile)
 	passwords := map[string]string{}
 	stored := false
@@ -46,7 +47,7 @@ func StoredPasswords(dir string) (map[string]string, bool, error) {
 		if err != nil {
 			return nil, false, fmt.Errorf("decrypt %s: %w", path, err)
 		}
-		if passwords, err = parsePasswords(bytes.NewReader(plain), path); err != nil {
+		if passwords, err = parsePasswords(bytes.NewReader(plain), path, id); err != nil {
 			return nil, false, err
 		}
 		stored = true
@@ -69,7 +70,7 @@ func StoredPasswords(dir string) (map[string]string, bool, error) {
 	if err != nil {
 		return nil, false, fmt.Errorf(`read HKLM\%s: %w`, storedKey, err)
 	}
-	added, err := parsePasswords(bytes.NewReader([]byte(value)), `HKLM\`+storedKey)
+	added, err := parsePasswords(bytes.NewReader([]byte(value)), `HKLM\`+storedKey, id)
 	if err != nil {
 		return nil, false, err
 	}

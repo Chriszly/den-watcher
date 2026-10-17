@@ -76,6 +76,33 @@ func TestReadSensorsNumbersASleepingSensorAsWhenItWasLastAwake(t *testing.T) {
 	}
 }
 
+func TestReadSensorsKeepsTheNamesWhileASensorCannotBeRead(t *testing.T) {
+	sys := t.TempDir()
+	// Two NVMe drives, which name their sensors alike.
+	for dir, celsius := range map[string]string{"hwmon0": "38000\n", "hwmon1": "41000\n"} {
+		writeSysFile(t, sys, "class/hwmon/"+dir+"/name", "nvme\n")
+		writeSysFile(t, sys, "class/hwmon/"+dir+"/temp1_input", celsius)
+		writeSysFile(t, sys, "class/hwmon/"+dir+"/temp1_label", "Composite\n")
+	}
+	t.Setenv("HOST_SYS", sys)
+	both := readTemperatures(t.Context())
+	// The first drive's sensor fails once, then reports again.
+	writeSysFile(t, sys, "class/hwmon/hwmon0/temp1_input", "\n")
+	failed := readTemperatures(t.Context())
+	writeSysFile(t, sys, "class/hwmon/hwmon0/temp1_input", "39000\n")
+	again := readTemperatures(t.Context())
+
+	if want := []Temperature{{Sensor: "nvme_composite 1", Celsius: 38}, {Sensor: "nvme_composite 2", Celsius: 41}}; !reflect.DeepEqual(both, want) {
+		t.Errorf("readTemperatures() = %+v, want %+v", both, want)
+	}
+	if want := []Temperature{{Sensor: "nvme_composite 2", Celsius: 41}}; !reflect.DeepEqual(failed, want) {
+		t.Errorf("readTemperatures() while the first sensor fails = %+v, want %+v", failed, want)
+	}
+	if want := []Temperature{{Sensor: "nvme_composite 1", Celsius: 39}, {Sensor: "nvme_composite 2", Celsius: 41}}; !reflect.DeepEqual(again, want) {
+		t.Errorf("readTemperatures() after the failure = %+v, want %+v", again, want)
+	}
+}
+
 func TestReadSensorsWithoutHwmonReadsTheThermalZones(t *testing.T) {
 	sys := t.TempDir()
 	writeSysFile(t, sys, "class/thermal/thermal_zone0/type", "cpu_thermal\n")

@@ -38,3 +38,35 @@ func TestFansAreReadFromHwmon(t *testing.T) {
 		t.Errorf("readFans() = %+v, want %+v", got, want)
 	}
 }
+
+func TestFansWithTheSameNameAreNumbered(t *testing.T) {
+	sys := t.TempDir()
+	write := func(path, text string) {
+		t.Helper()
+		path = filepath.Join(sys, "class", "hwmon", path)
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Two identical GPUs, whose fans have the same name.
+	for _, dir := range []string{"hwmon1", "hwmon2"} {
+		write(dir+"/name", "amdgpu\n")
+		write(dir+"/fan1_input", "1200\n")
+	}
+	t.Setenv("HOST_SYS", sys)
+	sensors := fanSensors()
+	all := readFans(sensors)
+	// The first GPU's fan cannot be read: the second keeps its number.
+	write("hwmon1/fan1_input", "\n")
+	one := readFans(sensors)
+
+	if want := []Fan{{Name: "amdgpu fan1 1", RPM: 1200}, {Name: "amdgpu fan1 2", RPM: 1200}}; !reflect.DeepEqual(all, want) {
+		t.Errorf("readFans() = %+v, want %+v", all, want)
+	}
+	if want := []Fan{{Name: "amdgpu fan1 2", RPM: 1200}}; !reflect.DeepEqual(one, want) {
+		t.Errorf("readFans() with the first fan unread = %+v, want %+v", one, want)
+	}
+}

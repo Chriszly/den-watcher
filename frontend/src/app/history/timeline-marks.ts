@@ -14,8 +14,11 @@ import { stepUnder } from './line-chart';
   selector: 'app-timeline-marks',
   imports: [ChartMarkers],
   template: `
-    <span class="label">{{ i18n.t('timeline.events') }}</span>
-    <span class="value happened" [title]="happened()">{{ happened() }}</span>
+    <!-- What happened takes the place of the label, over the label and value columns but without
+      widening them, so the strips of all rows keep their width. -->
+    <span class="label" [class.happened]="happened()" [title]="happened()">{{
+      happened() || i18n.t('timeline.events')
+    }}</span>
     <div
       class="strip marks"
       (pointermove)="hover.emit(stepAt($event))"
@@ -26,16 +29,24 @@ import { stepUnder } from './line-chart';
   `,
   styleUrl: './timeline-row.css',
   styles: `
-    .strip.marks {
-      height: 1.5rem;
+    .label {
+      grid-column: 1 / -2;
+      contain: inline-size;
     }
 
     .happened {
-      overflow: hidden;
-      max-width: 16rem;
-      color: var(--mat-sys-on-surface-variant);
-      font: var(--mat-sys-body-small);
-      text-overflow: ellipsis;
+      color: var(--mat-sys-on-surface);
+    }
+
+    .strip.marks {
+      grid-column: -2;
+      height: 1.5rem;
+    }
+
+    @media (width < 40rem) {
+      .label {
+        grid-column: 1 / -1;
+      }
     }
   `,
   host: { role: 'listitem' },

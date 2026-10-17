@@ -2,12 +2,14 @@ name: PR Template Validation
 
 on:
   pull_request:
-    types: [opened, edited, synchronize]
+    # "labeled" and "unlabeled" re-run the label check when the labels change.
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
   # The nightly "Vulnerability fixes" workflow starts this on its branch: a pull
   # request it opens starts no workflows of its own.
   workflow_dispatch:
 
 permissions:
+  issues: read
   pull-requests: read
 
 jobs:
@@ -18,7 +20,7 @@ jobs:
     if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR body matches template
+      - name: Check PR body matches template and has a label of each type
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -36,19 +38,43 @@ jobs:
                 return;
               }
             }
+            const problems = [];
+
             const body = pr.body || '';
             const requiredSections = [
               '## Summary',
-              '## Type of change',
               '## Checklist',
               '## Testing'
             ];
 
             const heading = (section) => new RegExp(`^${section}(?: |\r?$|:|\n)`, 'm');
             const missing = requiredSections.filter(section => !heading(section).test(body));
-
             if (missing.length > 0) {
-              core.setFailed(`PR description is missing required sections: ${missing.join(', ')}. Please use the PR template.`);
+              problems.push(`PR description is missing required sections: ${missing.join(', ')}. Please use the PR template.`);
+            }
+
+            // A label's type is the first word of its description, such as
+            // "Change" or "Area" (.github/labels.json). The pull request needs
+            // at least one label of every type.
+            const labelType = (label) => (label.description || '').trim().split(/[\s:]/)[0];
+            const repoLabels = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              ...context.repo,
+              per_page: 100
+            });
+            const types = new Map();
+            for (const label of repoLabels) {
+              const type = labelType(label);
+              if (type) types.set(type, [...(types.get(type) || []), label.name]);
+            }
+            const prLabels = new Set(pr.labels.map(label => label.name));
+            for (const [type, names] of types) {
+              if (!names.some(name => prLabels.has(name))) {
+                problems.push(`PR has no "${type}" label. Add one of: ${names.join(', ')}.`);
+              }
+            }
+
+            if (problems.length > 0) {
+              core.setFailed(problems.join('\n'));
             } else {
               console.log('PR template validation passed.');
             }

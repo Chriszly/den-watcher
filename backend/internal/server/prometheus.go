@@ -50,6 +50,10 @@ type sample struct {
 type family struct {
 	name, help, kind string
 	samples          []sample
+	// seen has the labels of each sample, so a repeated one, as from a
+	// device that lists the same disk twice, is left out: Prometheus refuses
+	// the whole scrape for one.
+	seen map[string]bool
 }
 
 // exposition gathers the families in the order they are first used.
@@ -63,12 +67,20 @@ type exposition struct {
 func (e *exposition) add(name, kind, help, value string, labels ...label) {
 	f := e.byName[name]
 	if f == nil {
-		f = &family{name: name, help: help, kind: kind}
+		f = &family{name: name, help: help, kind: kind, seen: map[string]bool{}}
 		e.byName[name] = f
 		e.families = append(e.families, f)
 	}
 	all := make([]label, 0, len(labels)+len(e.device))
 	all = append(append(all, e.device...), labels...)
+	var key strings.Builder
+	for _, l := range all {
+		key.WriteString(l.name + "\x00" + l.value + "\x00")
+	}
+	if f.seen[key.String()] {
+		return
+	}
+	f.seen[key.String()] = true
 	f.samples = append(f.samples, sample{labels: all, value: value})
 }
 

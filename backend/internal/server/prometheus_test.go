@@ -143,3 +143,16 @@ func TestPrometheusFormatsValues(t *testing.T) {
 		t.Errorf("escapeHelp() = %q, want backslash and line feed escaped, quotes kept", got)
 	}
 }
+
+func TestPrometheusLeavesOutARepeatedSeries(t *testing.T) {
+	devices := []Device{{ID: "pc", Name: "PC"}}
+	var out bytes.Buffer
+
+	writePrometheus(&out, devices, map[string]metrics.Snapshot{"pc": {
+		Disks: []metrics.Disk{{Path: "/", UsedPercent: 20}, {Path: "/", UsedPercent: 30}},
+	}})
+
+	if got := strings.Count(out.String(), `denwatcher_disk_used_percent{device="PC",id="pc",path="/"}`); got != 1 {
+		t.Errorf("the disk / is listed %d times, want once:\n%s", got, out.String())
+	}
+}

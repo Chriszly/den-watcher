@@ -13,6 +13,10 @@
 //	RETENTION_DAYS  days of history to keep; older values are deleted (default 30)
 //	HISTORY_MAX_ENTRIES  how many disks, temperature sensors, network cards and
 //	                GPUs each the history keeps per device (default 64)
+//	HISTORY_FLUSH_MINUTES  how many minutes of history wait in memory before
+//	                they are written to the database together, from 1 to 60
+//	                (default 10); a power cut loses what waits, and a longer
+//	                time writes less to an SD card
 //	DEVICE_NAME     how the page names this device (default "Host Hub")
 //	HUB_DEVICES     other devices to collect from, which turns on hub mode:
 //	                comma-separated name=host:port entries (default none)
@@ -142,6 +146,10 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	flushMinutes, err := intSettingOr("HISTORY_FLUSH_MINUTES", 10, 60, " of minutes")
+	if err != nil {
+		return err
+	}
 	remotes, err := hub.ParseDevices(os.Getenv("HUB_DEVICES"))
 	if err != nil {
 		return fmt.Errorf("check HUB_DEVICES: %w", err)
@@ -243,6 +251,7 @@ func run(ctx context.Context) error {
 			return fmt.Errorf("open the history database %s: %w; set DATABASE_PATH to a writable file", databasePath, err)
 		}
 		defer func() { _ = store.Close() }()
+		store.SetFlushInterval(time.Duration(flushMinutes) * time.Minute)
 		site, wait, err := withHistory(ctx, sampler, store, remotes, complete, retention, historyEntries, port, checkUpdates)
 		if err != nil {
 			return err
@@ -353,6 +362,7 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 	var recording sync.WaitGroup
 	recording.Go(func() { recorder.Run(ctx) })
 	recording.Go(func() { pruner.Run(ctx) })
+	recording.Go(func() { store.RunFlusher(ctx) })
 	recording.Go(func() { watcher.Run(ctx) })
 	recording.Go(func() { happenings.Run(ctx) })
 

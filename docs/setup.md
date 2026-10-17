@@ -337,6 +337,7 @@ Settings are environment variables. In Docker they go in `.env` next to `compose
 | `DATABASE_PATH` | `usage-control.db` in the working folder; set by Docker, the Linux service and the Windows installer | the SQLite file for the history, or with `DATA_ONLY` for the usage kept for the hub |
 | `RETENTION_DAYS` | `30` | days of history to keep, 1 to 3650 |
 | `HISTORY_MAX_ENTRIES` | `64` | disks, sensors, network cards and GPUs each that the history keeps per device, and 8 times as many values of extras, 1 to 10000 |
+| `HISTORY_FLUSH_MINUTES` | `10` | minutes of history kept in memory before they are written to the database together, 1 to 60; a power cut loses what waits ([Writing](database.md#from-reading-to-chart)) |
 | `DEVICE_NAME` | *Host Hub* | how the page names this device |
 | `HUB_DEVICES` | none | other devices to collect from, as `name=address:port`, comma-separated |
 | `HUB_CHECKS` | none | things that run no den-watcher, such as a printer, to show as devices the hub checks for whether they answer, as `name=address:port` to connect to a TCP port or `name=address` to ping, comma-separated; see [Check other things on the network](#6-check-other-things-on-the-network) |
@@ -399,7 +400,7 @@ Deploying to the maintainer's Pi lives in the private settings repository rpi-de
 | Temperature shows as unavailable | The system does not report it to programs, as on most Windows PCs and in containers without the host's `/sys` |
 | No GPU card | No GPU the system reports without extra rights; see [GPUs](data.md#gpus) |
 | The program does not start: "check DISK_PATHS" | A path in `DISK_PATHS` cannot be read; the message says which. In Docker, mount it read-only in `compose.yaml` first; on Windows, list drives or folders that exist, such as `C:\,D:\` |
-| The program does not start: "the database was written by a newer version" | An older version was started on a newer database. Start the newer version again, or put the `.backup` copy back ([details](database.md#updates-to-the-layout)) |
+| The program does not start: "the database was written by a newer version" | An older version was started on a newer database. Start the newer version again, or put the `.backup` copy back ([details](database.md#updates-to-the-layout)). From 3.0.0 on there is no `.backup` copy: only a backup downloaded before the update brings an earlier version back |
 | Some disks, sensors or network cards are missing from the charts | The device reports more than `HISTORY_MAX_ENTRIES` (64) of them; the log says so. Raise it on the hub |
 
 Logs: `docker compose logs` for Docker, `journalctl -u den-watcher` for the Linux service, and the Windows event log (*Application*, source *UsageControl*) on Windows.

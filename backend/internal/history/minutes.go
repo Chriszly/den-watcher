@@ -1,9 +1,13 @@
 package history
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"math"
+	"slices"
 	"sync"
 	"time"
 )
@@ -195,10 +199,69 @@ func (b *Buffer) Since(ctx context.Context, hub string, after time.Time, minutes
 // whether more follow. They are its history, so unlike a Buffer's they stay
 // until the retention deletes them, whichever hub asks.
 func (r Reader) Since(ctx context.Context, _ string, after time.Time, minutes, values int) ([]Minute, bool, error) {
-	return readMinutes(ctx, r.Store.db,
-		`SELECT time, COUNT(*) FROM samples WHERE device = ?3 AND time > ?1 GROUP BY time ORDER BY time LIMIT ?2`,
-		`SELECT time, metric, value FROM samples WHERE device = ?3 AND time > ?1 AND time <= ?2 ORDER BY time`,
-		after, minutes, values, r.Device)
+	// One more than asked for tells whether more follow.
+	rows, err := r.Store.db.QueryContext(ctx, `SELECT time, data FROM history_minutes WHERE device = ? AND time > ? ORDER BY time LIMIT ?`, r.Device, after.Unix(), minutes+1)
+	if err != nil {
+		return nil, false, err
+	}
+	defer func() { _ = rows.Close() }()
+	var list []Minute
+	for rows.Next() {
+		var at int64
+		var data []byte
+		if err := rows.Scan(&at, &data); err != nil {
+			return nil, false, err
+		}
+		stored, err := unpack(data)
+		if err != nil {
+			return nil, false, fmt.Errorf("minute %d of %s: %w", at, r.Device, err)
+		}
+		minute := Minute{Time: at, Values: make(map[string]float64, len(stored))}
+		for _, v := range stored {
+			name, err := r.Store.nameOf(ctx, v.id)
+			if err != nil {
+				return nil, false, err
+			}
+			minute.Values[name] = float64(v.value)
+		}
+		list = append(list, minute)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, false, err
+	}
+	// The minutes that wait come last, unless the stored ones are more than
+	// asked for: they follow in a later request.
+	if len(list) <= minutes {
+		list = mergeMinutes(list, r.Store.pend.between(r.Device, after.Unix()+1, math.MaxInt64))
+	}
+	taken, total := 0, 0
+	for taken < len(list) && taken < minutes && (taken == 0 || total+len(list[taken].Values) <= values) {
+		total += len(list[taken].Values)
+		taken++
+	}
+	if taken == 0 {
+		return []Minute{}, false, nil
+	}
+	return list[:taken], taken < len(list), nil
+}
+
+// mergeMinutes adds to the minutes in stored, in order of time, those in
+// waiting, in order too: a minute in both keeps the stored values and gets
+// the others.
+func mergeMinutes(stored, waiting []Minute) []Minute {
+	for _, w := range waiting {
+		i, found := slices.BinarySearchFunc(stored, w.Time, func(m Minute, t int64) int { return cmp.Compare(m.Time, t) })
+		if !found {
+			stored = slices.Insert(stored, i, w)
+			continue
+		}
+		for metric, value := range w.Values {
+			if _, ok := stored[i].Values[metric]; !ok {
+				stored[i].Values[metric] = value
+			}
+		}
+	}
+	return stored
 }
 
 // readMinutes reads the oldest minutes after the given time, at most minutes

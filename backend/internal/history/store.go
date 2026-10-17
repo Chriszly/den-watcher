@@ -5,6 +5,7 @@ package history
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -18,21 +19,14 @@ import (
 // In hub mode, samples collected from other machines get their own names.
 const LocalDevice = "local"
 
-// schema stores one row per value: a device, a time, the metric's name (see
-// values) and the value. New metrics and devices need no change to the schema.
-// samples_hourly keeps the average of each hour's values, and how many it is
-// over, so ranges with steps of an hour and more read 60 times fewer rows.
-// Add keeps both up to date; the migration to version 2 fills samples_hourly
-// for databases from before it.
-const schema = `
-CREATE TABLE IF NOT EXISTS samples (
-	device TEXT    NOT NULL,
-	time   INTEGER NOT NULL, -- Unix time in seconds
-	metric TEXT    NOT NULL,
-	value  REAL    NOT NULL,
-	PRIMARY KEY (device, time, metric)
-) WITHOUT ROWID;
-CREATE INDEX IF NOT EXISTS samples_by_time ON samples (time);
+// schema keeps the history: history_minutes (see packedSchema) has the
+// values of every minute, and samples_hourly the average of each hour's
+// values per metric, and how many it is over, so ranges with steps of an hour
+// and more read 60 times fewer rows. Add keeps both up to date. Databases
+// from before version 3 had the minutes in samples, one row per value;
+// convertSamples moves them, and the migration to version 2 filled
+// samples_hourly for databases from before it.
+const schema = packedSchema + `
 CREATE TABLE IF NOT EXISTS samples_hourly (
 	device TEXT    NOT NULL,
 	time   INTEGER NOT NULL, -- Unix time in seconds, the start of the hour
@@ -50,6 +44,14 @@ type Store struct {
 	// path is the database's file, next to which Backup makes its copies.
 	path  string
 	cache rangeCache
+	ids   *metricIDs
+	// flushEvery is how long minutes wait in pend before they are written,
+	// or zero to write them at once.
+	flushEvery time.Duration
+	pend       pending
+	// flushing lets one Flush run at a time, and keeps DeleteDevice from
+	// running along with one.
+	flushing sync.Mutex
 	// brokenInfo has a brokenInfoKey for each description of an extra that
 	// could not be read and was logged.
 	brokenInfo sync.Map
@@ -82,7 +84,12 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		return nil, err
 	}
 	removeBackups(path)
-	return &Store{db: db, path: path, cache: newRangeCache()}, nil
+	store := &Store{db: db, path: path, cache: newRangeCache(), ids: newMetricIDs(), pend: newPending()}
+	if err := store.convertSamples(ctx); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return store, nil
 }
 
 // openDB opens the SQLite file at path, which is created once something is
@@ -102,9 +109,10 @@ func openDB(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-// Close closes the database.
+// Close writes the minutes that wait and closes the database.
 func (s *Store) Close() error {
-	return s.db.Close()
+	err := s.Flush(context.Background())
+	return errors.Join(err, s.db.Close())
 }
 
 // Add stores the values of one device measured at one time, and counts them
@@ -117,48 +125,16 @@ func (s *Store) Add(ctx context.Context, device string, at time.Time, values map
 
 // AddMinutes stores several minutes of one device in one go, as Add does
 // each, as when a hub fetches what a device kept while it could not reach it.
+// With a flush interval (see SetFlushInterval) they wait in memory until the
+// next Flush; reads see them meanwhile.
 func (s *Store) AddMinutes(ctx context.Context, device string, minutes []Minute) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
+	if s.flushEvery <= 0 {
+		return s.write(ctx, map[string][]Minute{device: minutes})
 	}
-	defer func() { _ = tx.Rollback() }()
-
-	insert, err := tx.PrepareContext(ctx, `INSERT OR IGNORE INTO samples (device, time, metric, value) VALUES (?, ?, ?, ?)`)
-	if err != nil {
-		return err
+	if s.pend.add(device, minutes) > maxPendingMinutes {
+		return s.Flush(ctx)
 	}
-	defer func() { _ = insert.Close() }()
-	average, err := tx.PrepareContext(ctx, `
-		INSERT INTO samples_hourly (device, time, metric, value, count) VALUES (?, ?, ?, ?, 1)
-		ON CONFLICT (device, time, metric) DO UPDATE SET
-			value = (value * count + excluded.value) / (count + 1),
-			count = count + 1`)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = average.Close() }()
-	for _, minute := range minutes {
-		hour := minute.Time / 3600 * 3600
-		for metric, value := range minute.Values {
-			result, err := insert.ExecContext(ctx, device, minute.Time, metric, value)
-			if err != nil {
-				return fmt.Errorf("store %s: %w", metric, err)
-			}
-			stored, err := result.RowsAffected()
-			if err != nil {
-				return fmt.Errorf("store %s: %w", metric, err)
-			}
-			if stored == 0 {
-				// Stored already, and counted in its hour then.
-				continue
-			}
-			if _, err := average.ExecContext(ctx, device, hour, metric, value); err != nil {
-				return fmt.Errorf("average %s: %w", metric, err)
-			}
-		}
-	}
-	return tx.Commit()
+	return nil
 }
 
 // Range returns the values of one device from from up to (not including) to,
@@ -171,28 +147,19 @@ func (s *Store) AddMinutes(ctx context.Context, device string, minutes []Minute)
 // include the whole step from falls in.
 func (s *Store) Range(ctx context.Context, device string, from, to time.Time, step time.Duration) ([]Series, error) {
 	stepSeconds := max(1, int64(step/time.Second))
-	query := `
-		SELECT metric, time / ?1 * ?1 AS bucket, AVG(value)
-		FROM samples
-		WHERE device = ?2 AND time >= ?3 AND time < ?4
-		GROUP BY metric, bucket
-		ORDER BY metric, bucket`
-	if step >= time.Hour {
-		query = `
+	if step < time.Hour {
+		return s.rangeMinutes(ctx, device, from.Unix(), to.Unix(), stepSeconds)
+	}
+	// From the start of the step from falls in: its hours are stored at their
+	// start, before from, and would be left out, and the step would depend on
+	// the hour from is in, which the cache does not.
+	start := from.Unix() / stepSeconds * stepSeconds
+	rows, err := s.db.QueryContext(ctx, `
 		SELECT metric, time / ?1 * ?1 AS bucket, SUM(value * count) / SUM(count)
 		FROM samples_hourly
 		WHERE device = ?2 AND time >= ?3 AND time < ?4
 		GROUP BY metric, bucket
-		ORDER BY metric, bucket`
-	}
-	start := from.Unix()
-	if step >= time.Hour {
-		// From the start of the step from falls in: its hours are stored at
-		// their start, before from, and would be left out, and the step
-		// would depend on the hour from is in, which the cache does not.
-		start = start / stepSeconds * stepSeconds
-	}
-	rows, err := s.db.QueryContext(ctx, query, stepSeconds, device, start, to.Unix())
+		ORDER BY metric, bucket`, stepSeconds, device, start, to.Unix())
 	if err != nil {
 		return nil, err
 	}
@@ -214,16 +181,20 @@ func (s *Store) Range(ctx context.Context, device string, from, to time.Time, st
 	return series, rows.Err()
 }
 
-// Newest returns the time of the newest stored value of one device, or false
+// Newest returns the time of the newest stored minute of one device, or false
 // when there is none. The primary key starts with device and time, so this
-// reads a single row of the index.
+// reads a single row.
 func (s *Store) Newest(ctx context.Context, device string) (time.Time, bool, error) {
 	var newest sql.NullInt64
-	err := s.db.QueryRowContext(ctx, `SELECT MAX(time) FROM samples WHERE device = ?`, device).Scan(&newest)
-	if err != nil || !newest.Valid {
+	err := s.db.QueryRowContext(ctx, `SELECT MAX(time) FROM history_minutes WHERE device = ?`, device).Scan(&newest)
+	if err != nil {
 		return time.Time{}, false, err
 	}
-	return time.Unix(newest.Int64, 0), true, nil
+	at, waiting := s.pend.newest(device)
+	if !newest.Valid && !waiting {
+		return time.Time{}, false, nil
+	}
+	return time.Unix(max(newest.Int64, at), 0), true, nil
 }
 
 // cachedRange is Range, but answers with the previous answer while that is
@@ -242,18 +213,29 @@ func (s *Store) cachedRange(ctx context.Context, device string, from, to time.Ti
 	return series, nil
 }
 
-// DeleteBefore deletes every value measured before t and returns how many
+// DeleteBefore deletes every minute stored before t and returns how many
 // were deleted. The hour t falls in keeps its average, as it still has values.
 // The descriptions of extras without values left go too. The values are
 // deleted in chunks (see deleteChunks), so the first prune after a long
 // downtime, or after RETENTION_DAYS was lowered, does not keep the recorders
 // from storing meanwhile.
 func (s *Store) DeleteBefore(ctx context.Context, t time.Time) (int64, error) {
-	deleted, err := s.deleteChunks(ctx, "samples", `time < ?`, t.Unix())
+	s.pend.dropBefore(t.Unix())
+	// The primary key starts with the device, so each device's old minutes
+	// are one range of it; a time alone would read all of them.
+	devices, err := s.devices(ctx)
 	if err != nil {
-		return deleted, err
+		return 0, err
 	}
-	hourly, err := s.deleteChunks(ctx, "samples_hourly", `time < ?`, t.Truncate(time.Hour).Unix())
+	var deleted int64
+	for _, device := range devices {
+		n, err := s.deleteChunks(ctx, "history_minutes", "device, time", `device = ? AND time < ?`, device, t.Unix())
+		deleted += n
+		if err != nil {
+			return deleted, err
+		}
+	}
+	hourly, err := s.deleteChunks(ctx, "samples_hourly", "device, time, metric", `time < ?`, t.Truncate(time.Hour).Unix())
 	if err != nil {
 		return deleted, err
 	}
@@ -267,12 +249,16 @@ func (s *Store) DeleteBefore(ctx context.Context, t time.Time) (int64, error) {
 // DeleteDevice deletes every value of one device, and how its extras are
 // described, in chunks as DeleteBefore does.
 func (s *Store) DeleteDevice(ctx context.Context, device string) error {
+	// After a flush that is writing its minutes, which would bring them back.
+	s.flushing.Lock()
+	s.pend.forget(device)
+	s.flushing.Unlock()
 	s.cache.forget(device)
-	deleted, err := s.deleteChunks(ctx, "samples", `device = ?`, device)
+	deleted, err := s.deleteChunks(ctx, "history_minutes", "device, time", `device = ?`, device)
 	if err != nil {
 		return err
 	}
-	hourly, err := s.deleteChunks(ctx, "samples_hourly", `device = ?`, device)
+	hourly, err := s.deleteChunks(ctx, "samples_hourly", "device, time, metric", `device = ?`, device)
 	if err != nil {
 		return err
 	}
@@ -302,18 +288,36 @@ const (
 	deleteChunkPause = 50 * time.Millisecond
 )
 
-// deleteChunks deletes the rows of table, samples or samples_hourly, that
-// match where, deleteChunkRows at a time, each chunk in a transaction of its
+// devices returns the devices that have minutes: one lookup of the primary
+// key per device, where DISTINCT would read every minute.
+func (s *Store) devices(ctx context.Context) ([]string, error) {
+	var devices []string
+	query, args := `SELECT MIN(device) FROM history_minutes`, []any{}
+	for {
+		var device sql.NullString
+		if err := s.db.QueryRowContext(ctx, query, args...).Scan(&device); err != nil {
+			return nil, err
+		}
+		if !device.Valid {
+			return devices, nil
+		}
+		devices = append(devices, device.String)
+		query, args = `SELECT MIN(device) FROM history_minutes WHERE device > ?`, []any{device.String}
+	}
+}
+
+// deleteChunks deletes the rows of table, history_minutes or samples_hourly,
+// whose primary key is keys, that match where, deleteChunkRows at a time, each chunk in a transaction of its
 // own, and returns how many it deleted. One DELETE of millions of rows would
 // hold the database's write lock for minutes, so storing would fail
 // meanwhile, and grow the write-ahead log by as much as it deletes.
-func (s *Store) deleteChunks(ctx context.Context, table, where string, args ...any) (int64, error) {
+func (s *Store) deleteChunks(ctx context.Context, table, keys, where string, args ...any) (int64, error) {
 	// Each chunk looks its rows up by where and deletes them by primary key.
-	//nolint:gosec // table and where are fixed by the callers; values go in as arguments.
+	//nolint:gosec // table, keys and where are fixed by the callers; values go in as arguments.
 	query := fmt.Sprintf(`
-		DELETE FROM %[1]s WHERE (device, time, metric) IN (
-			SELECT device, time, metric FROM %[1]s WHERE %[2]s LIMIT %[3]d
-		)`, table, where, deleteChunkRows)
+		DELETE FROM %[1]s WHERE (%[4]s) IN (
+			SELECT %[4]s FROM %[1]s WHERE %[2]s LIMIT %[3]d
+		)`, table, where, deleteChunkRows, keys)
 	var total int64
 	for {
 		result, err := s.db.ExecContext(ctx, query, args...)

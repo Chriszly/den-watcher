@@ -113,8 +113,12 @@ jobs:
           fi
 
           # A pull request opened with this workflow's token starts no workflows of its
-          # own, so start the required checks on the branch by hand.
+          # own, so start its checks on the branch by hand: CI, the Linux install
+          # and the Windows installer checks, as on any pull request, and the
+          # template check. A dispatch on a branch publishes nothing; only a tag does.
           gh workflow run ci.yml --ref "$BRANCH"
+          gh workflow run linux.yml --ref "$BRANCH"
+          gh workflow run windows.yml --ref "$BRANCH"
           gh workflow run pr-template-validation.yml --ref "$BRANCH"
 
       - name: Fail when a vulnerability is left

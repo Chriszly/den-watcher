@@ -150,7 +150,9 @@ jobs:
   docker:
     name: Docker image (arm64 and amd64)
     # Merges to main build and publish the image in the Docker image workflow.
-    if: github.event_name == 'pull_request'
+    # A dispatch runs it too, for the nightly vulnerability pull request,
+    # which starts its checks by hand.
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

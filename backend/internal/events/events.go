@@ -171,6 +171,9 @@ func (l *Log) note(ctx context.Context, device string, uptime uint64, version st
 		}
 		delete(l.forgotten, device)
 	}
+	// The database keeps signed numbers: a larger uptime, which no device
+	// really has, could never be stored.
+	uptime = min(uptime, math.MaxInt64)
 	before, known := l.seen[device]
 	if version == "" {
 		version = before.version

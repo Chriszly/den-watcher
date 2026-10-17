@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"errors"
+	"math"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -107,6 +108,25 @@ func TestNoticesARebootWhileTheHubWasStopped(t *testing.T) {
 		{Time: later, Kind: KindUpdate, Detail: "1.5.0"},
 	}
 	if got := between(t, l, "local"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("events = %+v, want %+v", got, want)
+	}
+}
+
+func TestStoresAnUptimeTooLargeForTheDatabase(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "events.db")
+	u := &usage{snapshot: reading(math.MaxUint64, "1.4.0")}
+	targets := []Target{{ID: "nas", Usage: u}}
+	now := time.Unix(1_800_000_000, 0)
+	openTest(t, path, &targets).Check(ctx, now)
+
+	// How it was seen was stored, so a start is noticed after a restart.
+	u.snapshot = reading(120, "1.4.0")
+	later := now.Add(time.Hour)
+	l := openTest(t, path, &targets)
+	l.Check(ctx, later)
+	want := []Event{{Time: later.Add(-2 * time.Minute), Kind: KindReboot}}
+	if got := between(t, l, "nas"); !reflect.DeepEqual(got, want) {
 		t.Fatalf("events = %+v, want %+v", got, want)
 	}
 }

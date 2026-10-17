@@ -5,7 +5,7 @@ import { By } from '@angular/platform-browser';
 
 import { History } from '../metrics/metrics';
 import { ChartCanvas } from './chart-canvas';
-import { HistoryStore } from './history-store';
+import { HistoryStore, refreshIntervalMs } from './history-store';
 import { TIMELINE_STORAGE_KEY, Timeline, TimelineMode } from './timeline';
 
 const HISTORY: History = {
@@ -224,19 +224,31 @@ describe('Timeline', () => {
     expect(host().querySelector('app-csv-download')).toBeNull();
   });
 
-  it('goes back from a stretch it could not read', () => {
+  it('keeps the trail on a stretch it could not read, and reads it again with the whole range', () => {
     show();
     brush(0.2, 0.6);
     zoomedRequest();
     const zoomedOnce = trail();
     brush(0.2, 0.6);
-    http
-      .expectOne((r) => r.url === '/api/history')
-      .flush(null, { status: 500, statusText: 'Server Error' });
+    const zoomedTwice = trail();
+    expect(zoomedTwice.length).toBe(zoomedOnce.length + 1);
+    const failed = http.expectOne((r) => r.url === '/api/history');
+    const { params } = failed.request;
+    failed.flush(null, { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
-    expect(trail()).toEqual(zoomedOnce);
-    expect(zoomedRequest()).toEqual({ from: '60', to: '180' });
+    expect(trail()).toEqual(zoomedTwice);
+    expect(rows()).toEqual([]);
+    expect(host().querySelector('.nothing')!.textContent).toContain('cannot be read');
+
+    // The whole range is read again, and with it the stretch.
+    vi.advanceTimersByTime(refreshIntervalMs(HISTORY.to - HISTORY.from));
+    http.expectOne((r) => r.url === '/api/history').flush(HISTORY);
+    fixture.detectChanges();
+    vi.advanceTimersByTime(0);
+    expect(zoomedRequest()).toEqual({ from: params.get('from'), to: params.get('to') });
+    expect(trail()).toEqual(zoomedTwice);
     expect(rows()).toEqual(['CPU: 90 %', 'Memory: 45 %']);
+    expect(host().querySelector('.nothing')).toBeNull();
   });
 
   it('keeps the trail in a stretch without readings, and says nothing was recorded', () => {

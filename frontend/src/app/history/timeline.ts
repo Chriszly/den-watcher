@@ -86,17 +86,19 @@ export class TimelineMode {
               (picked)="pick($event)"
             />
           }
-          <div class="axis" aria-hidden="true">
-            <span>{{ h.from * 1000 | date: dateFormat() : undefined : i18n.language() }}</span>
-            @if (brushed(); as stretch) {
-              <span class="at" [style.left.%]="brushCenter()">{{ stretchLabel(stretch) }}</span>
-            } @else if (shownCursor(); as time) {
-              <span class="at">{{
-                time * 1000 | date: dateFormat() : undefined : i18n.language()
-              }}</span>
-            }
-            <span>{{ h.to * 1000 | date: dateFormat() : undefined : i18n.language() }}</span>
-          </div>
+          @if (!zoom.failed()) {
+            <div class="axis" aria-hidden="true">
+              <span>{{ h.from * 1000 | date: dateFormat() : undefined : i18n.language() }}</span>
+              @if (brushed(); as stretch) {
+                <span class="at" [style.left.%]="brushCenter()">{{ stretchLabel(stretch) }}</span>
+              } @else if (shownCursor(); as time) {
+                <span class="at">{{
+                  time * 1000 | date: dateFormat() : undefined : i18n.language()
+                }}</span>
+              }
+              <span>{{ h.to * 1000 | date: dateFormat() : undefined : i18n.language() }}</span>
+            </div>
+          }
           <div
             class="rows"
             role="list"
@@ -107,26 +109,30 @@ export class TimelineMode {
             (pointercancel)="brush.set(null)"
             (dblclick)="zoom.back()"
           >
-            <!-- Always there, also without marks, so the rows never move down when one comes in. -->
-            <app-timeline-marks
-              [markers]="marked()"
-              [from]="h.from"
-              [to]="h.to"
-              [step]="h.stepSeconds"
-              [cursor]="shownCursor()"
-              (hover)="cursor.set($event)"
-            />
-            @for (line of lines(); track $index) {
-              <app-timeline-row
-                [line]="line"
+            @if (zoom.failed()) {
+              <p class="nothing" role="listitem">{{ i18n.t('history.unreachable') }}</p>
+            } @else {
+              <!-- Always there, also without marks, so the rows never move down when one comes in. -->
+              <app-timeline-marks
+                [markers]="marked()"
                 [from]="h.from"
                 [to]="h.to"
                 [step]="h.stepSeconds"
                 [cursor]="shownCursor()"
                 (hover)="cursor.set($event)"
               />
-            } @empty {
-              <p class="nothing" role="listitem">{{ i18n.t('timeline.nothingRecorded') }}</p>
+              @for (line of lines(); track $index) {
+                <app-timeline-row
+                  [line]="line"
+                  [from]="h.from"
+                  [to]="h.to"
+                  [step]="h.stepSeconds"
+                  [cursor]="shownCursor()"
+                  (hover)="cursor.set($event)"
+                />
+              } @empty {
+                <p class="nothing" role="listitem">{{ i18n.t('timeline.nothingRecorded') }}</p>
+              }
             }
           </div>
         }

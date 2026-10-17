@@ -196,6 +196,19 @@ describe('LineChart', () => {
     expect(drawn().map((line) => line.dashed)).toEqual([...Array(8).fill(false), true]);
     expect(drawn()[8].series).toBe(0);
   });
+
+  it('colors a line by the place it is given instead of its place among the lines', () => {
+    const element = render([
+      { label: 'Hub', points: [], place: 0 },
+      { label: 'Office PC', points: [], place: 9 },
+    ]);
+    const swatches = element.querySelectorAll('.legend .swatch');
+    expect([...swatches[1].classList].sort()).toEqual(['dashed', 'series-1', 'swatch']);
+    expect(drawn().map((line) => [line.series, line.dashed])).toEqual([
+      [0, false],
+      [1, true],
+    ]);
+  });
 });
 
 describe('pointerFraction', () => {

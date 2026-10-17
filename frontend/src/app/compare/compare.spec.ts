@@ -307,6 +307,16 @@ describe('Compare', () => {
     expect(legend()).toEqual(['Hub', 'Office PC']);
   });
 
+  it("colors each device's line by its place among the devices, in every chart", () => {
+    answer();
+    // The router before the PC charts no CPU; the PC still takes the color of the third device.
+    const swatches = (fixture.nativeElement as HTMLElement).querySelectorAll(
+      '.charts .legend .swatch',
+    );
+    expect(Array.from(swatches, (s) => s.classList.contains('series-0'))).toEqual([true, false]);
+    expect(swatches[1].classList).toContain('series-2');
+  });
+
   it('leaves out the line of a device whose history ends before the range', () => {
     answer(true);
     // With one line left, the chart needs no legend.

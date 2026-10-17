@@ -44,7 +44,7 @@ export class SidebarState {
  * A sidebar at the left of the page for what is put in it. On wide screens a button across its
  * bottom collapses it to a rail, marked «, and expands it again, marked ». On narrow screens it opens
  * over the page and takes the focus, and closes again when anything in it is picked, the page
- * beside it is clicked or Escape is pressed.
+ * beside it is clicked or Escape is pressed, giving the focus back to what opened it.
  */
 @Component({
   selector: 'app-sidebar',
@@ -64,14 +64,14 @@ export class SidebarState {
         }}</span>
       </button>
     </aside>
-    <div class="scrim" aria-hidden="true" (click)="state.open.set(false)"></div>
+    <div class="scrim" aria-hidden="true" (click)="close()"></div>
   `,
   styleUrl: './sidebar.css',
   host: {
     '[class.collapsed]': 'state.collapsed()',
     '[class.open]': 'state.open()',
     '(click)': 'closeOnPick($event)',
-    '(document:keydown.escape)': 'state.open.set(false)',
+    '(document:keydown.escape)': 'close()',
   },
 })
 export class Sidebar {
@@ -80,22 +80,42 @@ export class Sidebar {
 
   protected readonly state = inject(SidebarState);
   protected readonly i18n = inject(I18n);
+  private readonly document = inject(DOCUMENT);
   private readonly aside = viewChild.required<ElementRef<HTMLElement>>('aside');
+  /** What had the focus when the sidebar opened over the page: the header's menu button. */
+  private opener: HTMLElement | null = null;
 
   constructor() {
     // Opened over the page, the sidebar takes the focus, so the keyboard goes on in it.
     effect(() => {
       if (this.state.open()) {
+        const focused = this.document.activeElement;
+        this.opener = focused instanceof HTMLElement ? focused : null;
         this.aside().nativeElement.querySelector<HTMLElement>('button:not(.collapse)')?.focus();
       }
     });
+  }
+
+  /**
+   * Closes the sidebar over the page. The focus, if it was in the sidebar, goes back to what opened
+   * it, so it is not left on a button that is hidden.
+   */
+  protected close(): void {
+    if (!this.state.open()) {
+      return;
+    }
+    this.state.open.set(false);
+    if (this.aside().nativeElement.contains(this.document.activeElement)) {
+      this.opener?.focus();
+    }
+    this.opener = null;
   }
 
   /** On narrow screens, picking a device or the comparison shows it in place of the sidebar. */
   protected closeOnPick(event: Event): void {
     const button = (event.target as Element).closest('button');
     if (button && !button.classList.contains('collapse')) {
-      this.state.open.set(false);
+      this.close();
     }
   }
 }

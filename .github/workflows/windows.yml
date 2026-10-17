@@ -175,19 +175,9 @@ jobs:
               go build -trimpath -ldflags="-s -w -H=windowsgui" \
                 -o "../dist/$arch/den-watcher-tray.exe" ./cmd/den-watcher-tray
           done
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/den-watcher-tests.exe ./cmd/den-watcher
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/metrics-tests.exe ./internal/metrics
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/winservice-tests.exe ./internal/winservice
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/router-tests.exe ./internal/router
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/addons-tests.exe ./internal/addons
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/smart-tests.exe ./internal/addons/smart
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/power-tests.exe ./internal/addons/power
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/pressure-tests.exe ./internal/addons/pressure
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/kernel-tests.exe ./internal/addons/kernel
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/wifi-tests.exe ./internal/addons/wifi
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/memory-tests.exe ./internal/addons/memory
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/processes-tests.exe ./internal/addons/processes
-          GOOS=windows GOARCH=amd64 go test -c -o ../dist/tests/bluetooth-tests.exe ./internal/addons/bluetooth
+          for pkg in cmd/den-watcher internal/{metrics,winservice,router,addons} internal/addons/{smart,power,pressure,kernel,wifi,memory,processes,bluetooth}; do
+            GOOS=windows GOARCH=amd64 go test -c -o "../dist/tests/$(basename "$pkg")-tests.exe" "./$pkg"
+          done
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -210,39 +200,28 @@ jobs:
 
       - name: Run the Windows-only tests
         run: |
+          # A test program that fails ends the step.
+          $PSNativeCommandUseErrorActionPreference = $true
           # Quoted: PowerShell would split -test.v into -test and .v.
           dist\tests\den-watcher-tests.exe '-test.v'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           # Only the GPU and network card tests: the other metrics tests assume Linux paths.
           dist\tests\metrics-tests.exe '-test.v' '-test.run=GPU|IsHardware'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           dist\tests\winservice-tests.exe '-test.v'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           # Only the passwords the installer stored, kept with DPAPI: the routers are read the same on Linux.
           dist\tests\router-tests.exe '-test.v' '-test.run=DPAPI|StoredPasswords'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           # Only the Windows checks of the add-on folder: the others are the same on Linux.
           dist\tests\addons-tests.exe '-test.v' '-test.run=Windows'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           # Only the Windows tests: the others read testdata next to the package.
           dist\tests\smart-tests.exe '-test.v' '-test.run=Windows'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           # Only the Windows reading: the other power tests are the same on Linux.
           dist\tests\power-tests.exe '-test.v' '-test.run=Windows'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           dist\tests\pressure-tests.exe '-test.v'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           dist\tests\kernel-tests.exe '-test.v'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           dist\tests\wifi-tests.exe '-test.v'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           dist\tests\memory-tests.exe '-test.v'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           # Only the Windows listing: the other processes tests are the same on Linux.
           dist\tests\processes-tests.exe '-test.v' '-test.run=Windows'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
           dist\tests\bluetooth-tests.exe '-test.v'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
 
   installer:
     name: Windows installer (x64 and arm64)

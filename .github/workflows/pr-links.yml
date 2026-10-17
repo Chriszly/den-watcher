@@ -65,27 +65,12 @@ jobs:
                   .filter(url => !onGitHub(host(url)))
                   .map(url => `${where}, line ${i + 1}: ${url}`));
 
-            const commits = await github.paginate(github.rest.pulls.listCommits, {
-              ...context.repo,
-              pull_number,
-              per_page: 100
-            });
+            const everyPage = (list, params) => github.paginate(list, { ...context.repo, ...params, per_page: 100 });
+            const commits = await everyPage(github.rest.pulls.listCommits, { pull_number });
             // The comments, the reviews and the comments on lines of the diff.
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              ...context.repo,
-              issue_number: pull_number,
-              per_page: 100
-            });
-            const reviews = await github.paginate(github.rest.pulls.listReviews, {
-              ...context.repo,
-              pull_number,
-              per_page: 100
-            });
-            const reviewComments = await github.paginate(github.rest.pulls.listReviewComments, {
-              ...context.repo,
-              pull_number,
-              per_page: 100
-            });
+            const comments = await everyPage(github.rest.issues.listComments, { issue_number: pull_number });
+            const reviews = await everyPage(github.rest.pulls.listReviews, { pull_number });
+            const reviewComments = await everyPage(github.rest.pulls.listReviewComments, { pull_number });
             const hits = [
               ...linksOutside(pr.title, 'title'),
               ...linksOutside(body, 'description'),

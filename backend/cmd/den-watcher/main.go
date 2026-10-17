@@ -634,7 +634,7 @@ func diskPathsHint(goos string, container bool) string {
 func allowedHosts() []string {
 	valid, invalid := server.SplitAllowedHosts(listSetting("ALLOWED_HOSTS"))
 	for _, entry := range invalid {
-		slog.Warn("an entry of ALLOWED_HOSTS is not a name or IP address and is left out; give the name alone, such as pi.lan, without http:// or a path", "entry", entry)
+		slog.Warn("an entry of ALLOWED_HOSTS is not a name or IP address and is left out; give the name alone, such as pi.lan, without http:// or a path, and a name with letters such as ü in the xn-- form the browser sends, such as xn--kche-0ra.lan for küche.lan", "entry", entry)
 	}
 	return valid
 }

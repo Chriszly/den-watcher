@@ -4,7 +4,7 @@ import { Observable, catchError, map, of, share, tap } from 'rxjs';
 import { MetricsService } from '../metrics/metrics';
 import { Summary, summarize } from '../metrics/summary';
 import { PageVisibility } from '../page-visibility';
-import { DeviceService } from './devices';
+import { DeviceService, readByHub } from './devices';
 
 /** How often the current values of all devices are read again, as often as the hub reads them. */
 export const FLEET_REFRESH_MS = 5000;
@@ -47,7 +47,7 @@ export class FleetValues {
               .filter((d) => !d.unreachable)
               .map((d): [string, Summary | null] => [
                 d.id,
-                usage[d.id] ? summarize(usage[d.id]) : null,
+                usage[d.id] ? summarize(usage[d.id], readByHub(d)) : null,
               ]),
           ),
       ),

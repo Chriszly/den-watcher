@@ -46,6 +46,7 @@ const router: Snapshot = {
   memory: { totalBytes: 0, usedBytes: 0, usedPercent: 0 },
   temperatures: [],
   disks: [],
+  network: [{ ...snapshot.network[0], name: 'WAN', receiveBytesPerSecond: 1024 }],
 };
 
 describe('summarize', () => {
@@ -69,6 +70,25 @@ describe('summarize', () => {
       network: { receive: 1024, send: 200 },
       uptimeSeconds: undefined,
     });
+  });
+
+  it('counts only the WAN interfaces of a device the hub reads, as its own page does', () => {
+    const wan = {
+      ...snapshot.network[0],
+      name: 'WAN',
+      receiveBytesPerSecond: 500,
+      sendBytesPerSecond: 50,
+    };
+    const lan = {
+      ...snapshot.network[0],
+      name: 'LAN',
+      receiveBytesPerSecond: 60,
+      sendBytesPerSecond: 480,
+    };
+    const asus: Snapshot = { ...router, network: [wan, lan] };
+    expect(summarize(asus, true).network).toEqual({ receive: 500, send: 50 });
+    expect(summarize(asus).network).toEqual({ receive: 560, send: 530 });
+    expect(summarize({ ...router, network: [lan] }, true).network).toBeUndefined();
   });
 });
 

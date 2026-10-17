@@ -1,3 +1,4 @@
+import { isWan } from '../history/history';
 import { Snapshot } from './metrics';
 import { System } from './system';
 
@@ -9,7 +10,7 @@ export interface Summary {
   disk?: { path: string; percent: number };
   /** The hottest sensor. */
   temperature?: { sensor: string; celsius: number };
-  /** All network cards together, in bytes per second. */
+  /** All network cards together, or a router's WAN interfaces, in bytes per second. */
   network?: { receive: number; send: number };
   uptimeSeconds?: number;
   /** What the machine is; missing from devices that run an older version. */
@@ -17,8 +18,13 @@ export interface Summary {
   version?: string;
 }
 
-/** The main values of a snapshot. A router or a check reports only some, the others are missing. */
-export function summarize(s: Snapshot): Summary {
+/**
+ * The main values of a snapshot. A router or a check reports only some, the others are missing. For
+ * a device the hub reads (`router`), the network counts only its WAN interfaces, as its own page
+ * does: a forwarded byte passes through two interfaces.
+ */
+export function summarize(s: Snapshot, router = false): Summary {
+  const network = router ? s.network.filter((n) => isWan(n.name)) : s.network;
   const fullest = [...s.disks].sort((a, b) => b.usedPercent - a.usedPercent)[0];
   const hottest = [...s.temperatures].sort((a, b) => b.celsius - a.celsius)[0];
   return {
@@ -27,10 +33,10 @@ export function summarize(s: Snapshot): Summary {
     disk: fullest && { path: fullest.path, percent: fullest.usedPercent },
     temperature: hottest && { sensor: hottest.sensor, celsius: hottest.celsius },
     network:
-      s.network.length > 0
+      network.length > 0
         ? {
-            receive: s.network.reduce((sum, n) => sum + n.receiveBytesPerSecond, 0),
-            send: s.network.reduce((sum, n) => sum + n.sendBytesPerSecond, 0),
+            receive: network.reduce((sum, n) => sum + n.receiveBytesPerSecond, 0),
+            send: network.reduce((sum, n) => sum + n.sendBytesPerSecond, 0),
           }
         : undefined,
     uptimeSeconds: s.uptimeSeconds > 0 ? s.uptimeSeconds : undefined,

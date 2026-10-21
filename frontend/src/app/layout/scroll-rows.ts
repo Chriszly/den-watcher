@@ -13,12 +13,12 @@ import {
 import { observeWidth } from '../browser';
 import { I18n } from '../i18n/i18n';
 
-/** The most entries a card shows at once; more scroll. */
+/** The most entries a card shows at once, unless its row makes it taller; more scroll. */
 export const MAX_ROWS = 8;
 
 /**
- * How high the list may be to show its first `max` rows, from their offsets in the list: the bottom
- * of the last one shown. Null while all rows fit, so the list keeps its natural height.
+ * How high the list is at least to show its first `max` rows, from their offsets in the list: the
+ * bottom of the last one shown. Null while all rows fit, so the list keeps its natural height.
  */
 export function rowsHeight(
   rows: readonly { offsetTop: number; offsetHeight: number }[],
@@ -58,12 +58,13 @@ export function wheelPixels(event: { deltaY: number; deltaMode: number }, page: 
 }
 
 /**
- * The entries of a card, of which it shows the first eight; more scroll, without a scrollbar. An
- * arrow below them tells that more follow and scrolls down a page; it hides at the bottom. Once
+ * The entries of a card, of which it shows the first eight, or as many as fit when a taller card
+ * beside it stretches the row; more scroll, without a scrollbar. An arrow below them tells that more follow and scrolls down a page; it hides at the bottom. Once
  * scrolled, an arrow over the top does the same upwards. While the pointer is over a card that
  * shares its row with others, the wheel scrolls only the list, also over its heading and at either
  * end, not the page (see locks). It measures again when its rows change, as values that refresh
- * can change how high a row is, and when its width changes, which can wrap rows.
+ * can change how high a row is, when its width changes, which can wrap rows, and when its height
+ * changes, as the row grows or shrinks.
  */
 @Component({
   selector: 'app-scroll-rows',
@@ -129,6 +130,16 @@ export class ScrollRows {
 
     const host = this.host;
     observeWidth(host, () => requestAnimationFrame(() => this.measure()));
+    // The list grows with its card when a taller card stretches the row, which can show every row.
+    let height = 0;
+    const resized = new ResizeObserver(([entry]) => {
+      if (this.observing && entry.contentRect.height !== height) {
+        height = entry.contentRect.height;
+        requestAnimationFrame(() => this.measure());
+      }
+    });
+    afterNextRender(() => resized.observe(this.list().nativeElement));
+    inject(DestroyRef).onDestroy(() => resized.disconnect());
 
     // Over the list the browser scrolls it, and overscroll-behavior keeps the page still at its
     // ends; over the rest of the card, such as its heading, the wheel scrolls the list here.
@@ -176,12 +187,13 @@ export class ScrollRows {
 
   private measure(): void {
     const list = this.list().nativeElement;
+    // The list is at least as high as its first rows and grows into the room its card has.
     const height = rowsHeight([...list.children] as HTMLElement[]);
-    const maxHeight = height === null ? '' : `${height}px`;
-    if (list.style.maxHeight !== maxHeight) {
-      list.style.maxHeight = maxHeight;
+    const basis = height === null ? '' : `${height}px`;
+    if (list.style.flexBasis !== basis) {
+      list.style.flexBasis = basis;
     }
-    this.scrolls.set(height !== null);
+    this.scrolls.set(height !== null && list.scrollHeight > list.clientHeight + 1);
     // On the dashboard a card fills a slot of the grid, which is what shares the row.
     this.locks.set(
       sharesRow(this.host.closest('.slot') ?? this.host.closest('.card') ?? this.host),

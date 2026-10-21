@@ -189,9 +189,10 @@ progress {
 }
 
 /* A card with charts lays out its content in a column, so the charts sit at its bottom and line up
-   with the charts of the cards beside it. Its rows' margins add up in a column instead of
+   with the charts of the cards beside it, and so does a card with a list, so the list grows into
+   the room a taller card beside it leaves. Its rows' margins add up in a column instead of
    overlapping, so they are halved. */
-.slot > .card:has(> app-card-charts:not(:empty)) {
+.slot > .card:has(> app-card-charts:not(:empty), > app-scroll-rows) {
   display: flex;
   flex-direction: column;
 

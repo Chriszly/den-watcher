@@ -100,10 +100,15 @@ describe('ScrollRows', () => {
   let scrollTop = 0;
   // The card's width; the row it is in is 1000 pixels wide.
   let cardWidth = 300;
+  // How high a taller card beside it stretches the list, if one does.
+  let stretched = 0;
+  let resized: ResizeObserverCallback[] = [];
 
   beforeEach(() => {
     scrollTop = 0;
     cardWidth = 300;
+    stretched = 0;
+    resized = [];
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
       () => ({ width: cardWidth }) as DOMRect,
     );
@@ -111,11 +116,15 @@ describe('ScrollRows', () => {
     vi.stubGlobal(
       'ResizeObserver',
       class {
+        constructor(callback: ResizeObserverCallback) {
+          resized.push(callback);
+        }
         observe = vi.fn();
         disconnect = vi.fn();
       },
     );
-    // jsdom lays nothing out: each row is 20 pixels high, and the list shows what its max-height lets it.
+    // jsdom lays nothing out: each row is 20 pixels high, and the list is as high as its
+    // flex basis, or as its card stretches it.
     vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(20);
     vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function (
       this: HTMLElement,
@@ -130,7 +139,11 @@ describe('ScrollRows', () => {
     vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (
       this: HTMLElement,
     ) {
-      return parseFloat(this.style.maxHeight) || this.children.length * 20;
+      return (
+        (this.classList.contains('list') && stretched) ||
+        parseFloat(this.style.flexBasis) ||
+        this.children.length * 20
+      );
     });
     vi.spyOn(HTMLElement.prototype, 'scrollTop', 'get').mockImplementation(() => scrollTop);
   });
@@ -156,7 +169,7 @@ describe('ScrollRows', () => {
 
   it('keeps up to eight rows as they are, without an arrow', () => {
     const { list, arrow } = render(MAX_ROWS);
-    expect(list.style.maxHeight).toBe('');
+    expect(list.style.flexBasis).toBe('');
     expect(arrow()).toBeNull();
     expect(list.hasAttribute('tabindex')).toBe(false);
   });
@@ -168,7 +181,7 @@ describe('ScrollRows', () => {
 
   it('shows eight of more rows and an arrow that scrolls down a page', () => {
     const { list, arrow } = render(12);
-    expect(list.style.maxHeight).toBe('160px');
+    expect(list.style.flexBasis).toBe('160px');
     expect(arrow()?.classList).not.toContain('hidden');
     expect(arrow()?.getAttribute('aria-label')).toBe('Scroll down for more');
 
@@ -278,15 +291,32 @@ describe('ScrollRows', () => {
     fixture.componentInstance.names.update((names) => [...names, 'nvme Composite']);
     fixture.detectChanges();
     expect(measured).toHaveBeenCalled();
-    expect(list.style.maxHeight).toBe('160px');
+    expect(list.style.flexBasis).toBe('160px');
     expect(arrow()).not.toBeNull();
+  });
+
+  it('shows every row, without an arrow, when a taller card beside it stretches the row', () => {
+    vi.stubGlobal('requestAnimationFrame', (frame: FrameRequestCallback) => {
+      frame(0);
+      return 0;
+    });
+    const { fixture, list, arrow } = render(12);
+    expect(arrow()).not.toBeNull();
+
+    stretched = 240;
+    const entry = { contentRect: { width: 300, height: stretched } } as ResizeObserverEntry;
+    resized.forEach((callback) => callback([entry], {} as ResizeObserver));
+    fixture.detectChanges();
+    expect(list.style.flexBasis).toBe('160px');
+    expect(arrow()).toBeNull();
+    expect(list.hasAttribute('tabindex')).toBe(false);
   });
 
   it('lets the list grow again when rows go', () => {
     const { fixture, list, arrow } = render(12);
     fixture.componentInstance.names.set(['cpu_thermal', 'nvme Composite']);
     fixture.detectChanges();
-    expect(list.style.maxHeight).toBe('');
+    expect(list.style.flexBasis).toBe('');
     expect(arrow()).toBeNull();
   });
 });

@@ -204,7 +204,7 @@ func TestCPUSumAddsUpIdleAndEveryProcessAsTaskManagerDoes(t *testing.T) {
 	}
 }
 
-func TestReaderListsTheTopTen(t *testing.T) {
+func TestReaderListsTheTop(t *testing.T) {
 	var processes []Process
 	for pid := 1; pid <= 25; pid++ {
 		processes = append(processes, Process{PID: pid, Name: "p", Memory: uint64(pid)})
@@ -214,7 +214,7 @@ func TestReaderListsTheTopTen(t *testing.T) {
 	got := r.Read(t.Context(), time.Now())
 
 	if len(got) != 1 || len(got[0].Items) != Top || got[0].Items[0].ID != "pid-25" || got[0].Items[9].Label != "p (10)" {
-		t.Errorf("Read() = %+v, want the ten largest, numbered", got)
+		t.Errorf("Read() = %+v, want the twenty largest, numbered", got)
 	}
 	if clean := metrics.CleanExtras(got, 64); len(clean) != 1 || len(clean[0].Items) != Top {
 		t.Errorf("CleanExtras() dropped values: %+v", clean)

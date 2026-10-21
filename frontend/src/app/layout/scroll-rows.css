@@ -1,13 +1,17 @@
 :host {
   position: relative;
-  display: block;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
 }
 
-/* Rows are measured from the list (see rowsHeight); it scrolls with its scrollbar always hidden.
+/* The list starts as high as its first rows (see rowsHeight) and grows with its card, when a taller
+   card beside it stretches the row; it scrolls with its scrollbar always hidden.
    In a card that shares its row, the wheel stops at its ends, so the page does not scroll on under
    the pointer; a card as wide as the row lets the page scroll on (see locks). */
 .list {
   position: relative;
+  flex: 1 0 auto;
   overflow-y: auto;
   scrollbar-width: none;
 }

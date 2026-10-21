@@ -260,7 +260,7 @@ function Assert-SmartAddOn {
     Wait-Until { Test-Path "$env:ProgramData\Usage Control\addons\smart.json" } 'the smart add-on wrote its report'
 }
 
-# The processes add-on lists ten processes by memory at once, and by CPU from
+# The processes add-on lists twenty processes by memory at once, and by CPU from
 # its second read on, as the Local Service account sees them.
 function Assert-ProcessesAddOn {
     Assert-ChildAddOn processes UsageControlProcesses
@@ -268,7 +268,7 @@ function Assert-ProcessesAddOn {
     Wait-Until { (Test-Path $report) -and (Get-Content $report -Raw) -like '*"processes-cpu"*' } 'the processes add-on reported the busiest processes'
     $groups = (Get-Content $report -Raw | ConvertFrom-Json).extras
     $memory = @($groups | Where-Object id -eq 'processes-memory')
-    if ($memory.Count -ne 1 -or $memory[0].items.Count -ne 10) { throw "The processes add-on did not list ten processes by memory: $($groups | ConvertTo-Json -Depth 4)" }
+    if ($memory.Count -ne 1 -or $memory[0].items.Count -ne 20) { throw "The processes add-on did not list twenty processes by memory: $($groups | ConvertTo-Json -Depth 4)" }
 }
 
 # The runner has no Bluetooth; the add-on then still runs and writes a report

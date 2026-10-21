@@ -1,5 +1,5 @@
 // Package processes reads the busiest processes, for the processes add-on:
-// the ten that used the most CPU since the previous read and the ten that
+// the twenty that used the most CPU since the previous read and the twenty that
 // hold the most memory. On Linux it reads /proc/<pid>/stat, one small file
 // per process; on Windows it asks the system for every process at once.
 //
@@ -19,7 +19,7 @@ import (
 )
 
 // Top is how many processes each group lists.
-const Top = 10
+const Top = 20
 
 // Process is one running process.
 type Process struct {

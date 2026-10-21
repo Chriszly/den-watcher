@@ -752,7 +752,7 @@
         <Control Id="Description" Type="Text" X="25" Y="23" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Text="Cub's lightweight add-ons come with it. These are optional." />
         <Control Id="Power" Type="CheckBox" X="20" Y="55" Width="330" Height="15" Property="POWER_BOX" CheckBoxValue="1" Text="&amp;Power: what the CPU, battery and NVIDIA graphics card draw" />
         <Control Id="Gpu" Type="CheckBox" X="20" Y="72" Width="330" Height="15" Property="GPU_BOX" CheckBoxValue="1" Text="&amp;Graphics card: fan, clocks, video engines and power limit" />
-        <Control Id="Processes" Type="CheckBox" X="20" Y="89" Width="330" Height="15" Property="PROCESSES_BOX" CheckBoxValue="1" Text="P&amp;rocesses: the ten using the most CPU and memory" />
+        <Control Id="Processes" Type="CheckBox" X="20" Y="89" Width="330" Height="15" Property="PROCESSES_BOX" CheckBoxValue="1" Text="P&amp;rocesses: the twenty using the most CPU and memory" />
         <Control Id="Ports" Type="CheckBox" X="20" Y="106" Width="330" Height="15" Property="PORTS_BOX" CheckBoxValue="1" Text="P&amp;orts: which TCP and UDP ports the PC listens on" />
         <Control Id="Smart" Type="CheckBox" X="20" Y="123" Width="330" Height="15" Property="SMART_BOX" CheckBoxValue="1" Text="&amp;Smart: the disks' health, temperature and wear" />
         <Control Id="Bluetooth" Type="CheckBox" X="20" Y="140" Width="330" Height="15" Property="BLUETOOTH_BOX" CheckBoxValue="1" Text="Blue&amp;tooth: the connected headsets, speakers and other devices" />

@@ -192,13 +192,16 @@ func TestPrintPairingCodeAsksTheRunningDevice(t *testing.T) {
 	}))
 	defer device.Close()
 	_, port, _ := net.SplitHostPort(device.Listener.Addr().String())
-	t.Setenv("LISTEN_ADDR", ":"+port)
 
-	var out strings.Builder
-	if err := printPairingCode(&out); err != nil || out.String() != "7KQM-X2RP\n" {
-		t.Fatalf("printPairingCode() = %q, %v; want the code on a line", out.String(), err)
+	for _, addr := range []string{":" + port, "0.0.0.0:" + port, device.Listener.Addr().String()} {
+		t.Setenv("LISTEN_ADDR", addr)
+		var out strings.Builder
+		if err := printPairingCode(&out); err != nil || out.String() != "7KQM-X2RP\n" {
+			t.Fatalf("printPairingCode() with LISTEN_ADDR %s = %q, %v; want the code on a line", addr, out.String(), err)
+		}
 	}
 	device.Close()
+	var out strings.Builder
 	if err := printPairingCode(&out); err == nil || !strings.Contains(err.Error(), "is it running") {
 		t.Fatalf("printPairingCode() without a running device = %v, want an error that asks whether it runs", err)
 	}

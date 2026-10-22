@@ -270,12 +270,14 @@ func run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		paired, err := pairing.Open(ctx, store.DB(), existed, nil)
-		if err != nil {
-			return fmt.Errorf("open the pairing code in %s: %w", databasePath, err)
+		// As on a device without a website (withBuffer), a pairing code that
+		// cannot be read lets every hub collect instead of stopping the site.
+		if paired, err := pairing.Open(ctx, store.DB(), existed, nil); err == nil {
+			logPairingCode(paired)
+			site.Pairing = paired
+		} else {
+			slog.Warn("could not read the pairing code, so any hub can collect from this device without it", "path", databasePath, "error", err)
 		}
-		logPairingCode(paired)
-		site.Pairing = paired
 		waitForRecorders = wait
 		site.AllowedHosts = hosts
 		site.Prometheus = prometheus
@@ -480,17 +482,22 @@ func logPairingCode(p *pairing.Pairing) {
 // den-watcher running on this machine, for a device without a website.
 const pairingCodeArgument = "pairing-code"
 
-// printPairingCode asks the den-watcher running on this machine, at the
-// port of LISTEN_ADDR, for its pairing code and writes it to out.
+// printPairingCode asks the den-watcher running on this machine, at
+// LISTEN_ADDR, for its pairing code and writes it to out.
 func printPairingCode(out io.Writer) error {
 	addr := cmp.Or(os.Getenv("LISTEN_ADDR"), ":9393")
-	_, port, err := net.SplitHostPort(addr)
+	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		return fmt.Errorf("LISTEN_ADDR is %q; set it to an address and port such as :9393", addr)
 	}
-	url := "http://" + net.JoinHostPort("localhost", port) + "/api/pairing"
+	// A LISTEN_ADDR of one address, such as 192.168.1.5:9393, is not
+	// answered on localhost.
+	if ip := net.ParseIP(host); host == "" || ip != nil && ip.IsUnspecified() {
+		host = "localhost"
+	}
+	url := "http://" + net.JoinHostPort(host, port) + "/api/pairing"
 	client := &http.Client{Timeout: 5 * time.Second}
-	response, err := client.Get(url) //nolint:gosec // this machine, at the port of LISTEN_ADDR
+	response, err := client.Get(url) //nolint:gosec // this machine, at LISTEN_ADDR
 	if err != nil {
 		return fmt.Errorf("ask den-watcher on this machine for its pairing code: %w; is it running, with LISTEN_ADDR as here?", err)
 	}

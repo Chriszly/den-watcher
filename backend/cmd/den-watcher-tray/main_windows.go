@@ -108,14 +108,18 @@ func (t *tray) checkNow() {
 func (t *tray) refresh() {
 	current := readSettings()
 	service := queryService()
-	answers := false
+	answers, codeKnown := false, false
 	hub, code := "", ""
 	if service == serviceRunning {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		link, err := askHub(ctx, t.client, current.port)
 		answers, hub = err == nil, link
 		if answers {
-			code, _ = askPairing(ctx, t.client, current.port)
+			// A service without a code, as one whose database cannot be
+			// opened, answers 404, so an old code is not kept then.
+			var err error
+			code, err = askPairing(ctx, t.client, current.port)
+			codeKnown = err == nil
 		}
 		cancel()
 	}
@@ -128,7 +132,7 @@ func (t *tray) refresh() {
 	if hub != "" {
 		t.hub = hub
 	}
-	if code != "" {
+	if codeKnown {
 		t.code = code
 	}
 	t.settings = current
@@ -151,6 +155,8 @@ func (t *tray) refresh() {
 	if t.code != "" {
 		t.pairing.SetTitle(t.text.pairingText(t.code))
 		t.pairing.Show()
+	} else {
+		t.pairing.Hide()
 	}
 	if t.hub != "" {
 		t.openHub.SetTitle(t.text.hubText(t.hub))

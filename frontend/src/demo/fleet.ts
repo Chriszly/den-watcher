@@ -1772,6 +1772,30 @@ const printer: DemoMachine = {
   }),
 };
 
+/**
+ * A Raspberry Pi added without its pairing code: the hub counts its answers, so it has no outage,
+ * but it shares no usage and no history until the code is given in the Devices dialog.
+ */
+const garagePi: DemoMachine = {
+  device: {
+    id: 'garage-pi',
+    kind: 'server',
+    name: 'Garage Pi',
+    address: '192.168.1.40:9393',
+    removable: true,
+    unreachable: true,
+    pairing: 'needed',
+  },
+  os: 'linux',
+  cores: 0,
+  maxClockMHz: 0,
+  memoryBytes: 0,
+  disks: [],
+  network: [],
+  bootedDaysAgo: 0,
+  values: () => ({}),
+};
+
 /** A thing checked by ping, which also tells the share of pings lost and the jitter. */
 const camera: DemoMachine = {
   device: {
@@ -1867,6 +1891,7 @@ export const FLEET: readonly DemoMachine[] = [
   answersIn(linuxNas, 7),
   answersIn(linuxServer, 2.5),
   answersIn(linuxLaptop, 22, true),
+  garagePi,
   homeRouter,
   printer,
   camera,

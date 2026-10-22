@@ -164,7 +164,7 @@ func (p *Pairing) Allow(ctx context.Context, hub, code string) Answer {
 		slog.Info("a hub gave the pairing code and collects from this device from now on")
 	case p.now().Before(p.openUntil):
 		slog.Info("a hub that asked right after the update collects from this device without the pairing code")
-	case code == "":
+	case Normalize(code) == "":
 		return Needed
 	default:
 		return Wrong

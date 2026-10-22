@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -115,6 +116,23 @@ func TestPairingCodeIsShown(t *testing.T) {
 		var body pairingResponse
 		if tt.want == http.StatusOK && (json.NewDecoder(rec.Body).Decode(&body) != nil || body.Code != "7KQM-X2RP") {
 			t.Errorf("%s: GET /api/pairing = %+v, want the code", tt.name, body)
+		}
+	}
+}
+
+func TestPairingCodeIsShownAtTheAddressListenedOn(t *testing.T) {
+	p := &fakePairing{code: "7KQM-X2RP", paired: map[string]bool{}}
+	handler := NewDataOnly(fakeCollector{}, nil, p, nil)
+	local := &net.TCPAddr{IP: net.ParseIP("192.168.1.9"), Port: 9393}
+	for from, want := range map[string]int{"192.168.1.9:5000": http.StatusOK, "192.168.1.20:5000": http.StatusForbidden} {
+		req := httptest.NewRequest(http.MethodGet, "/api/pairing", nil)
+		req.RemoteAddr = from
+		req.Host = "192.168.1.9:9393"
+		req = req.WithContext(context.WithValue(req.Context(), http.LocalAddrContextKey, net.Addr(local)))
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != want {
+			t.Errorf("GET /api/pairing from %s to %s = %d, want %d", from, local, rec.Code, want)
 		}
 	}
 }

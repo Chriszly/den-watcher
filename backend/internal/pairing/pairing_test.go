@@ -50,8 +50,10 @@ func TestAHubIsPairedByTheCode(t *testing.T) {
 	ctx := context.Background()
 	db := openTestDB(t)
 	p := open(t, db, false)
-	if got := p.Allow(ctx, office, ""); got != Needed {
-		t.Fatalf("Allow() without a code = %v, want Needed", got)
+	for _, none := range []string{"", " ", "-"} {
+		if got := p.Allow(ctx, office, none); got != Needed {
+			t.Fatalf("Allow() with the code %q = %v, want Needed", none, got)
+		}
 	}
 	p.code = "7KQMX2RP"
 	if got := p.Allow(ctx, office, "7KQM-X2RQ"); got != Wrong {

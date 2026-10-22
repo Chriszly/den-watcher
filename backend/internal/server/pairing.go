@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/netip"
 	"time"
@@ -67,12 +68,30 @@ type pairingResponse struct {
 func pairingHandler(p Pairing, localOnly bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if localOnly {
-			sender, err := netip.ParseAddrPort(r.RemoteAddr)
-			if err != nil || !sender.Addr().IsLoopback() {
+			if !fromThisMachine(r) {
 				http.Error(w, "only answered on this machine", http.StatusForbidden)
 				return
 			}
 		}
 		writeJSON(w, http.StatusOK, pairingResponse{Code: p.Code()})
 	}
+}
+
+// fromThisMachine tells whether r comes from this machine: from a loopback
+// address, or from the address it was sent to, as when LISTEN_ADDR is one
+// address such as 192.168.1.5:9393.
+func fromThisMachine(r *http.Request) bool {
+	sender, err := netip.ParseAddrPort(r.RemoteAddr)
+	if err != nil {
+		return false
+	}
+	if sender.Addr().IsLoopback() {
+		return true
+	}
+	local, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
+	if !ok {
+		return false
+	}
+	to, err := netip.ParseAddrPort(local.String())
+	return err == nil && to.Addr().Unmap() == sender.Addr().Unmap()
 }

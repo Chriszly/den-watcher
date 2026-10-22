@@ -52,6 +52,35 @@
         } @else {
           <span class="fixed hint">{{ i18n.t('devicesDialog.fixed') }}</span>
         }
+        @if (device.pairing) {
+          <form class="pairing" (ngSubmit)="setCode(device)">
+            <p class="hint">
+              {{
+                i18n.t(
+                  device.pairing === 'wrong'
+                    ? 'devicesDialog.pairingWrong'
+                    : 'devicesDialog.pairingNeeded'
+                )
+              }}
+            </p>
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ i18n.t('devicesDialog.code') }}</mat-label>
+              <input
+                matInput
+                name="device-code"
+                maxlength="32"
+                autocomplete="off"
+                autocapitalize="characters"
+                spellcheck="false"
+                [ngModel]="codeFor(device)"
+                (ngModelChange)="typeCode(device, $event)"
+              />
+            </mat-form-field>
+            <button mat-stroked-button type="submit" [disabled]="busy() || !codeFor(device).trim()">
+              {{ i18n.t('devicesDialog.setCode') }}
+            </button>
+          </form>
+        }
       </li>
     } @empty {
       <li class="hint">{{ i18n.t('devicesDialog.empty') }}</li>
@@ -78,6 +107,20 @@
       />
       <mat-hint>{{ i18n.t('devicesDialog.addressHint') }}</mat-hint>
     </mat-form-field>
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ i18n.t('devicesDialog.code') }}</mat-label>
+      <input
+        matInput
+        name="code"
+        maxlength="32"
+        placeholder="7KQM-X2RP"
+        autocomplete="off"
+        autocapitalize="characters"
+        spellcheck="false"
+        [(ngModel)]="code"
+      />
+      <mat-hint>{{ i18n.t('devicesDialog.codeHint') }}</mat-hint>
+    </mat-form-field>
     <div class="choices kind" role="group" [attr.aria-label]="i18n.t('devicesDialog.kind')">
       @for (option of kinds; track option) {
         <button type="button" [attr.aria-pressed]="option === kind()" (click)="kind.set(option)">
@@ -87,6 +130,12 @@
     </div>
     <p class="hint">{{ i18n.t('devicesDialog.kindHint') }}</p>
   </form>
+
+  @if (ownCode()) {
+    <h3>{{ i18n.t('devicesDialog.ownCodeTitle') }}</h3>
+    <p class="hint">{{ i18n.t('devicesDialog.ownCodeHint') }}</p>
+    <p class="own-code">{{ ownCode() }}</p>
+  }
 
   <h3>{{ i18n.t('devicesDialog.backupTitle') }}</h3>
   <p class="hint">{{ i18n.t('devicesDialog.backupHint') }}</p>

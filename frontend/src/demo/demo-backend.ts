@@ -39,6 +39,9 @@ export const LAYOUT_STORAGE_KEY = 'demoLayout';
 /** How long the made-up devices take to answer, so the page loads like it does on a real hub. */
 const LATENCY_MS = 60;
 
+/** The pairing code the demo's hub shows for itself, as a hub that collects from it would ask. */
+export const DEMO_PAIRING_CODE = '7KQM-X2RP';
+
 /**
  * Answers the page's requests to /api with made-up values from the sample
  * devices instead of sending them anywhere. Devices cannot be added, removed or changed, nor a
@@ -66,7 +69,7 @@ export class DemoBackend implements HttpBackend {
       return respond(
         request,
         Object.fromEntries(
-          FLEET.filter((m) => isOnline(m, now)).map((m) => [
+          FLEET.filter((m) => isOnline(m, now) && !m.device.pairing).map((m) => [
             m.device.id,
             snapshotOf(m, Math.floor(now), this.version),
           ]),
@@ -75,6 +78,9 @@ export class DemoBackend implements HttpBackend {
     }
     if (request.method === 'GET' && url.pathname === '/api/devices/suggestion') {
       return respond(request, DEMO_SUGGESTION);
+    }
+    if (request.method === 'GET' && url.pathname === '/api/pairing') {
+      return respond(request, { code: DEMO_PAIRING_CODE });
     }
     if (url.pathname === '/api/layout') {
       return this.layout(request);
@@ -90,6 +96,9 @@ export class DemoBackend implements HttpBackend {
     }
     const from = Number(url.searchParams.get('from'));
     const to = Number(url.searchParams.get('to'));
+    if (machine.device.pairing) {
+      return this.waitingForCode(request, url.pathname, machine, from, to, now);
+    }
     switch (url.pathname) {
       case '/api/metrics':
         return isOnline(machine, now)
@@ -112,6 +121,36 @@ export class DemoBackend implements HttpBackend {
       default:
         // No /api/update: the demo names no newer release.
         return fail(request, 404, 'not found');
+    }
+  }
+
+  /**
+   * The answers for a device that waits for its pairing code: it answers the hub, so its
+   * availability is full, but the hub has no usage and no history of it.
+   */
+  private waitingForCode(
+    request: HttpRequest<unknown>,
+    path: string,
+    machine: DemoMachine,
+    from: number,
+    to: number,
+    now: number,
+  ): Observable<HttpEvent<unknown>> {
+    switch (path) {
+      case '/api/history':
+        return respond(request, {
+          from,
+          to,
+          stepSeconds: RECENT_INTERVAL,
+          retentionDays: DEMO_RETENTION_DAYS,
+          series: [],
+        } satisfies History);
+      case '/api/events':
+        return respond(request, demoEvents(machine, from, to, now, this.version));
+      case '/api/availability':
+        return respond(request, availability(machine, now));
+      default:
+        return fail(request, 503, 'the device waits for its pairing code');
     }
   }
 

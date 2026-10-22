@@ -8,6 +8,7 @@ import {
   DEVICES_REFRESH_MS,
   DeviceService,
   backupName,
+  deviceState,
 } from './devices';
 
 describe('DeviceService', () => {
@@ -96,5 +97,14 @@ describe('backupName', () => {
     );
     expect(backupName('attachment; filename="../etc/passwd"')).toBe('den-watcher.db');
     expect(backupName(null)).toBe('den-watcher.db');
+  });
+});
+
+describe('deviceState', () => {
+  it('counts a device that waits for its pairing code as answering', () => {
+    expect(deviceState({ id: 'nas', name: 'NAS', unreachable: true, pairing: 'needed' })).toBe(
+      'reachable',
+    );
+    expect(deviceState({ id: 'nas', name: 'NAS', unreachable: true })).toBe('unreachable');
   });
 });

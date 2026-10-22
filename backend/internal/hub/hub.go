@@ -159,7 +159,7 @@ func New(ctx context.Context, store *history.Store, fixed []Device, complete boo
 // for tests.
 func newHub(ctx context.Context, store *history.Store, fixed []Device, complete bool, historyEntries int, retention time.Duration, pagePort string, local Usage, allowLoopback bool, forgetters ...Forgetter) (*Hub, error) {
 	h := &Hub{store: store, historyEntries: historyEntries, retention: retention, pagePort: pagePort, suggester: defaultSuggester(), ctx: ctx, local: local, allowLoopback: allowLoopback, forgetters: forgetters}
-	for _, schema := range []string{savedSchema, availabilitySchema, kindSchema, idSchema} {
+	for _, schema := range []string{savedSchema, availabilitySchema, kindSchema, idSchema, pairingSchema} {
 		if _, err := store.DB().ExecContext(ctx, schema); err != nil {
 			return nil, err
 		}
@@ -248,16 +248,21 @@ func (h *Hub) Remotes() []*Remote {
 }
 
 // Add checks the device, asks it for its usage once to make sure a
-// den-watcher answers at its address, keeps it in the database with its
-// kind and starts collecting from it. An address of the hub itself is
-// refused (see addable and ownAddresses), and again whenever the hub
-// connects to the device. Problems with the device are InputErrors.
-func (h *Hub) Add(ctx context.Context, name, address string, kind Kind) (Device, error) {
+// den-watcher answers at its address and takes the pairing code, keeps it in
+// the database with its kind and code and starts collecting from it. An
+// address of the hub itself is refused (see addable and ownAddresses), and
+// again whenever the hub connects to the device. A device on a version
+// without pairing takes any code. Problems with the device are InputErrors.
+func (h *Hub) Add(ctx context.Context, name, address string, kind Kind, code string) (Device, error) {
 	device, err := NewDevice(name, address)
 	if err != nil {
 		return Device{}, err
 	}
 	kind, err = ParseKind(string(kind))
+	if err != nil {
+		return Device{}, err
+	}
+	code, err = checkCode(code)
 	if err != nil {
 		return Device{}, err
 	}
@@ -277,8 +282,11 @@ func (h *Hub) Add(ctx context.Context, name, address string, kind Kind) (Device,
 	}
 
 	// Asked before taking mu, so the page is not held up while the device answers.
-	own, err := h.askNew(ctx, device.Address)
+	own, err := h.askNew(ctx, device.Address, code)
 	if err != nil {
+		if input := pairingInputError(err); input != nil {
+			return Device{}, input
+		}
 		if errors.Is(err, errOwnAddress) {
 			return Device{}, &InputError{Problem: ProblemAddressOwn, Message: "the address is the hub itself; give the device's address on the local network"}
 		}
@@ -305,7 +313,7 @@ func (h *Hub) Add(ctx context.Context, name, address string, kind Kind) (Device,
 	}
 	// The device and its kind are saved together, and even when the page that
 	// asked has gone away, so a device is never saved without being collected.
-	if err := h.save(context.WithoutCancel(ctx), device, kind); err != nil {
+	if err := h.save(context.WithoutCancel(ctx), device, kind, code); err != nil {
 		return Device{}, err
 	}
 	h.start(device, false, own)
@@ -315,13 +323,14 @@ func (h *Hub) Add(ctx context.Context, name, address string, kind Kind) (Device,
 // errOwnAddress refuses to connect to an address of the hub itself.
 var errOwnAddress = errors.New("the address is the hub's own")
 
-// askNew asks a device about to be added for its usage once, as askOnce, but
-// refuses an address that is not addable, and a host name that resolves to
-// one when it connects, at once and whatever the port. How long the answer
-// took would otherwise tell which of the hub's own ports are open, including
-// ones only it can reach. It returns the hub's own addresses it checked
-// against, for start, which runs holding mu and so does not read them.
-func (h *Hub) askNew(ctx context.Context, address string) ([]netip.Addr, error) {
+// askNew asks a device about to be added for its usage once, as askOnce, with
+// the hub's id and the pairing code, but refuses an address that is not
+// addable, and a host name that resolves to one when it connects, at once
+// and whatever the port. How long the answer took would otherwise tell which
+// of the hub's own ports are open, including ones only it can reach. It
+// returns the hub's own addresses it checked against, for start, which runs
+// holding mu and so does not read them.
+func (h *Hub) askNew(ctx context.Context, address, code string) ([]netip.Addr, error) {
 	own := h.ownAddresses()
 	// An IP address is checked before connecting, which may fail before the
 	// check below, as with IPv6 on a machine without it.
@@ -330,7 +339,9 @@ func (h *Hub) askNew(ctx context.Context, address string) ([]netip.Addr, error) 
 			return own, errOwnAddress
 		}
 	}
-	_, err := askOnceWith(ctx, newAgent(address, h.refuseOwn(func() []netip.Addr { return own })))
+	agent := newAgent(address, h.refuseOwn(func() []netip.Addr { return own }))
+	agent.hubID, agent.code = h.id, code
+	_, err := askOnceWith(ctx, agent)
 	return own, err
 }
 
@@ -481,8 +492,9 @@ func (h *Hub) addableAddress(address string, own []netip.Addr) bool {
 	return err != nil || h.addable(ip, own)
 }
 
-// save keeps an added device and its kind in the database, both or neither.
-func (h *Hub) save(ctx context.Context, device Device, kind Kind) error {
+// save keeps an added device, its kind and its pairing code in the database,
+// all or none.
+func (h *Hub) save(ctx context.Context, device Device, kind Kind, code string) error {
 	tx, err := h.store.DB().BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -497,6 +509,9 @@ func (h *Hub) save(ctx context.Context, device Device, kind Kind) error {
 		return err
 	}
 	if err := storeKind(ctx, tx, device.ID, kind); err != nil {
+		return err
+	}
+	if err := storeCode(ctx, tx, device.ID, code); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -832,6 +847,13 @@ func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
 	agent.pagePort = h.pagePort
 	agent.hubID = h.id
 	agent.maxEntries = h.historyEntries
+	if !device.ReadByHub() {
+		code, err := readCode(h.ctx, h.store.DB(), device.ID)
+		if err != nil {
+			slog.Error("read the pairing code of a device; sending none", "name", device.Name, "error", err)
+		}
+		agent.code = code
+	}
 	if err := watch(h.ctx, h.store.DB(), device.ID, time.Now()); err != nil {
 		slog.Error("store when the hub started collecting from a device", "name", device.Name, "error", err)
 	}

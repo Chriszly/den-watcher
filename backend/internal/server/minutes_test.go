@@ -37,7 +37,7 @@ func (f *fakeMinutes) ExtraInfo(context.Context) (map[string]history.ExtraInfo, 
 func TestServesTheMinutesForAHub(t *testing.T) {
 	source := &fakeMinutes{minutes: []history.Minute{{Time: 1_700_000_060, Values: map[string]float64{"cpu": 12}}}}
 	handlers := map[string]http.Handler{
-		"data only": NewDataOnly(fakeCollector{}, source, nil),
+		"data only": NewDataOnly(fakeCollector{}, source, nil, nil),
 		"website":   New(Site{Devices: DeviceList(device(fakeCollector{}, nil)), Files: site, Minutes: source}),
 	}
 	for name, handler := range handlers {
@@ -101,7 +101,7 @@ func getFromHubWithID(handler http.Handler, path, remoteAddr, id string) *httpte
 
 func TestTellsAHubApartByItsID(t *testing.T) {
 	source := &fakeMinutes{minutes: []history.Minute{}}
-	handler := NewDataOnly(fakeCollector{}, source, nil)
+	handler := NewDataOnly(fakeCollector{}, source, nil, nil)
 	// Two hubs behind one address are two hubs; one hub whose address changes
 	// is one.
 	for _, c := range []struct{ remote, id string }{
@@ -131,7 +131,7 @@ func TestServesHowTheExtrasAmongTheMinutesAreDescribed(t *testing.T) {
 		minutes: []history.Minute{{Time: 1_700_000_060, Values: map[string]float64{"cpu": 12, "extra:power/cpu": 5}}},
 		extras:  map[string]history.ExtraInfo{"extra:power/cpu": power, "extra:power/gpu": {Title: "Power", Label: "GPU"}},
 	}
-	rec := get(NewDataOnly(fakeCollector{}, source, nil), "/api/minutes?after=1700000000", "192.168.1.20:5000")
+	rec := get(NewDataOnly(fakeCollector{}, source, nil, nil), "/api/minutes?after=1700000000", "192.168.1.20:5000")
 	var got hub.MinutesAnswer
 	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil || rec.Code != http.StatusOK {
 		t.Fatalf("GET /api/minutes = %d, %v, want 200", rec.Code, err)
@@ -151,7 +151,7 @@ func TestBoundsTheDescriptionsOfTheExtrasInOneAnswer(t *testing.T) {
 		extras[metric] = history.ExtraInfo{Title: "Big", Label: strings.Repeat("x", 8000)}
 	}
 	source := &fakeMinutes{minutes: []history.Minute{minute}, extras: extras}
-	rec := getFromHub(NewDataOnly(fakeCollector{}, source, nil), "/api/minutes?after=1700000000", "192.168.1.20:5000")
+	rec := getFromHub(NewDataOnly(fakeCollector{}, source, nil, nil), "/api/minutes?after=1700000000", "192.168.1.20:5000")
 	size := rec.Body.Len()
 	var got hub.MinutesAnswer
 	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil || rec.Code != http.StatusOK {
@@ -167,7 +167,7 @@ func TestBoundsTheDescriptionsOfTheExtrasInOneAnswer(t *testing.T) {
 }
 
 func TestDataOnlyWithoutMinutesLeavesThemOut(t *testing.T) {
-	handler := NewDataOnly(fakeCollector{}, nil, nil)
+	handler := NewDataOnly(fakeCollector{}, nil, nil, nil)
 	// A hub takes the device for one too old to keep minutes, and stores the
 	// average of its own readings instead.
 	if rec := get(handler, "/api/minutes?after=0", "192.168.1.20:5000"); rec.Code != http.StatusNotFound {

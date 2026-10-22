@@ -17,6 +17,10 @@ export const de: Messages = {
     '{device} hat in letzter Zeit nicht geantwortet. Ist das Gerät eingeschaltet, und stimmen Adresse und Port?',
   'dashboard.deviceRefused':
     '{device} hat eine Adresse des Hubs selbst, zu der sich der Hub bei einem auf der Seite hinzugefügten Gerät nicht verbindet. Entferne es mit angehaktem „Verlauf behalten“ und trage es unter demselben Namen in HUB_DEVICES ein.',
+  'dashboard.devicePairingNeeded':
+    '{device} antwortet, gibt seine Auslastung dem Hub aber erst mit dem Kopplungscode des Geräts, daher wird nur seine Verfügbarkeit erfasst. Gib den Code unter Geräte ein: {device} zeigt ihn auf seiner eigenen Seite unter Geräte, im Menü seines Tray-Symbols unter Windows oder in seinem Log.',
+  'dashboard.devicePairingWrong':
+    '{device} antwortet, aber der Kopplungscode, den der Hub dafür hat, ist nicht seiner, daher wird nur seine Verfügbarkeit erfasst. Gib unter Geräte den Code ein, den {device} zeigt.',
   'dashboard.deviceNotInUse':
     '{device} ist ausgeschaltet oder im Ruhezustand, also nicht in Benutzung. Angezeigt werden die zuletzt bekannten Werte.',
   'dashboard.cpu': 'CPU',
@@ -156,6 +160,17 @@ export const de: Messages = {
   'devicesDialog.backup': 'Sicherung herunterladen',
   'devicesDialog.backupHint':
     'Eine Kopie der Datenbank des Hubs zum Aufbewahren: der Verlauf, die Geräte mit ihren Adressen, die Alarme und der Hash des Passworts. Router-Passwörter sind nicht darin.',
+  'devicesDialog.code': 'Kopplungscode',
+  'devicesDialog.codeHint':
+    'Steht auf der Seite des Geräts unter Geräte, im Menü seines Tray-Symbols oder in seinem Log.',
+  'devicesDialog.pairingNeeded':
+    'Wartet auf seinen Kopplungscode; bis dahin wird nur seine Verfügbarkeit erfasst.',
+  'devicesDialog.pairingWrong':
+    'Der Kopplungscode ist nicht der dieses Geräts; bis dahin wird nur seine Verfügbarkeit erfasst.',
+  'devicesDialog.setCode': 'Code speichern',
+  'devicesDialog.ownCodeTitle': 'Kopplungscode dieses Geräts',
+  'devicesDialog.ownCodeHint':
+    'Ein Hub fragt nach diesem Code, wenn dieses Gerät dort hinzugefügt wird; ohne ihn erfasst der Hub nur, ob das Gerät antwortet.',
   'devicesDialog.backupTitle': 'Sicherung',
   'devices.problem.wrongPassword': 'Das Passwort ist falsch.',
   'devices.problem.passwordLength': 'Das Passwort braucht mindestens {count} Zeichen.',
@@ -179,6 +194,12 @@ export const de: Messages = {
   'devices.problem.notFound': 'Dieses Gerät wurde bereits entfernt.',
   'devices.problem.removing':
     'Ein Gerät mit diesem Namen wird gerade noch entfernt. Versuche es gleich noch einmal.',
+  'devices.problem.pairingNeeded':
+    'Das Gerät fragt nach seinem Kopplungscode. Es zeigt ihn auf seiner eigenen Seite unter Geräte, im Menü seines Tray-Symbols unter Windows oder in seinem Log.',
+  'devices.problem.pairingWrong':
+    'Das ist nicht der Kopplungscode des Geräts. Gib den Code ein, den es auf seiner eigenen Seite unter Geräte, im Menü seines Tray-Symbols unter Windows oder in seinem Log zeigt.',
+  'devices.problem.pairingNone':
+    'Auf diesem Gerät läuft kein Den-Watcher, daher hat es keinen Kopplungscode.',
   'devices.problem.demo':
     'Dies ist eine Demo, darum können keine Geräte hinzugefügt, entfernt oder geändert werden.',
   'devices.problem.demoBackup': 'Dies ist eine Demo, darum gibt es keine Datenbank zum Sichern.',
@@ -199,6 +220,7 @@ export const de: Messages = {
   'passwordDialog.confirmRemove': 'Entfernen',
   'passwordDialog.kind': '{device} zu {kind} ändern?',
   'passwordDialog.confirmKind': 'Ändern',
+  'passwordDialog.pairing': '{device} den neuen Kopplungscode geben?',
   'passwordDialog.confirmBackup': 'Herunterladen',
   'passwordDialog.backupHint':
     'Die Datei gehört nicht in fremde Hände: Sie enthält die Adressen der Geräte und den Hash des Passworts.',

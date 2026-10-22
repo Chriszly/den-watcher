@@ -61,8 +61,10 @@ package main
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net"
@@ -85,6 +87,7 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
 	"github.com/Chriszly/den-watcher/backend/internal/layout"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/pairing"
 	"github.com/Chriszly/den-watcher/backend/internal/password"
 	"github.com/Chriszly/den-watcher/backend/internal/reach"
 	"github.com/Chriszly/den-watcher/backend/internal/router"
@@ -104,6 +107,13 @@ func main() {
 	winservice.LogWarnings("UsageControl")
 	if len(os.Args) == 2 && os.Args[1] == addons.HostArgument {
 		addons.RunHost(os.Getenv("ADDONS_DIR"))
+		return
+	}
+	if len(os.Args) == 2 && os.Args[1] == pairingCodeArgument {
+		if err := printPairingCode(os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		return
 	}
 	ranAsService, err := winservice.Run("UsageControl", run, func() func() {
@@ -215,6 +225,10 @@ func run(ctx context.Context) error {
 	}
 	defer func() { _ = listener.Close() }()
 	hosts := allowedHosts()
+	// A database from before pairing knows the hubs that collect already;
+	// see pairing.Open.
+	_, err = os.Stat(databasePath) //nolint:gosec // DATABASE_PATH, set by whoever runs the program
+	existed := err == nil
 
 	collector, err := metrics.NewCollector(context.Background(), diskPaths())
 	if err != nil {
@@ -241,9 +255,9 @@ func run(ctx context.Context) error {
 	var handler http.Handler
 	var waitForRecorders func()
 	if dataOnly {
-		minutes, wait := withBuffer(ctx, sampler, databasePath, bufferSpan, historyEntries)
+		minutes, paired, wait := withBuffer(ctx, sampler, databasePath, bufferSpan, historyEntries, existed)
 		waitForRecorders = wait
-		handler = server.NewDataOnly(sampler, minutes, hosts)
+		handler = server.NewDataOnly(sampler, minutes, paired, hosts)
 		slog.Info("serving only the usage data, for a hub; the website is turned off", "bufferHours", int(bufferSpan/time.Hour))
 	} else {
 		store, err := history.Open(context.Background(), databasePath)
@@ -255,6 +269,14 @@ func run(ctx context.Context) error {
 		site, wait, err := withHistory(ctx, sampler, store, remotes, complete, retention, historyEntries, port, checkUpdates)
 		if err != nil {
 			return err
+		}
+		// As on a device without a website (withBuffer), a pairing code that
+		// cannot be read lets every hub collect instead of stopping the site.
+		if paired, err := pairing.Open(ctx, store.DB(), existed, nil); err == nil {
+			logPairingCode(paired)
+			site.Pairing = paired
+		} else {
+			slog.Warn("could not read the pairing code, so any hub can collect from this device without it", "path", databasePath, "error", err)
 		}
 		waitForRecorders = wait
 		site.AllowedHosts = hosts
@@ -406,18 +428,32 @@ func withHistory(ctx context.Context, sampler *metrics.Sampler, store *history.S
 const reuseFor = history.RecentInterval - time.Second
 
 // withBuffer keeps this device's minutes for a hub that cannot reach it, for
-// up to span, in a buffer in the database at path, until ctx is done; the
-// returned function waits until the recorder has stopped and closes the
-// database. Of its disks, sensors, network cards and GPUs, the first
-// historyEntries are kept. When the database cannot be opened, the device
-// still serves its usage, without minutes: the hub then stores the average of
-// its own readings, as for a device from before they were kept.
-func withBuffer(ctx context.Context, sampler *metrics.Sampler, path string, span time.Duration, historyEntries int) (server.MinuteSource, func()) {
+// up to span, in a buffer in the database at path, until ctx is done, with
+// the pairing code a hub must be given; the returned function waits until the
+// recorder has stopped and closes the database. Of its disks, sensors,
+// network cards and GPUs, the first historyEntries are kept. existed tells
+// that the database was there before this start (see pairing.Open). When the
+// database cannot be opened, the device still serves its usage, without
+// minutes and to every hub: the hub then stores the average of its own
+// readings, as for a device from before they were kept.
+func withBuffer(ctx context.Context, sampler *metrics.Sampler, path string, span time.Duration, historyEntries int, existed bool) (server.MinuteSource, server.Pairing, func()) {
 	buffer, err := history.OpenBuffer(ctx, path, span)
 	if err != nil {
-		slog.Warn("could not open the database for the usage kept for a hub, so a hub that cannot reach this device has a gap in its history; set DATABASE_PATH to a writable file",
+		slog.Warn("could not open the database for the usage kept for a hub, so a hub that cannot reach this device has a gap in its history, and any hub can collect from it without the pairing code; set DATABASE_PATH to a writable file",
 			"path", path, "error", err)
-		return nil, func() {}
+		return nil, nil, func() {}
+	}
+	var paired server.Pairing
+	known, err := buffer.Hubs(ctx)
+	if err == nil {
+		var p *pairing.Pairing
+		if p, err = pairing.Open(ctx, buffer.DB(), existed, known); err == nil {
+			logPairingCode(p)
+			paired = p
+		}
+	}
+	if err != nil {
+		slog.Warn("could not read the pairing code, so any hub can collect from this device without it", "path", path, "error", err)
 	}
 	recorder := &history.Recorder{
 		Store: buffer,
@@ -433,7 +469,50 @@ func withBuffer(ctx context.Context, sampler *metrics.Sampler, path string, span
 		recording.Wait()
 		_ = buffer.Close()
 	}
-	return buffer, wait
+	return buffer, paired, wait
+}
+
+// logPairingCode tells this device's pairing code, which a hub asks for when
+// the device is added there.
+func logPairingCode(p *pairing.Pairing) {
+	slog.Info("to collect from this device, a hub asks for its pairing code, which den-watcher pairing-code prints too", "code", p.Code())
+}
+
+// pairingCodeArgument makes the program print the pairing code of the
+// den-watcher running on this machine, for a device without a website.
+const pairingCodeArgument = "pairing-code"
+
+// printPairingCode asks the den-watcher running on this machine, at
+// LISTEN_ADDR, for its pairing code and writes it to out.
+func printPairingCode(out io.Writer) error {
+	addr := cmp.Or(os.Getenv("LISTEN_ADDR"), ":9393")
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return fmt.Errorf("LISTEN_ADDR is %q; set it to an address and port such as :9393", addr)
+	}
+	// A LISTEN_ADDR of one address, such as 192.168.1.5:9393, is not
+	// answered on localhost.
+	if ip := net.ParseIP(host); host == "" || ip != nil && ip.IsUnspecified() {
+		host = "localhost"
+	}
+	url := "http://" + net.JoinHostPort(host, port) + "/api/pairing"
+	client := &http.Client{Timeout: 5 * time.Second}
+	response, err := client.Get(url) //nolint:gosec // this machine, at LISTEN_ADDR
+	if err != nil {
+		return fmt.Errorf("ask den-watcher on this machine for its pairing code: %w; is it running, with LISTEN_ADDR as here?", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("ask den-watcher on this machine for its pairing code: it answered %s; it needs a version with pairing, and its database must be writable", response.Status)
+	}
+	var answer struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(io.LimitReader(response.Body, 4096)).Decode(&answer); err != nil || answer.Code == "" {
+		return fmt.Errorf("read the pairing code from %s: the answer is not one", url)
+	}
+	_, err = fmt.Fprintln(out, answer.Code)
+	return err
 }
 
 // hubDevices lists this device and the devices the hub collects from, each
@@ -463,6 +542,7 @@ func (d hubDevices) List() []server.Device {
 			Unreachable:      unreachable,
 			UnreachableSince: unreachableSince,
 			Refused:          remote.Refused(),
+			Pairing:          remote.Pairing(),
 			Router:           remote.Router(),
 			Checked:          remote.Checked,
 			Alerts:           d.alerts.Active(remote.ID),

@@ -9,6 +9,7 @@ import { I18n } from '../app/i18n/i18n';
 import { fileNameOf } from '../app/history/csv-download';
 import { MetricsService } from '../app/metrics/metrics';
 import {
+  DEMO_PAIRING_CODE,
   DEMO_RETENTION_DAYS,
   DemoBackend,
   LAYOUT_STORAGE_KEY,
@@ -96,12 +97,15 @@ describe('DemoBackend', () => {
   it('lists Windows and Linux devices, one of them asleep', async () => {
     const list = await firstValueFrom(devices.load());
     expect(list.devices[0]).toEqual(LOCAL_DEVICE);
-    expect(list.devices.filter((d) => d.unreachable).map((d) => d.name)).toEqual(['Linux laptop']);
+    expect(list.devices.filter((d) => d.unreachable).map((d) => d.name)).toEqual([
+      'Linux laptop',
+      'Garage Pi',
+    ]);
     expect(FLEET.some((m) => m.os === 'windows')).toBe(true);
   });
 
   it('answers with values each device reports', async () => {
-    for (const machine of FLEET.filter((m) => !m.online)) {
+    for (const machine of FLEET.filter((m) => !m.online && !m.device.pairing)) {
       const s = await firstValueFrom(metrics.current(machine.device.id));
       expect(s.cpu.cores).toBe(machine.cores);
       expect(s.cpu.usagePercent).toBeGreaterThanOrEqual(0);
@@ -152,7 +156,7 @@ describe('DemoBackend', () => {
   });
 
   it('gives every value of the add-ons a number, the processes busiest first', async () => {
-    for (const machine of FLEET.filter((m) => !m.online)) {
+    for (const machine of FLEET.filter((m) => !m.online && !m.device.pairing)) {
       const s = await firstValueFrom(metrics.current(machine.device.id));
       for (const group of s.extras ?? []) {
         const values = group.items.filter((i) => i.unit !== 'text').map((i) => i.value);
@@ -223,7 +227,7 @@ describe('DemoBackend', () => {
     const i18n = TestBed.inject(I18n);
     i18n.language.set('en-GB');
     const refused = await firstValueFrom(
-      devices.add('NAS', '192.168.1.9:9393', 'server', 'password'),
+      devices.add('NAS', '192.168.1.9:9393', 'server', '', 'password'),
     ).catch((error: unknown) => error);
     expect(problemMessage(refused, i18n)).toBe(
       "This is a demo, so devices can't be added, removed or changed.",
@@ -231,5 +235,18 @@ describe('DemoBackend', () => {
     await expect(
       firstValueFrom(devices.remove('windows-pc', 'password', false)),
     ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('shows a device that waits for its pairing code with its availability only', async () => {
+    const waiting = (await firstValueFrom(devices.load())).devices.find((d) => d.pairing);
+    expect(waiting?.pairing).toBe('needed');
+    const id = waiting?.id ?? '';
+    await expect(firstValueFrom(metrics.current(id))).rejects.toBeTruthy();
+    expect((await firstValueFrom(metrics.history(0, 3600, id))).series).toEqual([]);
+    expect(await firstValueFrom(metrics.fleet())).not.toHaveProperty(id);
+  });
+
+  it('shows a pairing code of its own', async () => {
+    expect(await firstValueFrom(devices.pairingCode())).toBe(DEMO_PAIRING_CODE);
   });
 });

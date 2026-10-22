@@ -18,7 +18,7 @@ import { DeviceKind, MIN_PASSWORD_LENGTH, kindName } from './devices';
 
 /** What the password is asked for. */
 export interface PasswordDialogData {
-  action: 'add' | 'remove' | 'kind' | 'backup';
+  action: 'add' | 'remove' | 'kind' | 'pairing' | 'backup';
   /** The name of the device that is changed; empty for a backup. */
   deviceName: string;
   /** For changing the kind: the new kind. */
@@ -90,6 +90,8 @@ export class PasswordDialog {
           device,
           kind: kindName(this.data.kind ?? 'server', this.i18n),
         });
+      case 'pairing':
+        return this.i18n.t('passwordDialog.pairing', { device });
       case 'backup':
         return this.i18n.t('passwordDialog.backup');
     }
@@ -102,6 +104,7 @@ export class PasswordDialog {
       case 'remove':
         return this.i18n.t('passwordDialog.confirmRemove');
       case 'kind':
+      case 'pairing':
         return this.i18n.t('passwordDialog.confirmKind');
       case 'backup':
         return this.i18n.t('passwordDialog.confirmBackup');

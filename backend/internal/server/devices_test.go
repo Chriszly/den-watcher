@@ -18,19 +18,24 @@ import (
 type fakeHub struct {
 	added   []string
 	removed []string
-	// kinds is every kind added or set, as "id=kind".
+	// kinds is every kind added or set, as "id=kind", and codes every
+	// pairing code, as "id=code".
 	kinds []string
+	codes []string
 	err   error
 	// suggestFor answers Suggest for this address; any other has no suggestion.
 	suggestFor string
 	asked      []netip.Addr
 }
 
-func (f *fakeHub) Add(_ context.Context, name, address string, kind hub.Kind) (hub.Device, error) {
+func (f *fakeHub) Add(_ context.Context, name, address string, kind hub.Kind, code string) (hub.Device, error) {
 	if f.err != nil {
 		return hub.Device{}, f.err
 	}
 	f.added = append(f.added, name)
+	if code != "" {
+		f.codes = append(f.codes, strings.ToLower(name)+"="+code)
+	}
 	f.kinds = append(f.kinds, strings.ToLower(name)+"="+string(kind))
 	return hub.Device{ID: strings.ToLower(name), Name: name, Address: address}, nil
 }
@@ -48,6 +53,14 @@ func (f *fakeHub) SetKind(_ context.Context, id string, kind hub.Kind) error {
 		return f.err
 	}
 	f.kinds = append(f.kinds, id+"="+string(kind))
+	return nil
+}
+
+func (f *fakeHub) SetCode(_ context.Context, id, code string) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.codes = append(f.codes, id+"="+code)
 	return nil
 }
 
@@ -133,6 +146,31 @@ func TestAddAndChangeTheKind(t *testing.T) {
 	}
 	if got := strings.Join(devices.kinds, " "); got != "laptop=pc pi=pc" {
 		t.Errorf("kinds = %s, want laptop=pc pi=pc", got)
+	}
+}
+
+func TestAddAndChangeThePairingCode(t *testing.T) {
+	devices := &fakeHub{}
+	handler := newChangeHandler(devices, &fakePassword{password: "correct horse"})
+
+	add := send(handler, http.MethodPost, "/api/devices", `{"name":"Laptop","address":"192.168.1.30:9393","code":"7KQM-X2RP","password":"correct horse"}`)
+	set := send(handler, http.MethodPut, "/api/devices/pi/pairing", `{"code":"AB12-CD34","password":"correct horse"}`)
+	wrong := send(handler, http.MethodPut, "/api/devices/pi/pairing", `{"code":"AB12-CD34","password":"wrong"}`)
+
+	if add.Code != http.StatusCreated || set.Code != http.StatusNoContent {
+		t.Errorf("add = %d, set = %d; want 201 and 204", add.Code, set.Code)
+	}
+	if wrong.Code != http.StatusForbidden {
+		t.Errorf("with a wrong password: status = %d, want 403", wrong.Code)
+	}
+	if got := strings.Join(devices.codes, " "); got != "laptop=7KQM-X2RP pi=AB12-CD34" {
+		t.Errorf("codes = %s, want laptop=7KQM-X2RP pi=AB12-CD34", got)
+	}
+
+	devices.err = &hub.InputError{Problem: hub.ProblemPairingWrong, Message: "the pairing code is not the device's"}
+	refused := send(handler, http.MethodPut, "/api/devices/pi/pairing", `{"code":"AB12-CD35","password":"correct horse"}`)
+	if refused.Code != http.StatusUnprocessableEntity || !strings.Contains(refused.Body.String(), `"problem":"pairingWrong"`) {
+		t.Errorf("a refused code: status = %d, body = %s; want 422 pairingWrong", refused.Code, refused.Body)
 	}
 }
 

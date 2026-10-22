@@ -2,8 +2,9 @@
 // whether Den-Watcher runs: the mascot with a green dot while the service
 // answers, a red one when it is stopped or does not answer, and a grey one
 // while it is paused or starting. Its menu pauses and resumes the service,
-// stops it and closes the icon, and opens the page of the hub that collects
-// from this PC, or this PC's own page when it shows one.
+// stops it and closes the icon, opens the page of the hub that collects
+// from this PC, or this PC's own page when it shows one, and tells the
+// pairing code a hub asks for when this PC is added there.
 //
 // The installer starts it when someone logs in. The icons are drawn from the
 // website's mascot and theme by cmd/tray-icons before it is built.
@@ -229,6 +230,56 @@ func askHub(ctx context.Context, client *http.Client, port string) (string, erro
 	return body.URL, nil
 }
 
+// askPairing asks the service on this PC for its pairing code. An empty code
+// means it keeps none, as one on an older version or without a database.
+func askPairing(ctx context.Context, client *http.Client, port string) (string, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://127.0.0.1:"+port+"/api/pairing", http.NoBody)
+	if err != nil {
+		return "", err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode == http.StatusNotFound {
+		return "", nil
+	}
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GET /api/pairing answered %s", response.Status)
+	}
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		return "", err
+	}
+	// Shown in the menu, so only a code as the service makes one is taken.
+	if !validCode(body.Code) {
+		return "", fmt.Errorf("GET /api/pairing answered %q, which is no pairing code", body.Code)
+	}
+	return body.Code, nil
+}
+
+// validCode reports whether code looks like a pairing code, such as
+// 7KQM-X2RP.
+func validCode(code string) bool {
+	if len(code) != 9 || code[4] != '-' {
+		return false
+	}
+	for i, r := range code {
+		if i != 4 && (r < '0' || r > '9') && (r < 'A' || r > 'Z') {
+			return false
+		}
+	}
+	return true
+}
+
+// pairingText is the menu line with the pairing code.
+func (t texts) pairingText(code string) string {
+	return t.pairing + ": " + code
+}
+
 // texts are the menu's words in one language.
 type texts struct {
 	running, starting, stopping, notAnswering, stopped, paused, missing string
@@ -236,6 +287,8 @@ type texts struct {
 	// address names the line with this PC's address and port; noNetwork
 	// stands for the address when the PC has none on a local network.
 	address, noNetwork string
+	// pairing names the line with the pairing code.
+	pairing string
 
 	openHub, noHub, openPage, pause, resume, start, stopAndExit string
 	// startFailed and stopFailed take the error.
@@ -258,7 +311,7 @@ func (t texts) stateText(s state) string {
 // translations has the languages of the website.
 var translations = map[string]texts{
 	"en": {
-		address: "Address", noNetwork: "no local network",
+		address: "Address", noNetwork: "no local network", pairing: "Pairing code for the hub",
 		running: "Running", starting: "Starting", stopping: "Stopping",
 		notAnswering: "Running, but not answering", stopped: "Stopped", paused: "Paused", missing: "Not installed",
 		openHub: "Open hub", noHub: "Open hub (no hub has asked yet)", openPage: "Open the page on this PC",
@@ -266,7 +319,7 @@ var translations = map[string]texts{
 		startFailed: "Could not start Den-Watcher: %v", stopFailed: "Could not stop Den-Watcher: %v",
 	},
 	"de": {
-		address: "Adresse", noNetwork: "kein lokales Netzwerk",
+		address: "Adresse", noNetwork: "kein lokales Netzwerk", pairing: "Kopplungscode für den Hub",
 		running: "Läuft", starting: "Startet", stopping: "Wird gestoppt",
 		notAnswering: "Läuft, antwortet aber nicht", stopped: "Gestoppt", paused: "Pausiert", missing: "Nicht installiert",
 		openHub: "Hub öffnen", noHub: "Hub öffnen (noch hat kein Hub gefragt)", openPage: "Seite auf diesem PC öffnen",
@@ -274,7 +327,7 @@ var translations = map[string]texts{
 		startFailed: "Den-Watcher konnte nicht gestartet werden: %v", stopFailed: "Den-Watcher konnte nicht gestoppt werden: %v",
 	},
 	"fr": {
-		address: "Adresse", noNetwork: "aucun réseau local",
+		address: "Adresse", noNetwork: "aucun réseau local", pairing: "Code d'appairage pour le hub",
 		running: "En marche", starting: "Lancement", stopping: "Arrêt en cours",
 		notAnswering: "En marche, mais ne répond pas", stopped: "Arrêté", paused: "En pause", missing: "Non installé",
 		openHub: "Ouvrir le hub", noHub: "Ouvrir le hub (aucun hub n'a encore demandé)", openPage: "Ouvrir la page sur ce PC",
@@ -282,7 +335,7 @@ var translations = map[string]texts{
 		startFailed: "Impossible de démarrer Den-Watcher : %v", stopFailed: "Impossible d'arrêter Den-Watcher : %v",
 	},
 	"es": {
-		address: "Dirección", noNetwork: "sin red local",
+		address: "Dirección", noNetwork: "sin red local", pairing: "Código de emparejamiento para el hub",
 		running: "En marcha", starting: "Iniciando", stopping: "Deteniendo",
 		notAnswering: "En marcha, pero no responde", stopped: "Detenido", paused: "En pausa", missing: "No instalado",
 		openHub: "Abrir el hub", noHub: "Abrir el hub (ningún hub ha preguntado aún)", openPage: "Abrir la página en este PC",

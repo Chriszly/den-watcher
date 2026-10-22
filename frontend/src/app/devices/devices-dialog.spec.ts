@@ -53,6 +53,11 @@ describe('DevicesDialog', () => {
   afterEach(() => {
     // Tests that do not look at the suggestion leave it unanswered.
     http.match('/api/devices/suggestion').forEach((r) => r.flush(null));
+    // Tests that do not look at this device's own pairing code leave it unanswered.
+    http
+      .match('/api/pairing')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush({ code: '' }));
     // The marks of the charts are read alongside the history; these tests leave them unanswered.
     http.match((r) => r.url === '/api/events');
     http.verify();
@@ -145,6 +150,7 @@ describe('DevicesDialog', () => {
       name: 'Laptop',
       address: '192.168.1.40:9393',
       kind: 'pc',
+      code: '',
       password: 'correct horse',
     });
     add.flush(
@@ -159,6 +165,103 @@ describe('DevicesDialog', () => {
 
     expect(TestBed.inject(DeviceService).passwordSet()).toBe(true);
     expect((element().querySelector('input[name="name"]') as HTMLInputElement).value).toBe('');
+  });
+
+  it('adds a device with the pairing code it shows', async () => {
+    await type('name', 'Laptop');
+    await type('address', '192.168.1.40:9393');
+    await type('code', ' 7KQM-X2RP ');
+    button('Add').click();
+
+    const add = http.expectOne('/api/devices');
+    expect(add.request.body).toEqual({
+      name: 'Laptop',
+      address: '192.168.1.40:9393',
+      kind: 'server',
+      code: '7KQM-X2RP',
+      password: 'correct horse',
+    });
+    add.flush(
+      { id: 'laptop', name: 'Laptop', removable: true },
+      { status: 201, statusText: 'Created' },
+    );
+    http
+      .expectOne((r) => r.method === 'GET' && r.url === '/api/devices')
+      .flush({ devices: [{ id: 'local', name: '' }], passwordSet: true });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(input('code').value).toBe('');
+  });
+
+  it('explains a device that asks for its pairing code', async () => {
+    await type('name', 'Laptop');
+    await type('address', '192.168.1.40:9393');
+    button('Add').click();
+
+    http
+      .expectOne('/api/devices')
+      .flush(
+        { problem: 'pairingNeeded', message: 'the device asks for its pairing code' },
+        { status: 422, statusText: 'Unprocessable Entity' },
+      );
+    http
+      .expectOne((r) => r.method === 'GET' && r.url === '/api/devices')
+      .flush({ devices: [{ id: 'local', name: '' }], passwordSet: true });
+    fixture.detectChanges();
+
+    expect(element().querySelector('.error')?.textContent).toContain(
+      'The device asks for its pairing code.',
+    );
+  });
+
+  it('gives a listed device that waits for one its pairing code', async () => {
+    TestBed.inject(DeviceService).devices.update((devices) => [
+      ...devices,
+      {
+        id: 'nas',
+        name: 'NAS',
+        address: '192.168.1.6:9393',
+        kind: 'server',
+        removable: true,
+        unreachable: true,
+        pairing: 'wrong',
+      },
+    ]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const nas = element().querySelectorAll('li')[2];
+    expect(nas.textContent).toContain("The pairing code is not this device's");
+
+    await type('device-code', '7kqm-x2rp');
+    nas.querySelector<HTMLButtonElement>('form.pairing button')!.click();
+
+    const change = http.expectOne('/api/devices/nas/pairing');
+    expect(change.request.method).toBe('PUT');
+    expect(change.request.body).toEqual({ code: '7kqm-x2rp', password: 'correct horse' });
+    change.flush(null, { status: 204, statusText: 'No Content' });
+    http
+      .expectOne((r) => r.method === 'GET' && r.url === '/api/devices')
+      .flush({ devices: [{ id: 'local', name: '' }], passwordSet: true });
+  });
+
+  it("shows this device's own pairing code", async () => {
+    http.expectOne('/api/pairing').flush({ code: '7KQM-X2RP' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(element().querySelector('.own-code')?.textContent?.trim()).toBe('7KQM-X2RP');
+    expect(element().textContent).toContain("This device's pairing code");
+  });
+
+  it('shows no pairing code when the backend keeps none', () => {
+    http.expectOne('/api/pairing').flush('404 page not found', {
+      status: 404,
+      statusText: 'Not Found',
+    });
+    fixture.detectChanges();
+
+    expect(element().querySelector('.own-code')).toBeNull();
   });
 
   it('counts a change as done when the list cannot be read afterwards', async () => {

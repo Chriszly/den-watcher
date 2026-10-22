@@ -347,6 +347,12 @@ export class Dashboard {
         if (this.refused()) {
           return { key: 'dashboard.deviceRefused' };
         }
+        switch (this.devices.selected().pairing) {
+          case 'needed':
+            return { key: 'dashboard.devicePairingNeeded' };
+          case 'wrong':
+            return { key: 'dashboard.devicePairingWrong' };
+        }
         if (this.isPC()) {
           return { key: 'dashboard.deviceNotInUse', quiet: true };
         }

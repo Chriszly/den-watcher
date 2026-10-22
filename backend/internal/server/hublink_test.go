@@ -43,7 +43,7 @@ func hubLinkOf(t *testing.T, handler http.Handler) string {
 
 func TestRemembersTheHubsPage(t *testing.T) {
 	for name, handler := range map[string]http.Handler{
-		"data only": NewDataOnly(fakeCollector{}, nil, nil),
+		"data only": NewDataOnly(fakeCollector{}, nil, nil, nil),
 		"website":   newHandler(device(fakeCollector{}, nil), 0, site),
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestRemembersTheHubsPage(t *testing.T) {
 }
 
 func TestIgnoresInvalidHubPorts(t *testing.T) {
-	handler := NewDataOnly(fakeCollector{}, nil, nil)
+	handler := NewDataOnly(fakeCollector{}, nil, nil, nil)
 	askAsHub(handler, "192.168.1.20:5000", "8090")
 
 	for _, port := range []string{"0", "65536", "-1", "80/evil", "port"} {
@@ -77,7 +77,7 @@ func TestIgnoresInvalidHubPorts(t *testing.T) {
 }
 
 func TestIgnoresRequestsWithoutAValidHubID(t *testing.T) {
-	handler := NewDataOnly(fakeCollector{}, nil, nil)
+	handler := NewDataOnly(fakeCollector{}, nil, nil, nil)
 	for _, id := range []string{"", "not-an-id", "0123456789ABCDEF0123456789ABCDEF"} {
 		askAs(handler, "192.168.1.30:5000", "8090", id)
 	}
@@ -123,7 +123,7 @@ func TestKeepsTheHubAnotherIDAsksAfter(t *testing.T) {
 }
 
 func TestHubLinkOnlyForThisMachine(t *testing.T) {
-	handler := NewDataOnly(fakeCollector{}, nil, nil)
+	handler := NewDataOnly(fakeCollector{}, nil, nil, nil)
 
 	if rec := get(handler, "/api/hub", "192.168.1.20:5000"); rec.Code != http.StatusForbidden {
 		t.Errorf("GET /api/hub from the network = %d, want %d", rec.Code, http.StatusForbidden)

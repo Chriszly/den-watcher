@@ -88,6 +88,12 @@ export class DevicesDialog {
   protected readonly name = signal('');
   protected readonly address = signal('');
   protected readonly kind = signal<DeviceKind>('server');
+  /** The pairing code typed in for the device to add. */
+  protected readonly code = signal('');
+  /** The pairing codes typed in for the devices that wait for one, by their id. */
+  protected readonly codes = signal<Record<string, string>>({});
+  /** This device's own pairing code, for a hub that collects from it; empty until it is read. */
+  protected readonly ownCode = signal('');
   protected readonly kinds = DEVICE_KINDS;
   protected readonly kindName = kindName;
   protected readonly problem = signal('');
@@ -128,6 +134,14 @@ export class DevicesDialog {
       }
     });
 
+    this.devices
+      .pairingCode()
+      .pipe(
+        catchError(() => of('')),
+        takeUntilDestroyed(),
+      )
+      .subscribe((code) => this.ownCode.set(code));
+
     // Filled in only when nothing has been typed yet; a suggestion that
     // cannot be read leaves the form empty, as before.
     this.devices
@@ -159,13 +173,35 @@ export class DevicesDialog {
       return;
     }
     const kind = this.kind();
+    const code = this.code().trim();
     this.change({ action: 'add', deviceName: name }, (result) =>
-      this.devices.add(name, address, kind, result.password),
+      this.devices.add(name, address, kind, code, result.password),
     ).subscribe(() => {
       this.name.set('');
       this.address.set('');
       this.kind.set('server');
+      this.code.set('');
     });
+  }
+
+  /** The pairing code typed in for a device that waits for one. */
+  protected codeFor(device: Device): string {
+    return this.codes()[device.id] ?? '';
+  }
+
+  protected typeCode(device: Device, code: string): void {
+    this.codes.update((codes) => ({ ...codes, [device.id]: code }));
+  }
+
+  /** Gives a device that waits for its pairing code the one typed in. */
+  protected setCode(device: Device): void {
+    const code = this.codeFor(device).trim();
+    if (!code) {
+      return;
+    }
+    this.change({ action: 'pairing', deviceName: device.name }, (result) =>
+      this.devices.setCode(device.id, code, result.password),
+    ).subscribe(() => this.typeCode(device, ''));
   }
 
   protected setKind(device: Device, kind: DeviceKind): void {

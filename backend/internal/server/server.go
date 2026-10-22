@@ -48,6 +48,10 @@ type Device struct {
 	// hub does not connect to, as its address is the hub's own; it can be
 	// collected from when listed in HUB_DEVICES instead.
 	Refused bool `json:"refused,omitempty"`
+	// Pairing is set for an unreachable device that does not answer the hub
+	// until it is given the device's pairing code: "needed" while the hub
+	// has none for it, "wrong" while the one it has is another.
+	Pairing string `json:"pairing,omitempty"`
 	// Router is set for a router, which the hub reads itself, as it runs
 	// no den-watcher.
 	Router bool `json:"router,omitempty"`
@@ -110,6 +114,10 @@ type Site struct {
 	// Events are the reboots and updates of each device; nil leaves out GET
 	// /api/events, which also needs Alerts.
 	Events EventLog
+	// Pairing is the code a hub must be given to collect from this machine,
+	// which GET /api/pairing shows; nil lets every hub collect and leaves
+	// out GET /api/pairing.
+	Pairing Pairing
 }
 
 // LayoutStore keeps how the page is arranged, for every browser that opens it.
@@ -145,13 +153,17 @@ func New(site Site) http.Handler {
 		mux.HandleFunc("POST /api/devices", changes.add)
 		mux.HandleFunc("DELETE /api/devices/{id}", changes.remove)
 		mux.HandleFunc("PUT /api/devices/{id}/kind", changes.setKind)
+		mux.HandleFunc("PUT /api/devices/{id}/pairing", changes.setCode)
 		if site.Backups != nil {
 			mux.HandleFunc("POST /api/backup", changes.backup)
 		}
 	}
 	link := &hubLink{}
-	mux.HandleFunc("GET /api/metrics", link.remember(forDevice(site.Devices, metricsHandler)))
+	mux.HandleFunc("GET /api/metrics", pairedOnly(site.Pairing, link.remember(forDevice(site.Devices, metricsHandler))))
 	mux.HandleFunc("GET /api/hub", link.handler)
+	if site.Pairing != nil {
+		mux.HandleFunc("GET /api/pairing", pairingHandler(site.Pairing, false))
+	}
 	mux.HandleFunc("GET /api/history", forDevice(site.Devices, func(d Device) http.HandlerFunc {
 		return historyHandler(d, site.Retention)
 	}))
@@ -160,7 +172,7 @@ func New(site Site) http.Handler {
 	}))
 	mux.HandleFunc("GET /api/availability", forDevice(site.Devices, availabilityHandler))
 	if site.Minutes != nil {
-		mux.HandleFunc("GET "+hub.MinutesPath, minutesHandler(site.Minutes))
+		mux.HandleFunc("GET "+hub.MinutesPath, pairedOnly(site.Pairing, minutesHandler(site.Minutes)))
 	}
 	if site.Alerts != nil {
 		mux.HandleFunc("GET /api/alerts", alertsHandler(site.Alerts))
@@ -189,17 +201,22 @@ func New(site Site) http.Handler {
 // NewDataOnly returns the handler for a device that a hub collects from
 // without a website of its own: only GET /api/metrics, with the usage of the
 // machine it runs on, GET /api/minutes, with the minutes it kept for the hub
-// (left out when minutes is nil), and GET /api/hub, where that hub's page is.
-// Requests from outside the local network, and requests that address the
-// machine by a name it does not know, are refused.
-func NewDataOnly(collector metrics.Source, minutes MinuteSource, allowedHosts []string) http.Handler {
+// (left out when minutes is nil), GET /api/hub, where that hub's page is, and
+// GET /api/pairing, the code a hub must be given, on this machine only (left
+// out when paired is nil, which lets every hub collect). Requests from
+// outside the local network, and requests that address the machine by a name
+// it does not know, are refused.
+func NewDataOnly(collector metrics.Source, minutes MinuteSource, paired Pairing, allowedHosts []string) http.Handler {
 	mux := http.NewServeMux()
 	link := &hubLink{}
-	mux.HandleFunc("GET /api/metrics", link.remember(metricsHandler(Device{ID: hub.LocalID, Metrics: collector})))
+	mux.HandleFunc("GET /api/metrics", pairedOnly(paired, link.remember(metricsHandler(Device{ID: hub.LocalID, Metrics: collector}))))
 	if minutes != nil {
-		mux.HandleFunc("GET "+hub.MinutesPath, minutesHandler(minutes))
+		mux.HandleFunc("GET "+hub.MinutesPath, pairedOnly(paired, minutesHandler(minutes)))
 	}
 	mux.HandleFunc("GET /api/hub", link.handler)
+	if paired != nil {
+		mux.HandleFunc("GET /api/pairing", pairingHandler(paired, true))
+	}
 	return withHeaders(localNetworkOnly(knownHostsOnly(newKnownHosts(allowedHosts), mux)))
 }
 

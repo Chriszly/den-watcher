@@ -143,7 +143,7 @@ func TestNoBackupWithoutTheDatabase(t *testing.T) {
 	if rec := send(handler, http.MethodPost, "/api/backup", `{"password":"correct horse"}`); rec.Code != http.StatusMethodNotAllowed && rec.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want POST /api/backup left out", rec.Code)
 	}
-	data := NewDataOnly(fakeCollector{}, nil, nil)
+	data := NewDataOnly(fakeCollector{}, nil, nil, nil)
 	if rec := send(data, http.MethodPost, "/api/backup", `{"password":"correct horse"}`); rec.Code != http.StatusMethodNotAllowed && rec.Code != http.StatusNotFound {
 		t.Errorf("data-only status = %d, want POST /api/backup left out", rec.Code)
 	}

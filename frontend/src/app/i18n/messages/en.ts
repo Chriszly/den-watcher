@@ -18,6 +18,10 @@ export const en = {
     '{device} has not answered recently. Is it on, and are its address and port right?',
   'dashboard.deviceRefused':
     '{device} is at an address of the hub itself, which the hub does not connect to for a device added on the page. Remove it with “Keep its history” ticked and list it in HUB_DEVICES under the same name.',
+  'dashboard.devicePairingNeeded':
+    "{device} answers, but keeps its usage from the hub until it is given the device's pairing code, so only its availability is kept. Enter the code under Devices: {device} shows it on its own page under Devices, in its tray icon menu on Windows, or in its log.",
+  'dashboard.devicePairingWrong':
+    '{device} answers, but the pairing code the hub has for it is not its own, so only its availability is kept. Enter the code {device} shows under Devices.',
   'dashboard.deviceNotInUse':
     '{device} is switched off or asleep, so it is not in use. Showing the last known values.',
   'dashboard.cpu': 'CPU',
@@ -158,6 +162,17 @@ export const en = {
   'devicesDialog.backup': 'Download backup',
   'devicesDialog.backupHint':
     "A copy of the hub's database to keep: the history, the devices with their addresses, the alerts and the hash of the password. Router passwords are not in it.",
+  'devicesDialog.code': 'Pairing code',
+  'devicesDialog.codeHint':
+    "Shown on the device's page under Devices, in its tray icon menu or in its log.",
+  'devicesDialog.pairingNeeded':
+    'Waits for its pairing code; until then only its availability is kept.',
+  'devicesDialog.pairingWrong':
+    "The pairing code is not this device's; until it is, only its availability is kept.",
+  'devicesDialog.setCode': 'Save code',
+  'devicesDialog.ownCodeTitle': "This device's pairing code",
+  'devicesDialog.ownCodeHint':
+    'A hub asks for this code when this device is added there; without it, the hub keeps only whether the device answers.',
   'devicesDialog.backupTitle': 'Backup',
   'devices.problem.wrongPassword': 'The password is wrong.',
   'devices.problem.passwordLength': 'The password needs at least {count} characters.',
@@ -178,6 +193,11 @@ export const en = {
   'devices.problem.notFound': 'This device has been removed already.',
   'devices.problem.removing':
     'A device with this name is still being removed. Try again in a moment.',
+  'devices.problem.pairingNeeded':
+    'The device asks for its pairing code. It shows it on its own page under Devices, in its tray icon menu on Windows, or in its log.',
+  'devices.problem.pairingWrong':
+    "That is not the device's pairing code. Enter the code it shows on its own page under Devices, in its tray icon menu on Windows, or in its log.",
+  'devices.problem.pairingNone': 'This device runs no Den-Watcher, so it has no pairing code.',
   'devices.problem.demo': "This is a demo, so devices can't be added, removed or changed.",
   'devices.problem.demoBackup': 'This is a demo, so it has no database to back up.',
   'devices.problem.other': 'The devices could not be changed. Try again.',
@@ -197,6 +217,7 @@ export const en = {
   'passwordDialog.confirmRemove': 'Remove',
   'passwordDialog.kind': 'Change {device} to {kind}?',
   'passwordDialog.confirmKind': 'Change',
+  'passwordDialog.pairing': 'Give {device} the new pairing code?',
   'passwordDialog.confirmBackup': 'Download',
   'passwordDialog.backupHint':
     'Keep the file private: it holds the addresses of your devices and the hash of the password.',

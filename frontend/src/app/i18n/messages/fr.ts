@@ -15,6 +15,10 @@ export const fr: Messages = {
     '{device} n’a pas répondu récemment. Est-il allumé, et son adresse et son port sont-ils corrects ?',
   'dashboard.deviceRefused':
     '{device} est à une adresse du hub lui-même, à laquelle le hub ne se connecte pas pour un appareil ajouté sur la page. Retirez-le avec « Conserver son historique » coché et ajoutez-le à HUB_DEVICES sous le même nom.',
+  'dashboard.devicePairingNeeded':
+    "{device} répond, mais ne donne son utilisation au hub qu'avec le code d'appairage de l'appareil, donc seule sa disponibilité est suivie. Saisissez le code sous Appareils : {device} l'affiche sur sa propre page sous Appareils, dans le menu de son icône de la barre des tâches sous Windows ou dans son journal.",
+  'dashboard.devicePairingWrong':
+    "{device} répond, mais le code d'appairage que le hub a pour lui n'est pas le sien, donc seule sa disponibilité est suivie. Saisissez sous Appareils le code qu'affiche {device}.",
   'dashboard.deviceNotInUse':
     '{device} est éteint ou en veille, il n’est donc pas utilisé. Affichage des dernières valeurs connues.',
   'dashboard.cpu': 'CPU',
@@ -154,6 +158,17 @@ export const fr: Messages = {
   'devicesDialog.backup': 'Télécharger la sauvegarde',
   'devicesDialog.backupHint':
     'Une copie de la base de données du hub à conserver : l’historique, les appareils avec leurs adresses, les alertes et le hachage du mot de passe. Les mots de passe des routeurs n’y figurent pas.',
+  'devicesDialog.code': "Code d'appairage",
+  'devicesDialog.codeHint':
+    "Affiché sur la page de l'appareil sous Appareils, dans le menu de son icône de la barre des tâches ou dans son journal.",
+  'devicesDialog.pairingNeeded':
+    "Attend son code d'appairage ; d'ici là, seule sa disponibilité est suivie.",
+  'devicesDialog.pairingWrong':
+    "Ce code d'appairage n'est pas celui de cet appareil ; d'ici là, seule sa disponibilité est suivie.",
+  'devicesDialog.setCode': 'Enregistrer le code',
+  'devicesDialog.ownCodeTitle': "Code d'appairage de cet appareil",
+  'devicesDialog.ownCodeHint':
+    "Un hub demande ce code quand cet appareil y est ajouté ; sans lui, le hub ne suit que si l'appareil répond.",
   'devicesDialog.backupTitle': 'Sauvegarde',
   'devices.problem.wrongPassword': 'Le mot de passe est incorrect.',
   'devices.problem.passwordLength': 'Le mot de passe doit comporter au moins {count} caractères.',
@@ -177,6 +192,12 @@ export const fr: Messages = {
   'devices.problem.notFound': 'Cet appareil a déjà été retiré.',
   'devices.problem.removing':
     'Un appareil portant ce nom est encore en cours de retrait. Réessayez dans un instant.',
+  'devices.problem.pairingNeeded':
+    "L'appareil demande son code d'appairage. Il l'affiche sur sa propre page sous Appareils, dans le menu de son icône de la barre des tâches sous Windows ou dans son journal.",
+  'devices.problem.pairingWrong':
+    "Ce n'est pas le code d'appairage de l'appareil. Saisissez le code qu'il affiche sur sa propre page sous Appareils, dans le menu de son icône de la barre des tâches sous Windows ou dans son journal.",
+  'devices.problem.pairingNone':
+    "Cet appareil n'exécute pas Den-Watcher, il n'a donc pas de code d'appairage.",
   'devices.problem.demo':
     'Ceci est une démo : les appareils ne peuvent être ni ajoutés, ni supprimés, ni modifiés.',
   'devices.problem.demoBackup':
@@ -198,6 +219,7 @@ export const fr: Messages = {
   'passwordDialog.confirmRemove': 'Retirer',
   'passwordDialog.kind': 'Passer {device} en {kind} ?',
   'passwordDialog.confirmKind': 'Modifier',
+  'passwordDialog.pairing': "Donner à {device} le nouveau code d'appairage ?",
   'passwordDialog.confirmBackup': 'Télécharger',
   'passwordDialog.backupHint':
     'Gardez le fichier privé : il contient les adresses de vos appareils et le hachage du mot de passe.',

@@ -218,3 +218,46 @@ func TestCachedAddressIsLookedUpOnceAMinute(t *testing.T) {
 		t.Errorf("looked up %d times after a minute, want 2", lookups)
 	}
 }
+
+// servePairing answers GET /api/pairing with status and body, and returns the port.
+func servePairing(t *testing.T, status int, body string) string {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pairing" {
+			http.NotFound(w, r)
+			return
+		}
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(server.Close)
+	address, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return address.Port()
+}
+
+func TestAskPairing(t *testing.T) {
+	port := servePairing(t, http.StatusOK, `{"code":"7KQM-X2RP"}`)
+	if code, err := askPairing(context.Background(), http.DefaultClient, port); err != nil || code != "7KQM-X2RP" {
+		t.Errorf("askPairing() = %q, %v, want the code", code, err)
+	}
+	// A service from before pairing has none.
+	port = servePairing(t, http.StatusNotFound, `404 page not found`)
+	if code, err := askPairing(context.Background(), http.DefaultClient, port); err != nil || code != "" {
+		t.Errorf("askPairing() of an older service = %q, %v, want no code and no error", code, err)
+	}
+	for _, body := range []string{`not json`, `{"code":""}`, `{"code":"7kqm-x2rp"}`, `{"code":"7KQM-X2RP\nOpen"}`} {
+		port := servePairing(t, http.StatusOK, body)
+		if code, err := askPairing(context.Background(), http.DefaultClient, port); err == nil {
+			t.Errorf("askPairing() with %s = %q, want an error", body, code)
+		}
+	}
+}
+
+func TestPairingText(t *testing.T) {
+	if got := translations["en"].pairingText("7KQM-X2RP"); got != "Pairing code for the hub: 7KQM-X2RP" {
+		t.Errorf("pairingText() = %q", got)
+	}
+}

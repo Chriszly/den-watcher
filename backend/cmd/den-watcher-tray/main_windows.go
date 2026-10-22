@@ -52,13 +52,14 @@ type tray struct {
 	// paused is set when the service was stopped with Pause.
 	paused   bool
 	hub      string
+	code     string
 	settings settings
 	state    state
 	shown    string
 	// addressOf is only used by refresh, which runs one at a time.
 	addressOf cachedAddress
 
-	status, address, openHub, openPage, toggle, stop *systray.MenuItem
+	status, address, pairing, openHub, openPage, toggle, stop *systray.MenuItem
 }
 
 // ready builds the menu. windows/check-installer.ps1 clicks its entries by
@@ -69,6 +70,9 @@ func (t *tray) ready() {
 	t.status.Disable()
 	t.address = systray.AddMenuItem(t.text.address, "")
 	t.address.Disable()
+	t.pairing = systray.AddMenuItem(t.text.pairing, "")
+	t.pairing.Disable()
+	t.pairing.Hide()
 	systray.AddSeparator()
 	t.openHub = systray.AddMenuItem(t.text.noHub, "")
 	t.openPage = systray.AddMenuItem(t.text.openPage, "")
@@ -104,13 +108,20 @@ func (t *tray) checkNow() {
 func (t *tray) refresh() {
 	current := readSettings()
 	service := queryService()
-	answers := false
-	hub := ""
+	answers, codeKnown := false, false
+	hub, code := "", ""
 	if service == serviceRunning {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		link, err := askHub(ctx, t.client, current.port)
-		cancel()
 		answers, hub = err == nil, link
+		if answers {
+			// A service without a code, as one whose database cannot be
+			// opened, answers 404, so an old code is not kept then.
+			var err error
+			code, err = askPairing(ctx, t.client, current.port)
+			codeKnown = err == nil
+		}
+		cancel()
 	}
 	// Listing the adapters can take a moment, so it is done before taking mu.
 	addr, found := t.addressOf.get(time.Now())
@@ -120,6 +131,9 @@ func (t *tray) refresh() {
 	t.paused = stillPaused(service, t.paused)
 	if hub != "" {
 		t.hub = hub
+	}
+	if codeKnown {
+		t.code = code
 	}
 	t.settings = current
 	t.state = stateOf(service, answers, t.paused)
@@ -138,6 +152,12 @@ func (t *tray) refresh() {
 	systray.SetTooltip("Den-Watcher: " + text)
 	t.status.SetTitle("Den-Watcher: " + text)
 	t.address.SetTitle(t.text.addressText(addr, found, t.settings.port))
+	if t.code != "" {
+		t.pairing.SetTitle(t.text.pairingText(t.code))
+		t.pairing.Show()
+	} else {
+		t.pairing.Hide()
+	}
 	if t.hub != "" {
 		t.openHub.SetTitle(t.text.hubText(t.hub))
 		t.openHub.Enable()

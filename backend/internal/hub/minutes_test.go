@@ -201,7 +201,7 @@ func TestFetcherLeavesAMinuteTheDeviceHasNotKeptYetToTheRecorder(t *testing.T) {
 	}
 }
 
-func TestFetcherStartsWithANewDeviceNow(t *testing.T) {
+func TestFetcherFetchesWhatANewDeviceKeptBefore(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t)
 	device := newMinutesDevice(time.Now(), 10)
@@ -213,9 +213,26 @@ func TestFetcherStartsWithANewDeviceNow(t *testing.T) {
 
 	f.fetch(ctx, anyMinute)
 
-	got, err := store.Range(ctx, "office-pc", time.Now().Add(-time.Hour), time.Now().Add(time.Minute), time.Minute)
-	if err != nil || (len(got) > 0 && len(got[0].Points) > 1) {
-		t.Errorf("Range() = %+v, %v; want at most the newest minute, not everything the device kept", got, err)
+	if got := storedTimes(t, store, "office-pc"); len(got) != 10 {
+		t.Errorf("stored %d minutes, want the 10 the device kept before the hub first reached it; asked %v", len(got), device.asked)
+	}
+}
+
+func TestFetcherFetchesWhatANewDeviceKeptOnlyWithinTheRetention(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t)
+	device := newMinutesDevice(time.Now(), 10)
+	agent := device.start(t)
+	if _, err := agent.Collect(ctx); err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+	f := &fetcher{agent: agent, store: store, device: "office-pc", maxEntries: history.DefaultMaxEntries, retention: 5 * time.Minute}
+
+	f.fetch(ctx, anyMinute)
+
+	got := storedTimes(t, store, "office-pc")
+	if len(got) == 0 || len(got) >= 10 || got[0] < time.Now().Add(-f.retention-time.Minute).Unix() {
+		t.Errorf("stored %v, want only the minutes within the retention; asked %v", got, device.asked)
 	}
 }
 

@@ -9,6 +9,7 @@ import { I18n } from '../app/i18n/i18n';
 import { fileNameOf } from '../app/history/csv-download';
 import { MetricsService } from '../app/metrics/metrics';
 import {
+  DEMO_PAIRING_CODE,
   DEMO_RETENTION_DAYS,
   DemoBackend,
   LAYOUT_STORAGE_KEY,
@@ -223,7 +224,7 @@ describe('DemoBackend', () => {
     const i18n = TestBed.inject(I18n);
     i18n.language.set('en-GB');
     const refused = await firstValueFrom(
-      devices.add('NAS', '192.168.1.9:9393', 'server', 'password'),
+      devices.add('NAS', '192.168.1.9:9393', 'server', '', 'password'),
     ).catch((error: unknown) => error);
     expect(problemMessage(refused, i18n)).toBe(
       "This is a demo, so devices can't be added, removed or changed.",
@@ -231,5 +232,9 @@ describe('DemoBackend', () => {
     await expect(
       firstValueFrom(devices.remove('windows-pc', 'password', false)),
     ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('shows a pairing code of its own', async () => {
+    expect(await firstValueFrom(devices.pairingCode())).toBe(DEMO_PAIRING_CODE);
   });
 });

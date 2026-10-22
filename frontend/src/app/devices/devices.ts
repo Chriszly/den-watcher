@@ -38,6 +38,12 @@ export interface Device {
    */
   refused?: boolean;
   /**
+   * Set for a device that answers but keeps its usage from the hub until it is given the device's
+   * pairing code: `needed` while the hub has none for it, `wrong` while the one it has is another.
+   * The hub keeps only its availability meanwhile.
+   */
+  pairing?: 'needed' | 'wrong';
+  /**
    * Set for a router, which the hub reads itself over the local network, as it runs no
    * den-watcher; it is set in HUB_ROUTERS.
    */
@@ -129,7 +135,8 @@ export function deviceState(device: Device, hubLost = false): DeviceState {
   if (hubLost) {
     return device.id === LOCAL_DEVICE.id ? 'unreachable' : 'unknown';
   }
-  if (!device.unreachable) {
+  // Waiting for its pairing code, the device answers all the same.
+  if (!device.unreachable || device.pairing) {
     return 'reachable';
   }
   return notInUse(device) ? 'notInUse' : 'unreachable';
@@ -198,9 +205,34 @@ export class DeviceService {
     );
   }
 
-  /** Adds a device; without a password yet, `password` becomes the password. */
-  add(name: string, address: string, kind: DeviceKind, password: string): Observable<Device> {
-    return this.http.post<Device>('/api/devices', { name, address, kind, password });
+  /**
+   * Adds a device, with the pairing code it shows, empty for one that asks for none; without a
+   * password yet, `password` becomes the password.
+   */
+  add(
+    name: string,
+    address: string,
+    kind: DeviceKind,
+    code: string,
+    password: string,
+  ): Observable<Device> {
+    return this.http.post<Device>('/api/devices', { name, address, kind, code, password });
+  }
+
+  /** Changes the pairing code the hub sends a device, one from the hub's .env file too. */
+  setCode(id: string, code: string, password: string): Observable<void> {
+    return this.http.put<void>(`/api/devices/${encodeURIComponent(id)}/pairing`, {
+      code,
+      password,
+    });
+  }
+
+  /**
+   * Reads this device's own pairing code, which a hub asks for when this device is added there.
+   * Emits an empty code when the backend keeps none.
+   */
+  pairingCode(): Observable<string> {
+    return this.http.get<{ code: string }>('/api/pairing').pipe(map((answer) => answer.code));
   }
 
   /** Changes what a device is used as, one from the hub's .env file too. */
@@ -295,6 +327,9 @@ const KNOWN_PROBLEMS = [
   'fixed',
   'notFound',
   'removing',
+  'pairingNeeded',
+  'pairingWrong',
+  'pairingNone',
   // Only the demo on GitHub Pages refuses every change with this, and a backup with demoBackup.
   'demo',
   'demoBackup',

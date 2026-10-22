@@ -104,7 +104,7 @@ func TestAddedDevicesAreKeptAcrossRestarts(t *testing.T) {
 	address := startDevice(t)
 	h := openTestHub(t, store, nil)
 
-	device, err := h.Add(ctx, "Office PC", address, KindServer)
+	device, err := h.Add(ctx, "Office PC", address, KindServer, "")
 	if err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
@@ -164,7 +164,7 @@ func TestAddRefusesDevicesThatCannotBeAdded(t *testing.T) {
 		{"Laptop", answering(http.StatusNotFound), ProblemUnreachable},
 	}
 	for _, tt := range tests {
-		if _, err := h.Add(ctx, tt.name, tt.address, KindServer); problemOf(err) != tt.want {
+		if _, err := h.Add(ctx, tt.name, tt.address, KindServer, ""); problemOf(err) != tt.want {
 			t.Errorf("Add(%q, %q) error = %v, want problem %q", tt.name, tt.address, err, tt.want)
 		}
 	}
@@ -195,7 +195,7 @@ func TestAddRefusesTheHubsOwnAddresses(t *testing.T) {
 		"172.18.0.1:22", "10.8.0.2:9393",
 	} {
 		began := time.Now()
-		if _, err := h.Add(ctx, "Laptop", address, KindServer); problemOf(err) != ProblemAddressOwn {
+		if _, err := h.Add(ctx, "Laptop", address, KindServer, ""); problemOf(err) != ProblemAddressOwn {
 			t.Errorf("Add(%q) error = %v, want problem %q", address, err, ProblemAddressOwn)
 		}
 		if took := time.Since(began); took > time.Second {
@@ -272,7 +272,7 @@ func TestCollectingRefusesTheSameOwnAddressesAsAdding(t *testing.T) {
 	}
 
 	// Adding refuses the address, also when the page's request gives none.
-	if _, err := h.Add(ctx, "Laptop", "192.168.1.20:9393", KindServer); problemOf(err) != ProblemAddressOwn {
+	if _, err := h.Add(ctx, "Laptop", "192.168.1.20:9393", KindServer, ""); problemOf(err) != ProblemAddressOwn {
 		t.Errorf("Add(192.168.1.20:9393) error = %v, want problem %q", err, ProblemAddressOwn)
 	}
 	// So does collecting, as for a host name that resolves to it later.
@@ -542,7 +542,7 @@ func TestAddDoesNotReadTheOwnAddressesHoldingMu(t *testing.T) {
 
 	added := make(chan error, 1)
 	go func() {
-		_, err := h.Add(context.Background(), "Laptop", strings.TrimPrefix(device.URL, "http://"), KindServer)
+		_, err := h.Add(context.Background(), "Laptop", strings.TrimPrefix(device.URL, "http://"), KindServer, "")
 		added <- err
 	}()
 	// Adding reads them before asking the device.
@@ -717,7 +717,7 @@ func TestRemoveForgetsTheDeviceAndItsHistory(t *testing.T) {
 	alerts := &forgotten{}
 	h := openTestHub(t, store, []Device{{ID: "pi", Name: "Pi", Address: startDevice(t)}}, alerts.forget)
 	for _, name := range []string{"Office PC", "Laptop"} {
-		if _, err := h.Add(ctx, name, startDevice(t), KindServer); err != nil {
+		if _, err := h.Add(ctx, name, startDevice(t), KindServer, ""); err != nil {
 			t.Fatalf("Add(%q) error = %v", name, err)
 		}
 	}
@@ -764,7 +764,7 @@ func TestRemoveFinishesWhenTheRequestIsCancelled(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t)
 	h := openTestHub(t, store, nil)
-	if _, err := h.Add(ctx, "Office PC", startDevice(t), KindServer); err != nil {
+	if _, err := h.Add(ctx, "Office PC", startDevice(t), KindServer, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
 	now := time.Now()
@@ -797,7 +797,7 @@ func TestRemoveDeletesTheDataWithoutHoldingUpThePage(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t)
 	h := openTestHub(t, store, nil)
-	if _, err := h.Add(ctx, "Office PC", startDevice(t), KindServer); err != nil {
+	if _, err := h.Add(ctx, "Office PC", startDevice(t), KindServer, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
 	now := time.Now()
@@ -820,13 +820,13 @@ func TestRemoveDeletesTheDataWithoutHoldingUpThePage(t *testing.T) {
 	if got := ids(h.Remotes()); len(got) != 0 {
 		t.Errorf("devices while deleting = %q, want none", got)
 	}
-	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindServer); err != nil {
+	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindServer, ""); err != nil {
 		t.Errorf("Add(Laptop) while deleting error = %v", err)
 	}
 	// Adding it again waits a moment, then is refused rather than holding up
 	// the request until the delete is done.
 	started := time.Now()
-	if _, err := h.Add(ctx, "Office PC", startDevice(t), KindServer); problemOf(err) != ProblemRemoving {
+	if _, err := h.Add(ctx, "Office PC", startDevice(t), KindServer, ""); problemOf(err) != ProblemRemoving {
 		t.Errorf("Add(Office PC) while deleting error = %v, want problem %q", err, ProblemRemoving)
 	}
 	// It gives up after removingWait, not once the data is deleted; the room
@@ -848,7 +848,7 @@ func TestRemoveDeletesTheDataWithoutHoldingUpThePage(t *testing.T) {
 	if series, err := store.Range(ctx, "office-pc", now.Add(-time.Minute), now.Add(time.Minute), time.Minute); err != nil || len(series) != 0 {
 		t.Errorf("history = %+v, %v; want it deleted", series, err)
 	}
-	if _, err := h.Add(ctx, "Office PC", startDevice(t), KindServer); err != nil {
+	if _, err := h.Add(ctx, "Office PC", startDevice(t), KindServer, ""); err != nil {
 		t.Errorf("Add(Office PC) after deleting error = %v", err)
 	}
 }
@@ -861,13 +861,13 @@ func TestNoChangesOnceTheHubStops(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
-	if _, err := h.Add(ctx, "Office PC", startDevice(t), KindServer); err != nil {
+	if _, err := h.Add(ctx, "Office PC", startDevice(t), KindServer, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
 	stop()
 	h.Wait()
 
-	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindServer); !errors.Is(err, ErrStopping) {
+	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindServer, ""); !errors.Is(err, ErrStopping) {
 		t.Errorf("Add() once stopped error = %v, want ErrStopping", err)
 	}
 	if err := h.Remove(ctx, "office-pc", false); !errors.Is(err, ErrStopping) {
@@ -888,7 +888,7 @@ func TestNewForgetsTheAvailabilityOfDevicesNoLongerCollectedFrom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
-	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindServer); err != nil {
+	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindServer, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
 	now := time.Now()
@@ -971,10 +971,10 @@ func TestKindIsKeptAndCanBeChanged(t *testing.T) {
 	store := openTestStore(t)
 	pi := Device{ID: "pi", Name: "Pi", Address: startDevice(t)}
 	h := openTestHub(t, store, []Device{pi})
-	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC); err != nil {
+	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
-	if _, err := h.Add(ctx, "Tablet", startDevice(t), "phone"); problemOf(err) != ProblemKind {
+	if _, err := h.Add(ctx, "Tablet", startDevice(t), "phone", ""); problemOf(err) != ProblemKind {
 		t.Errorf("Add() with an unknown kind error = %v, want problem %q", err, ProblemKind)
 	}
 	if err := h.SetKind(ctx, "pi", KindPC); err != nil {
@@ -1004,7 +1004,7 @@ func TestRemoveForgetsTheKind(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t)
 	h := openTestHub(t, store, nil)
-	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC); err != nil {
+	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
 	if err := h.Remove(ctx, "laptop", false); err != nil {
@@ -1022,7 +1022,7 @@ func TestKeepingTheHistoryKeepsAvailabilityAndKindAcrossRestarts(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t)
 	h := openTestHub(t, store, nil)
-	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC); err != nil {
+	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
 	now := time.Now()
@@ -1053,7 +1053,7 @@ func TestKeepingTheHistoryKeepsAvailabilityAndKindAcrossRestarts(t *testing.T) {
 	if _, err := store.DB().Exec(`UPDATE hub_kept SET removed = removed - 86400`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := again.Add(ctx, "Laptop", startDevice(t), KindPC); err != nil {
+	if _, err := again.Add(ctx, "Laptop", startDevice(t), KindPC, ""); err != nil {
 		t.Fatalf("Add() again error = %v", err)
 	}
 	if kept, err := again.selectDevices(ctx, `SELECT device FROM hub_kept`); err != nil || len(kept) != 0 {
@@ -1081,7 +1081,7 @@ func TestAKeptDeviceInHubDevicesIsCollectedFromAgain(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t)
 	h := openTestHub(t, store, nil)
-	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC); err != nil {
+	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
 	if err := h.Remove(ctx, "laptop", true); err != nil {
@@ -1125,7 +1125,7 @@ func TestKeptDevicesAreForgottenAfterTheRetention(t *testing.T) {
 	alerts := &forgotten{}
 	h := openTestHub(t, store, nil, alerts.forget)
 	for _, name := range []string{"Laptop", "Tablet"} {
-		if _, err := h.Add(ctx, name, startDevice(t), KindPC); err != nil {
+		if _, err := h.Add(ctx, name, startDevice(t), KindPC, ""); err != nil {
 			t.Fatalf("Add(%q) error = %v", name, err)
 		}
 		id := strings.ToLower(name)
@@ -1163,7 +1163,7 @@ func TestARemovalThatStopsHalfwayIsFinishedAtTheNextStart(t *testing.T) {
 	// Deleting its alerts fails, as when the program stops meanwhile.
 	alerts := &forgotten{fail: errors.New("stopping")}
 	h := openTestHub(t, store, nil, alerts.forget)
-	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC); err != nil {
+	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
 	if err := h.Remove(ctx, "laptop", false); err != nil {
@@ -1190,7 +1190,7 @@ func TestAnEmptyKindIsAServer(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t)
 	h := openTestHub(t, store, nil)
-	if _, err := h.Add(ctx, "NAS", startDevice(t), ""); err != nil {
+	if _, err := h.Add(ctx, "NAS", startDevice(t), "", ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
 	if err := h.SetKind(ctx, "nas", ""); err != nil {
@@ -1227,12 +1227,12 @@ func TestTheNameOfASkippedSavedDeviceStaysTaken(t *testing.T) {
 	store := openTestStore(t)
 	address := startDevice(t)
 	h := openTestHub(t, store, nil)
-	if _, err := h.Add(ctx, "PC", address, KindPC); err != nil {
+	if _, err := h.Add(ctx, "PC", address, KindPC, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
 	// Listed in HUB_DEVICES later, at the same address under another name.
 	h = openTestHub(t, store, []Device{{ID: "office-pc", Name: "Office PC", Address: address}})
-	_, err := h.Add(ctx, "PC", startDevice(t), KindPC)
+	_, err := h.Add(ctx, "PC", startDevice(t), KindPC, "")
 	var input *InputError
 	if !errors.As(err, &input) || input.Problem != ProblemNameTaken {
 		t.Fatalf("Add() under the skipped device's name error = %v, want ProblemNameTaken", err)

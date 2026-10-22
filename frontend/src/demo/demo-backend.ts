@@ -39,6 +39,9 @@ export const LAYOUT_STORAGE_KEY = 'demoLayout';
 /** How long the made-up devices take to answer, so the page loads like it does on a real hub. */
 const LATENCY_MS = 60;
 
+/** The pairing code the demo's hub shows for itself, as a hub that collects from it would ask. */
+export const DEMO_PAIRING_CODE = '7KQM-X2RP';
+
 /**
  * Answers the page's requests to /api with made-up values from the sample
  * devices instead of sending them anywhere. Devices cannot be added, removed or changed, nor a
@@ -75,6 +78,9 @@ export class DemoBackend implements HttpBackend {
     }
     if (request.method === 'GET' && url.pathname === '/api/devices/suggestion') {
       return respond(request, DEMO_SUGGESTION);
+    }
+    if (request.method === 'GET' && url.pathname === '/api/pairing') {
+      return respond(request, { code: DEMO_PAIRING_CODE });
     }
     if (url.pathname === '/api/layout') {
       return this.layout(request);

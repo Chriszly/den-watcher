@@ -86,6 +86,30 @@ func (b *Buffer) Close() error {
 	return b.db.Close()
 }
 
+// DB returns the database the buffer is kept in, for the other tables of a
+// device without a history of its own.
+func (b *Buffer) DB() *sql.DB {
+	return b.db
+}
+
+// Hubs returns the ids of the hubs that fetched minutes from the buffer.
+func (b *Buffer) Hubs(ctx context.Context) ([]string, error) {
+	rows, err := b.db.QueryContext(ctx, `SELECT hub FROM buffer_hubs ORDER BY hub`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var hubs []string
+	for rows.Next() {
+		var hub string
+		if err := rows.Scan(&hub); err != nil {
+			return nil, err
+		}
+		hubs = append(hubs, hub)
+	}
+	return hubs, rows.Err()
+}
+
 // Add keeps the averages measured at one time and deletes what is older than
 // the span, minutes and descriptions of extras alike. The buffer holds only
 // the machine's own minutes, so device is not stored; it is there so a

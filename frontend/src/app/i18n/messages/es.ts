@@ -17,6 +17,10 @@ export const es: Messages = {
     '{device} no ha respondido últimamente. ¿Está encendido y son correctos su dirección y su puerto?',
   'dashboard.deviceRefused':
     '{device} está en una dirección del propio hub, a la que el hub no se conecta para un dispositivo añadido en la página. Quítalo con «Conservar su historial» marcado y añádelo a HUB_DEVICES con el mismo nombre.',
+  'dashboard.devicePairingNeeded':
+    '{device} responde, pero no da su uso al hub hasta recibir el código de emparejamiento del dispositivo, así que solo se registra su disponibilidad. Introduce el código en Dispositivos: {device} lo muestra en su propia página en Dispositivos, en el menú de su icono de la bandeja en Windows o en su registro.',
+  'dashboard.devicePairingWrong':
+    '{device} responde, pero el código de emparejamiento que el hub tiene para él no es el suyo, así que solo se registra su disponibilidad. Introduce en Dispositivos el código que muestra {device}.',
   'dashboard.deviceNotInUse':
     '{device} está apagado o en reposo, así que no está en uso. Se muestran los últimos valores conocidos.',
   'dashboard.cpu': 'CPU',
@@ -156,6 +160,17 @@ export const es: Messages = {
   'devicesDialog.backup': 'Descargar copia de seguridad',
   'devicesDialog.backupHint':
     'Una copia de la base de datos del hub para guardar: el historial, los dispositivos con sus direcciones, las alertas y el hash de la contraseña. Las contraseñas de los routers no están en ella.',
+  'devicesDialog.code': 'Código de emparejamiento',
+  'devicesDialog.codeHint':
+    'Se muestra en la página del dispositivo en Dispositivos, en el menú de su icono de la bandeja o en su registro.',
+  'devicesDialog.pairingNeeded':
+    'Espera su código de emparejamiento; hasta entonces solo se registra su disponibilidad.',
+  'devicesDialog.pairingWrong':
+    'El código de emparejamiento no es el de este dispositivo; hasta entonces solo se registra su disponibilidad.',
+  'devicesDialog.setCode': 'Guardar código',
+  'devicesDialog.ownCodeTitle': 'Código de emparejamiento de este dispositivo',
+  'devicesDialog.ownCodeHint':
+    'Un hub pide este código cuando este dispositivo se añade allí; sin él, el hub solo registra si el dispositivo responde.',
   'devicesDialog.backupTitle': 'Copia de seguridad',
   'devices.problem.wrongPassword': 'La contraseña no es correcta.',
   'devices.problem.passwordLength': 'La contraseña necesita al menos {count} caracteres.',
@@ -179,6 +194,12 @@ export const es: Messages = {
   'devices.problem.notFound': 'Este dispositivo ya se ha quitado.',
   'devices.problem.removing':
     'Todavía se está quitando un dispositivo con este nombre. Vuelve a intentarlo en un momento.',
+  'devices.problem.pairingNeeded':
+    'El dispositivo pide su código de emparejamiento. Lo muestra en su propia página en Dispositivos, en el menú de su icono de la bandeja en Windows o en su registro.',
+  'devices.problem.pairingWrong':
+    'Ese no es el código de emparejamiento del dispositivo. Introduce el código que muestra en su propia página en Dispositivos, en el menú de su icono de la bandeja en Windows o en su registro.',
+  'devices.problem.pairingNone':
+    'En este dispositivo no se ejecuta Den-Watcher, así que no tiene código de emparejamiento.',
   'devices.problem.demo':
     'Esto es una demo, así que no se pueden añadir, quitar ni cambiar dispositivos.',
   'devices.problem.demoBackup': 'Esto es una demo, así que no hay base de datos que copiar.',
@@ -199,6 +220,7 @@ export const es: Messages = {
   'passwordDialog.confirmRemove': 'Quitar',
   'passwordDialog.kind': '¿Cambiar {device} a {kind}?',
   'passwordDialog.confirmKind': 'Cambiar',
+  'passwordDialog.pairing': '¿Dar a {device} el nuevo código de emparejamiento?',
   'passwordDialog.confirmBackup': 'Descargar',
   'passwordDialog.backupHint':
     'Guarda el archivo en privado: contiene las direcciones de tus dispositivos y el hash de la contraseña.',

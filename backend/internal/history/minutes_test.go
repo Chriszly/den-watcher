@@ -450,3 +450,20 @@ func TestAddMinutesLeavesOutTimesStoredAlready(t *testing.T) {
 		t.Errorf("hourly Range() = %+v, %v; want %+v, each minute counted once", hourly, err, want)
 	}
 }
+
+func TestBufferListsTheHubsThatFetched(t *testing.T) {
+	ctx := context.Background()
+	buffer := openTestBuffer(t, time.Hour)
+	if hubs, err := buffer.Hubs(ctx); err != nil || len(hubs) != 0 {
+		t.Fatalf("Hubs() of a new buffer = %v, %v; want none", hubs, err)
+	}
+	if _, _, err := buffer.Since(ctx, hub, time.Unix(0, 0), 10, 1000); err != nil {
+		t.Fatalf("Since() error = %v", err)
+	}
+	if _, _, err := buffer.Since(ctx, "", time.Unix(0, 0), 10, 1000); err != nil {
+		t.Fatalf("Since() error = %v", err)
+	}
+	if hubs, err := buffer.Hubs(ctx); err != nil || !reflect.DeepEqual(hubs, []string{hub}) {
+		t.Fatalf("Hubs() = %v, %v; want only the hub that fetched", hubs, err)
+	}
+}

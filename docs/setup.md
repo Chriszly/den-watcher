@@ -164,6 +164,7 @@ The bear in the taskbar's notification area shows whether Den-Watcher runs:
 Its menu, opened with a click:
 
 - **Address** shows where other devices reach this PC, such as `192.168.1.23:9393`: the IPv4 address of the network adapter Windows uses for its default route (else the first private one) and the installer's port, looked up again every minute. This is the address to add on the hub's *Devices* dialog
+- **Pairing code for the hub** shows the code the hub's *Devices* dialog asks for when this PC is added there (see [Add the devices on the hub](#4-add-the-devices-on-the-hub))
 - **Open hub (address)** opens the page of the hub that collects from this PC, at the address it names. The hub tells the PC its address each time it asks for the usage, so this needs no setup; until a hub has asked, the entry is greyed out. Any device on the local network could claim to be the hub, so check the address before opening it
 - **Open the page on this PC** appears when the PC shows the website itself (`WEBSITE=1`)
 - **Pause** stops collecting until **Resume**. The service starts again with Windows
@@ -214,6 +215,14 @@ Leaving its website on does no harm: the hub only reads its usage, and the machi
 ## 4. Add the devices on the hub
 
 On the hub's page, click *Devices*, then add each device with a name and its address and port, such as *Office PC* at `192.168.1.30:9393`. The hub checks that a den-watcher answers there before it adds the device, and starts collecting right away, with no restart. Each address and port can be added only once; the same IP address with another port counts as another device.
+
+Each device has a pairing code, such as `7KQM-X2RP`, which the dialog asks for too, so a hub collects a device's usage only once someone who can see the device gave it the code. The device shows it:
+
+- **with its own website:** on its page, at the bottom of its *Devices* dialog
+- **on Windows, data only:** in the [tray icon](#the-tray-icon)'s menu, *Pairing code for the hub*
+- **on Linux, data only:** in its log at every start (`docker compose logs den-watcher` or `journalctl -u den-watcher`), and with `docker compose exec den-watcher /den-watcher pairing-code` (Docker) or `den-watcher pairing-code` on the machine (service)
+
+The code is made once, at random, and stays the same. A hub without it, or with a wrong one, still sees that the device answers, so it keeps the device's availability, but gets none of its usage or history: the device shows *waits for its pairing code* in the list, where the code can be entered later, for devices from `HUB_DEVICES` too, and its page says so above the *Availability* card. Once it has the code, the hub fetches what the device kept before, as for a new device. A device on a version without pairing asks for no code; leave the field empty. A device updated from such a version keeps answering the hubs that already collect from it without a code: the ones a data-only device has kept minutes for, and every hub that asks in its first 10 minutes after the update. The code keeps a hub from collecting without the device's owner knowing; it is no lock on the data, as a device's own page shows its usage to anyone on the local network anyway.
 
 Pick what each device is:
 

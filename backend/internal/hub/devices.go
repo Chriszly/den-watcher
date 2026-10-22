@@ -211,6 +211,13 @@ const (
 	// ProblemRemoving is a device with the same name whose data is still
 	// being deleted after it was removed.
 	ProblemRemoving Problem = "removing"
+	// ProblemPairingNeeded is a device that does not answer the hub until
+	// it is given its pairing code, and ProblemPairingWrong one that was
+	// given another code. ProblemPairingNone is a device that runs no
+	// den-watcher, so it has no code.
+	ProblemPairingNeeded Problem = "pairingNeeded"
+	ProblemPairingWrong  Problem = "pairingWrong"
+	ProblemPairingNone   Problem = "pairingNone"
 )
 
 // InputError is a device that cannot be added or removed as asked.

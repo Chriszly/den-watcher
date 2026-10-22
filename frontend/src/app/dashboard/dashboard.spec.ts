@@ -1290,6 +1290,35 @@ describe('Dashboard', () => {
     expect(text()).not.toContain('Switched on all the time');
   });
 
+  it('asks for the pairing code of a device that answers without its usage, with its availability', () => {
+    vi.setSystemTime(new Date('2026-10-02T12:00:00Z'));
+    respond(snapshot);
+    const devices = TestBed.inject(DeviceService);
+    devices.devices.set([
+      { id: 'local', name: '' },
+      { id: 'nas', name: 'NAS', kind: 'server', unreachable: true, pairing: 'needed' },
+    ]);
+    devices.selectedId.set('nas');
+    fixture.detectChanges();
+    vi.advanceTimersByTime(0);
+
+    http
+      .expectOne('/api/metrics?device=nas')
+      .flush('down', { status: 503, statusText: 'Service Unavailable' });
+    http.expectOne('/api/availability?device=nas').flush({
+      kind: 'server',
+      since: '2026-10-01T12:00:00Z',
+      countedSince: '2026-10-01T12:00:00Z',
+      offlineSeconds: 0,
+      outages: 0,
+    });
+    fixture.detectChanges();
+
+    expect(text()).toContain('NAS answers, but keeps its usage from the hub until it is given');
+    expect(text()).not.toContain('has not answered recently');
+    expect(text()).toContain('100 %');
+  });
+
   it('shows only what a router tells, with how it is read and that nothing leaves the network', () => {
     vi.setSystemTime(new Date('2026-10-02T12:00:00Z'));
     respond(snapshot);

@@ -16,6 +16,7 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/history"
 	"github.com/Chriszly/den-watcher/backend/internal/lan"
 	"github.com/Chriszly/den-watcher/backend/internal/metrics"
+	"github.com/Chriszly/den-watcher/backend/internal/pairing"
 )
 
 const (
@@ -47,6 +48,27 @@ const PagePortHeader = "Usage-Control-Hub-Port"
 // ErrUnreachable is returned when a device has not answered recently.
 var ErrUnreachable = errors.New("the device has not answered recently")
 
+// errPairingNeeded and errPairingWrong are a device that does not answer the
+// hub until it is given the device's pairing code: one that was given none,
+// and one that was given another.
+var (
+	errPairingNeeded = errors.New("the device asks for its pairing code")
+	errPairingWrong  = errors.New("the device's pairing code is wrong")
+)
+
+// pairingProblem tells why a device does not answer the hub, as far as its
+// pairing code is concerned: "needed" when the hub has none for it, "wrong"
+// when the one it has is not the device's, or empty.
+func pairingProblem(err error) string {
+	switch {
+	case errors.Is(err, errPairingNeeded):
+		return "needed"
+	case errors.Is(err, errPairingWrong):
+		return "wrong"
+	}
+	return ""
+}
+
 // Agent reads the usage of a device from the den-watcher running on it.
 // The recorder calls Collect regularly; the page is served the newest reading
 // from Latest, so the device is not asked once more for every open page.
@@ -59,6 +81,9 @@ type Agent struct {
 	pagePort string
 	// hubID is sent as HubIDHeader; empty sends none.
 	hubID string
+	// code is the device's pairing code, sent as pairing.CodeHeader; empty
+	// sends none. Guarded by mu, as the page can change it.
+	code string
 	// maxEntries is how many groups of extras, and values in each, are kept
 	// of an answer.
 	maxEntries int
@@ -205,6 +230,9 @@ func (a *Agent) get(ctx context.Context, url string, limit int64, answer any) (t
 	if a.hubID != "" {
 		request.Header.Set(HubIDHeader, a.hubID)
 	}
+	if code := a.pairingCode(); code != "" {
+		request.Header.Set(pairing.CodeHeader, code)
+	}
 	if a.ownGeneration != nil {
 		// A connection kept open is checked against the hub's own addresses
 		// only when it was opened. Once they gained one, the connections
@@ -236,6 +264,14 @@ func (a *Agent) get(ctx context.Context, url string, limit int64, answer any) (t
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, drainBytes))
 		_ = response.Body.Close()
 	}()
+	if response.StatusCode == http.StatusForbidden {
+		switch response.Header.Get(pairing.ProblemHeader) {
+		case "needed":
+			return 0, fmt.Errorf("ask %s: %w", url, errPairingNeeded)
+		case "wrong":
+			return 0, fmt.Errorf("ask %s: %w", url, errPairingWrong)
+		}
+	}
 	if response.StatusCode != http.StatusOK {
 		return 0, &statusError{URL: url, Status: response.Status, Code: response.StatusCode}
 	}
@@ -247,6 +283,20 @@ func (a *Agent) get(ctx context.Context, url string, limit int64, answer any) (t
 		return 0, fmt.Errorf("read the answer of %s: %w", url, err)
 	}
 	return time.Since(start), nil
+}
+
+// pairingCode returns the device's pairing code, empty when the hub has none.
+func (a *Agent) pairingCode() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.code
+}
+
+// setPairingCode changes the device's pairing code the agent sends.
+func (a *Agent) setPairingCode(code string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.code = code
 }
 
 // closeKeptBefore closes the connections kept idle from before generation

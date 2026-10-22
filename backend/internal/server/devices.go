@@ -20,11 +20,14 @@ const maxChangeBytes = 4096
 // Hub adds and removes the other devices the site collects from. Problems
 // with the device asked for are hub.InputErrors.
 type Hub interface {
-	// Add adds a device; the machine's own addresses cannot be added.
-	Add(ctx context.Context, name, address string, kind hub.Kind) (hub.Device, error)
+	// Add adds a device, with the pairing code it shows; the machine's own
+	// addresses cannot be added.
+	Add(ctx context.Context, name, address string, kind hub.Kind, code string) (hub.Device, error)
 	Remove(ctx context.Context, id string, keepHistory bool) error
 	// SetKind changes what a device is used as.
 	SetKind(ctx context.Context, id string, kind hub.Kind) error
+	// SetCode changes the pairing code sent to a device.
+	SetCode(ctx context.Context, id, code string) error
 	// Suggest returns the device at from, the address of a visitor, to offer
 	// adding it; false when there is none to offer, as for the machine's own
 	// addresses.
@@ -76,7 +79,15 @@ type addRequest struct {
 	Name    string `json:"name"`
 	Address string `json:"address"`
 	// Kind is "server" or "pc"; a server when left out.
-	Kind     string `json:"kind"`
+	Kind string `json:"kind"`
+	// Code is the pairing code the device shows; empty for a device that
+	// asks for none, as one on a version without pairing.
+	Code     string `json:"code"`
+	Password string `json:"password"`
+}
+
+type codeRequest struct {
+	Code     string `json:"code"`
 	Password string `json:"password"`
 }
 
@@ -101,7 +112,7 @@ func (c *deviceChanges) add(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return nil, err
 		}
-		device, err := c.hub.Add(r.Context(), request.Name, request.Address, kind)
+		device, err := c.hub.Add(r.Context(), request.Name, request.Address, kind, request.Code)
 		return Device{ID: device.ID, Name: device.Name, Address: device.Address, Kind: kind, Removable: true}, err
 	})
 }
@@ -118,6 +129,18 @@ func (c *deviceChanges) setKind(w http.ResponseWriter, r *http.Request) {
 			return nil, err
 		}
 		return nil, c.hub.SetKind(r.Context(), r.PathValue("id"), kind)
+	})
+}
+
+// setCode serves PUT /api/devices/{id}/pairing: changes the pairing code
+// sent to a device.
+func (c *deviceChanges) setCode(w http.ResponseWriter, r *http.Request) {
+	var request codeRequest
+	if !readJSON(w, r, &request) {
+		return
+	}
+	c.change(w, r, request.Password, true, func() (any, error) {
+		return nil, c.hub.SetCode(r.Context(), r.PathValue("id"), request.Code)
 	})
 }
 
@@ -256,7 +279,7 @@ func inputStatus(problem hub.Problem) int {
 		return http.StatusNotFound
 	case hub.ProblemNameTaken, hub.ProblemAddressTaken, hub.ProblemFixed, hub.ProblemRemoving:
 		return http.StatusConflict
-	case hub.ProblemUnreachable, hub.ProblemHostUnknown:
+	case hub.ProblemUnreachable, hub.ProblemHostUnknown, hub.ProblemPairingNeeded, hub.ProblemPairingWrong:
 		return http.StatusUnprocessableEntity
 	default:
 		return http.StatusBadRequest

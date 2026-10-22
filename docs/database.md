@@ -34,6 +34,9 @@ Every device with a website keeps its history in one SQLite file. A hub keeps th
 | `buffer` | data-only devices: one row per minute and metric of the device's own usage, `time`, `metric`, `value` | until every hub has fetched it, at most `BUFFER_HOURS` |
 | `buffer_hubs` | data-only devices: per hub, by the id it sends (so a hub whose address changes, as with IPv6 privacy addresses, keeps one row), `fetched`, the newest minute it has, `sent`, the newest handed to it, and `asked`, when it last asked (Unix seconds) | while it is one of the 16 hubs that asked most recently |
 | `buffer_extra_info` | data-only devices: how each of its own [extras](data.md#extras) is described, as `extra_info` without `device` | for `BUFFER_HOURS` after it was last written |
+| `pairing_code` | this device's [pairing code](architecture.md#pairing), which a hub must be given to collect its usage; made at random once, one row | for good |
+| `pairing_hubs` | per hub that gave the pairing code, by the id it sends, or that already collected when the device was updated to pairing: `hub`, `paired` (Unix seconds) | for good |
+| `hub_pairing_codes` | per other device that was given one on the hub: `device`, `code`, the pairing code the hub sends it | as long as the device is collected from, or kept with its history |
 | `hub_watched` | per other device, since when the hub collects from it | as long as the device is collected from, or kept with its history |
 | `hub_outages` | per other device, every time it did not answer: `started`, `ended` (Unix milliseconds) | as long as the device is collected from, or kept with its history |
 | `hub_id` | the hub's own id, which it sends to every device, so a device that keeps its minutes for the hub tells it apart from other hubs; made at random once | for good |

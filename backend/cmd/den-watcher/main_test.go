@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -157,23 +159,48 @@ func TestWithBufferKeepsTheMinutesInTheDatabase(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	path := filepath.Join(t.TempDir(), "usage-control.db")
 
-	minutes, wait := withBuffer(ctx, metrics.NewSampler(collector), path, time.Hour, 1)
+	minutes, paired, wait := withBuffer(ctx, metrics.NewSampler(collector), path, time.Hour, 1, false)
 	cancel()
 	wait()
 
 	if _, err := os.Stat(path); minutes == nil || err != nil {
 		t.Errorf("withBuffer() = %v, and the database %v; want the buffer, kept in the database", minutes, err)
 	}
+	if paired == nil {
+		t.Error("withBuffer() gave no pairing code, want one kept in the database")
+	}
 }
 
 func TestWithBufferRunsWithoutADatabaseItCannotOpen(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing", "usage-control.db")
 
-	minutes, wait := withBuffer(context.Background(), nil, path, time.Hour, 1)
+	minutes, paired, wait := withBuffer(context.Background(), nil, path, time.Hour, 1, false)
 	wait()
 
-	if minutes != nil {
-		t.Errorf("withBuffer() with a database it cannot open = %v, want no minutes instead of failing", minutes)
+	if minutes != nil || paired != nil {
+		t.Errorf("withBuffer() with a database it cannot open = %v, %v; want no minutes and no pairing instead of failing", minutes, paired)
+	}
+}
+
+func TestPrintPairingCodeAsksTheRunningDevice(t *testing.T) {
+	device := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pairing" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = io.WriteString(w, `{"code":"7KQM-X2RP"}`)
+	}))
+	defer device.Close()
+	_, port, _ := net.SplitHostPort(device.Listener.Addr().String())
+	t.Setenv("LISTEN_ADDR", ":"+port)
+
+	var out strings.Builder
+	if err := printPairingCode(&out); err != nil || out.String() != "7KQM-X2RP\n" {
+		t.Fatalf("printPairingCode() = %q, %v; want the code on a line", out.String(), err)
+	}
+	device.Close()
+	if err := printPairingCode(&out); err == nil || !strings.Contains(err.Error(), "is it running") {
+		t.Fatalf("printPairingCode() without a running device = %v, want an error that asks whether it runs", err)
 	}
 }
 

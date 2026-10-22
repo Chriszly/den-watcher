@@ -200,6 +200,12 @@ func (f *fetcher) fetch(ctx context.Context, minute time.Time) bool {
 			return false
 		}
 		f.tooOld = time.Time{}
+		if pairingProblem(err) != "" {
+			// The device keeps its minutes from the hub until it is given
+			// its pairing code, which the readings tell already; they are
+			// fetched from here once it is.
+			return false
+		}
 		previous := f.after
 		if err == nil {
 			minutes, after := f.clean(answer)

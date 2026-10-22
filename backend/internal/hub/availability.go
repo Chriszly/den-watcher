@@ -73,6 +73,7 @@ func forget(ctx context.Context, db *sql.DB, device string) error {
 		`DELETE FROM hub_outages WHERE device = ?`,
 		`DELETE FROM hub_watched WHERE device = ?`,
 		`DELETE FROM hub_device_kinds WHERE device = ?`,
+		`DELETE FROM hub_pairing_codes WHERE device = ?`,
 		`DELETE FROM hub_kept WHERE device = ?`,
 	} {
 		if _, err := db.ExecContext(ctx, query, device); err != nil {
@@ -86,7 +87,7 @@ func forget(ctx context.Context, db *sql.DB, device string) error {
 // from HUB_DEVICES without being added on the page, and the ones removed on
 // the page without keeping their history whose forgetting did not finish.
 func (h *Hub) forgetOthers(ctx context.Context, kept []string) error {
-	devices, err := h.selectDevices(ctx, `SELECT device FROM hub_watched UNION SELECT device FROM hub_outages UNION SELECT device FROM hub_device_kinds`)
+	devices, err := h.selectDevices(ctx, `SELECT device FROM hub_watched UNION SELECT device FROM hub_outages UNION SELECT device FROM hub_device_kinds UNION SELECT device FROM hub_pairing_codes`)
 	if err != nil {
 		return err
 	}
@@ -194,6 +195,11 @@ type watchedAgent struct {
 	// refused is set while the newest reading was refused, as the device's
 	// address is the hub's own.
 	refused bool
+	// pairing is why the newest reading was refused by the device, as the
+	// hub has no pairing code or a wrong one for it (see pairingProblem);
+	// empty when it was not. pairingLogged is the one the log said last.
+	pairing       string
+	pairingLogged string
 }
 
 // Collect asks the device for its usage and notes an outage when it does not
@@ -203,7 +209,10 @@ type watchedAgent struct {
 // reading in a row, and then counts from the first. A reading the hub
 // refuses, as the device's address is the hub's own, is no outage either:
 // the device shows as not answering, but the time is not counted, and an
-// outage that lasts ends at its last failed reading.
+// outage that lasts ends at its last failed reading. A reading the device
+// refuses, as the hub has no pairing code or a wrong one for it, counts as an
+// answer: the device is there, it only keeps its usage from this hub, so the
+// hub keeps its availability and nothing else.
 //
 // A refusal can hide or split a real outage. A host name that resolves to the
 // hub's own address first and to another, down, address next is refused, as
@@ -227,11 +236,18 @@ func (w *watchedAgent) Collect(ctx context.Context) (metrics.Snapshot, error) {
 	}
 	w.read = read
 	w.refused = errors.Is(err, errOwnAddress)
+	w.pairing = pairingProblem(err)
+	if w.refused && !w.refusedLogged {
+		w.refusedLogged = true
+		slog.Warn("a device added on the page is at an address of the hub itself, which the hub does not connect to; remove it on the page with its history kept and list it in HUB_DEVICES under the same name", "device", w.device)
+	}
+	if w.pairing != "" && w.pairing != w.pairingLogged {
+		w.pairingLogged = w.pairing
+		slog.Warn("a device does not answer this hub until it is given the device's pairing code; enter the code the device shows in the Devices dialog", "device", w.device, "problem", w.pairing)
+	}
+	// A device that refuses the hub its usage answered all the same.
+	failed := err != nil && w.pairing == ""
 	if w.refused {
-		if !w.refusedLogged {
-			w.refusedLogged = true
-			slog.Warn("a device added on the page is at an address of the hub itself, which the hub does not connect to; remove it on the page with its history kept and list it in HUB_DEVICES under the same name", "device", w.device)
-		}
 		w.firstFailed = time.Time{}
 		if !w.outageStart.IsZero() {
 			w.note(ctx, w.lastFailed)
@@ -240,14 +256,14 @@ func (w *watchedAgent) Collect(ctx context.Context) (metrics.Snapshot, error) {
 		return snapshot, err
 	}
 	switch {
-	case err == nil:
+	case !failed:
 		w.firstFailed = time.Time{}
 	case w.outageStart.IsZero() && w.firstFailed.IsZero():
 		w.firstFailed = now
 		return snapshot, err
 	}
 	switch {
-	case err != nil && w.outageStart.IsZero():
+	case failed && w.outageStart.IsZero():
 		w.outageStart = w.firstFailed
 		if earliest := w.lastEnd.Truncate(time.Millisecond).Add(time.Millisecond); w.outageStart.Before(earliest) {
 			w.outageStart = earliest
@@ -256,7 +272,7 @@ func (w *watchedAgent) Collect(ctx context.Context) (metrics.Snapshot, error) {
 		// Until the first write succeeds, the database has none of it.
 		w.noted = w.outageStart
 		w.note(ctx, now)
-	case err != nil:
+	case failed:
 		w.lastFailed = now
 		if now.Sub(w.noted) >= noteInterval {
 			w.note(ctx, now)
@@ -308,6 +324,14 @@ func (w *watchedAgent) isRefused() bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return w.refused
+}
+
+// pairingRefused returns why the device refused the newest reading, as the
+// hub has no pairing code or a wrong one for it, or empty.
+func (w *watchedAgent) pairingRefused() string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.pairing
 }
 
 // ongoing returns the outage that lasts, ending at the newest failed reading,

@@ -169,14 +169,15 @@ func (f *fetcher) fetch(ctx context.Context, minute time.Time) bool {
 			// stored again.
 			newest = newest.Add(-keptWithin)
 		} else {
-			// A device new to the hub starts now, not with what it kept for
-			// another: with the minute before this one, which it kept at its
-			// start and which the recorder leaves to the fetch.
-			newest = time.Now().Add(-history.SampleInterval).Truncate(history.SampleInterval).Add(-history.SampleInterval / 2)
+			// A device new to the hub brings what it kept before the hub
+			// first reached it, from its oldest minute on, as far as the
+			// retention below keeps them.
+			newest = time.Unix(0, 0)
 		}
-		// Not later than the device's time, which it refuses, with room for the
-		// difference of the clocks to vary.
-		f.after = min(newest.Unix()-f.offset, deviceNow-int64(maxClockJitter/time.Second))
+		// Not later than the device's time, which it refuses, with room for
+		// the difference of the clocks to vary, and after the first second,
+		// as zero means not worked out yet.
+		f.after = max(1, min(newest.Unix()-f.offset, deviceNow-int64(maxClockJitter/time.Second)))
 	}
 	// Minutes older than the retention, as after the hub was off for longer,
 	// would only be deleted again, and counted in their hour until then.

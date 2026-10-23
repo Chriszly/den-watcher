@@ -11,6 +11,7 @@ package pairing
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"database/sql"
 	"errors"
 	"log/slog"
@@ -40,6 +41,11 @@ const (
 // kept a code knows every hub that asks. A hub asks every 5 seconds, so each
 // one that collects from it while it is updated is known by then.
 const OpenFor = 10 * time.Minute
+
+// maxOpenHubs is how many hubs are paired without a code for OpenFor at
+// most. A household has a hub or two; one that sends a new id with each
+// request cannot fill the table with ids that are paired for good.
+const maxOpenHubs = 16
 
 const schema = `
 CREATE TABLE IF NOT EXISTS pairing_code (
@@ -76,6 +82,8 @@ type Pairing struct {
 
 	mu     sync.Mutex
 	paired map[string]bool
+	// openPaired counts the hubs paired without a code for OpenFor.
+	openPaired int
 }
 
 // Open returns the code kept in db, and makes one the first time, creating
@@ -138,6 +146,14 @@ func (p *Pairing) Code() string {
 	return p.code[:codeLength/2] + "-" + p.code[codeLength/2:]
 }
 
+// Valid reports whether code is a code as Code shows it, such as 7KQM-X2RP.
+func Valid(code string) bool {
+	if len(code) != codeLength+1 || code[codeLength/2] != '-' {
+		return false
+	}
+	return strings.Trim(code[:codeLength/2]+code[codeLength/2+1:], alphabet) == ""
+}
+
 // Normalize returns code as it is compared: in capitals, without the spaces
 // and dashes it may be written with.
 func Normalize(code string) string {
@@ -152,26 +168,26 @@ func Normalize(code string) string {
 // Allow tells whether the hub with this id may collect from this machine,
 // with the code it sent, empty when it sent none. A hub that sent the right
 // code, or asks while the hubs are known without one, is paired from then
-// on.
+// on; the latter only maxOpenHubs at most. The code is compared in full, so
+// how long that takes does not tell how much of it was right.
 func (p *Pairing) Allow(ctx context.Context, hub, code string) Answer {
+	code = Normalize(code)
 	p.mu.Lock()
-	paired := p.paired[hub]
-	p.mu.Unlock()
+	defer p.mu.Unlock()
 	switch {
-	case paired:
+	case p.paired[hub]:
 		return Paired
-	case Normalize(code) == p.code:
+	case subtle.ConstantTimeCompare([]byte(code), []byte(p.code)) == 1:
 		slog.Info("a hub gave the pairing code and collects from this device from now on")
-	case p.now().Before(p.openUntil):
+	case p.now().Before(p.openUntil) && p.openPaired < maxOpenHubs:
+		p.openPaired++
 		slog.Info("a hub that asked right after the update collects from this device without the pairing code")
-	case Normalize(code) == "":
+	case code == "":
 		return Needed
 	default:
 		return Wrong
 	}
-	p.mu.Lock()
 	p.paired[hub] = true
-	p.mu.Unlock()
 	p.store(context.WithoutCancel(ctx), hub)
 	return Paired
 }

@@ -23,7 +23,13 @@ import { Chart, DeviceCharts, valueChartsOf } from '../history/history';
 import { HistoryStore } from '../history/history-store';
 import { RangePicker } from '../history/range-picker';
 import { Timeline, TimelineMode } from '../history/timeline';
-import { Availability, DeviceService, LOCAL_DEVICE, deviceName } from '../devices/devices';
+import {
+  Availability,
+  DeviceService,
+  LOCAL_DEVICE,
+  deviceName,
+  switchedOff,
+} from '../devices/devices';
 import { I18n } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
 import { KioskMode } from '../kiosk/kiosk';
@@ -328,7 +334,9 @@ export class Dashboard {
   protected readonly i18n = inject(I18n);
   protected readonly deviceName = computed(() => deviceName(this.devices.selected(), this.i18n));
   /** Whether the picked device is a PC or laptop, which is just not in use while it does not answer. */
-  protected readonly isPC = computed(() => this.devices.selected().kind === 'pc');
+  /** Whether the times a device of a kind does not answer are times it was not in use. */
+  protected readonly switchedOff = switchedOff;
+  protected readonly isPC = computed(() => switchedOff(this.devices.selected().kind));
   /** Whether the picked device is a router, which tells only some of what a device does. */
   protected readonly isRouter = computed(() => !!this.devices.selected().router);
   /** Whether the picked device is only checked for whether it answers, such as a printer. */
@@ -775,7 +783,7 @@ export class Dashboard {
   protected uptimeInfo(a: Availability | null): string {
     const info = this.i18n.t('dashboard.info.uptime');
     return a
-      ? `${info} ${this.i18n.t(a.kind === 'pc' ? 'dashboard.info.usage' : 'dashboard.info.availability')}`
+      ? `${info} ${this.i18n.t(switchedOff(a.kind) ? 'dashboard.info.usage' : 'dashboard.info.availability')}`
       : info;
   }
 

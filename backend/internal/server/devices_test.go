@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/Chriszly/den-watcher/backend/internal/hub"
+	"github.com/Chriszly/den-watcher/backend/internal/pairing"
 	"github.com/Chriszly/den-watcher/backend/internal/password"
 )
 
@@ -26,6 +27,30 @@ type fakeHub struct {
 	// suggestFor answers Suggest for this address; any other has no suggestion.
 	suggestFor string
 	asked      []netip.Addr
+	// phoneCode is the code of the one phone Receive takes pushes from, and
+	// pushes are the pushes it took.
+	phoneCode string
+	pushes    []hub.Push
+}
+
+func (f *fakeHub) AddPhone(_ context.Context, name, code string) (hub.Device, error) {
+	if f.err != nil {
+		return hub.Device{}, f.err
+	}
+	f.added = append(f.added, name)
+	f.codes = append(f.codes, strings.ToLower(name)+"="+code)
+	return hub.Device{ID: strings.ToLower(name), Name: name, Phone: true}, nil
+}
+
+func (f *fakeHub) Receive(_ context.Context, code string, push hub.Push) (hub.PushAnswer, error) {
+	if f.err != nil {
+		return hub.PushAnswer{}, f.err
+	}
+	if f.phoneCode == "" || pairing.Normalize(code) != f.phoneCode {
+		return hub.PushAnswer{}, hub.ErrUnknownPhone
+	}
+	f.pushes = append(f.pushes, push)
+	return hub.PushAnswer{After: push.Now}, nil
 }
 
 func (f *fakeHub) Add(_ context.Context, name, address string, kind hub.Kind, code string) (hub.Device, error) {

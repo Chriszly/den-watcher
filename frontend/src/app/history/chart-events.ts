@@ -4,7 +4,7 @@ import { Observable, catchError, filter, of, share, switchMap, tap } from 'rxjs'
 
 import { AlertLevel } from '../alerts/alert';
 import { alertText } from '../alerts/alerts';
-import { DeviceService } from '../devices/devices';
+import { DeviceService, switchedOff } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
 import { DeviceEvent, MetricsService } from '../metrics/metrics';
 import { HistoryStore } from './history-store';
@@ -87,8 +87,8 @@ export class ChartEvents {
   private readonly i18n = inject(I18n);
 
   private readonly events = signal<{ device: string; events: DeviceEvent[] } | null>(null);
-  /** Whether the picked device is a PC; kept apart, as the list of devices is read every 5 s. */
-  private readonly pc = computed(() => this.devices.selected().kind === 'pc');
+  /** Whether the picked device is a PC or phone; kept apart, as the list of devices is read every 5 s. */
+  private readonly pc = computed(() => switchedOff(this.devices.selected().kind));
 
   /** The marks of the picked device, in the page's language. */
   readonly markers = computed((): ChartMarker[] => {

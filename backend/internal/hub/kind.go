@@ -20,6 +20,10 @@ const (
 	KindServer Kind = "server"
 	// KindPC is a PC or laptop, which is switched off when it is not used.
 	KindPC Kind = "pc"
+	// KindPhone is a phone, which sends the hub what it kept itself when it
+	// is within reach (see AddPhone); the time it is not is time it was away
+	// or asleep, as for a PC. Only AddPhone gives it, and a phone keeps it.
+	KindPhone Kind = "phone"
 )
 
 // kindSchema keeps the kind of each device that is not a server. It is a
@@ -32,7 +36,8 @@ CREATE TABLE IF NOT EXISTS hub_device_kinds (
 );
 `
 
-// ParseKind checks a kind sent by the page; empty is a server.
+// ParseKind checks a kind sent by the page; empty is a server. A phone is
+// added with AddPhone, so it is no kind the page can pick.
 func ParseKind(value string) (Kind, error) {
 	switch Kind(value) {
 	case "", KindServer:

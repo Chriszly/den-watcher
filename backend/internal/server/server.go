@@ -32,10 +32,10 @@ type Device struct {
 	// site runs on when no name is set; the page then calls it "Host Hub".
 	Name string `json:"name"`
 	// Address is where another device is reachable, as host:port; empty for
-	// the machine the site runs on.
+	// the machine the site runs on and for a phone, which comes to the hub.
 	Address string `json:"address,omitempty"`
-	// Kind is what another device is used as, "server" or "pc"; empty for
-	// the machine the site runs on.
+	// Kind is what another device is used as, "server", "pc" or "phone";
+	// empty for the machine the site runs on.
 	Kind hub.Kind `json:"kind,omitempty"`
 	// Removable is set for a device added on the page, which can be removed
 	// there too.
@@ -154,6 +154,8 @@ func New(site Site) http.Handler {
 		mux.HandleFunc("DELETE /api/devices/{id}", changes.remove)
 		mux.HandleFunc("PUT /api/devices/{id}/kind", changes.setKind)
 		mux.HandleFunc("PUT /api/devices/{id}/pairing", changes.setCode)
+		mux.HandleFunc("POST /api/phones", changes.addPhone)
+		mux.HandleFunc("POST "+hub.PhoneMinutesPath, pushHandler(site.Hub))
 		if site.Backups != nil {
 			mux.HandleFunc("POST /api/backup", changes.backup)
 		}

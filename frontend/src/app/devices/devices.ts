@@ -9,12 +9,21 @@ import { PageVisibility } from '../page-visibility';
 /**
  * What another device is used as. The times a server does not answer are
  * outages; a PC or laptop that does not answer is switched off or asleep, so
- * it is just not in use.
+ * it is just not in use, and so is a phone that is away or asleep. A phone is
+ * added from its app and stays one, so the page does not offer it as a kind.
  */
-export type DeviceKind = 'server' | 'pc';
+export type DeviceKind = 'server' | 'pc' | 'phone';
 
 /** The kinds in the order the page offers them. */
 export const DEVICE_KINDS: readonly DeviceKind[] = ['server', 'pc'];
+
+/** The kinds in the order the list of devices groups them. */
+export const DEVICE_GROUPS: readonly DeviceKind[] = ['server', 'pc', 'phone'];
+
+/** Whether the times a device of the kind does not answer are times it was not in use. */
+export function switchedOff(kind: DeviceKind | undefined): boolean {
+  return kind === 'pc' || kind === 'phone';
+}
 
 /** A machine whose usage the website shows, as served by GET /api/devices. */
 export interface Device {
@@ -22,7 +31,10 @@ export interface Device {
   id: string;
   /** Empty for the machine the backend runs on when its DEVICE_NAME is not set. */
   name: string;
-  /** Where another device is reachable, as host:port; missing for the machine the backend runs on. */
+  /**
+   * Where another device is reachable, as host:port; missing for the machine the backend runs on
+   * and for a phone, which comes to the hub.
+   */
   address?: string;
   /** What another device is used as; missing for the machine the backend runs on. */
   kind?: DeviceKind;
@@ -121,7 +133,7 @@ export function kindName(kind: DeviceKind, i18n: I18n): string {
 
 /** Whether a device that does not answer is just not in use rather than having an outage. */
 export function notInUse(device: Device): boolean {
-  return device.kind === 'pc' && !!device.unreachable;
+  return switchedOff(device.kind) && !!device.unreachable;
 }
 
 /**

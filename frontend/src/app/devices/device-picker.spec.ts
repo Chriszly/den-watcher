@@ -75,6 +75,25 @@ describe('DevicePicker', () => {
     expect(text(element().querySelector('app-manage-button')!)).toBe('Devices');
   });
 
+  it('lists phones last, in a group of their own', () => {
+    show([
+      { id: 'local', name: '' },
+      { id: 'phone', name: 'Phone', kind: 'phone', unreachable: true },
+      { id: 'laptop', name: 'Laptop', kind: 'pc' },
+    ]);
+
+    expect(Array.from(element().querySelectorAll('h2'), text)).toEqual([
+      'Servers and IoT',
+      'PCs and laptops',
+      'Phones',
+    ]);
+    expect(items().map((b) => text(b.querySelector('.name')!))).toEqual([
+      'Host Hub',
+      'Laptop',
+      'Phone',
+    ]);
+  });
+
   it('tells the CPU and hottest sensor of each device that answers', () => {
     show(
       [

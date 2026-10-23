@@ -1648,6 +1648,41 @@ const linuxLaptop: DemoMachine = {
   },
 };
 
+/** A phone that sends the hub its usage when it is back on the home Wi-Fi; at home now. */
+const androidPhone: DemoMachine = {
+  device: { id: 'android-phone', kind: 'phone', name: 'Android phone', removable: true },
+  os: 'linux',
+  system: {
+    os: 'Android 15',
+    kernel: '6.1.99-android14',
+    architecture: 'aarch64',
+    maker: 'Google',
+    model: 'Pixel 8',
+  },
+  cores: 9,
+  maxClockMHz: 2910,
+  memoryBytes: 8 * GB,
+  disks: [{ path: '/data', totalBytes: 119 * GB }],
+  network: [{ name: 'wlan0', addresses: ['192.168.1.52'] }],
+  extras: wifiAddOn('wlan0'),
+  bootedDaysAgo: 6.1,
+  values: (t, step) => {
+    const cpu = vary(t, step, 141, 6, 1, 100, [4, 30], [8, 1800]);
+    return {
+      cpu,
+      memory: vary(t, step, 142, 68, 0, 100, [5, 900]),
+      battery: batteryPercent(t + 1500),
+      'temperature:battery': 29 + cpu * 0.12,
+      'disk:/data': vary(t, step, 143, 77, 0, 100, [0.3, 86400 * 4]),
+      'disk.read:/data': vary(t, step, 144, 150e3, 0, 2e9, [120e3, 25]),
+      'disk.write:/data': vary(t, step, 145, 60e3, 0, 2e9, [50e3, 25]),
+      'network.receive:wlan0': vary(t, step, 146, 120e3, 0, 1e9, [100e3, 60]),
+      'network.send:wlan0': vary(t, step, 147, 14e3, 0, 1e9, [12e3, 60]),
+      ...wifiValues('wlan0', vary(t, step, 148, -55, -80, -35, [6, 120], [5, 3600])),
+    };
+  },
+};
+
 const clientLabels = {
   online: { de: 'Online', fr: 'En ligne', es: 'En línea' },
   wired: { de: 'Per Kabel', fr: 'Par câble', es: 'Por cable' },
@@ -1891,6 +1926,7 @@ export const FLEET: readonly DemoMachine[] = [
   answersIn(linuxNas, 7),
   answersIn(linuxServer, 2.5),
   answersIn(linuxLaptop, 22, true),
+  androidPhone,
   garagePi,
   homeRouter,
   printer,

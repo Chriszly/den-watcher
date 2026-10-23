@@ -134,6 +134,9 @@ type Remote struct {
 	// mu guards kind, which the page can change.
 	mu   sync.Mutex
 	kind Kind
+
+	// phone keeps what a phone pushed; nil for any other device.
+	phone *phone
 }
 
 // Usage reads the usage of the machine the hub runs on.
@@ -545,6 +548,9 @@ func (h *Hub) SetKind(ctx context.Context, id string, kind Kind) error {
 	if remote == nil {
 		return &InputError{Problem: ProblemNotFound, Message: "there is no device with this id"}
 	}
+	if remote.Phone {
+		return &InputError{Problem: ProblemKind, Message: "a phone stays a phone; remove it and add it again as another device"}
+	}
 	if err := storeKind(ctx, h.store.DB(), id, kind); err != nil {
 		return err
 	}
@@ -602,6 +608,11 @@ func (h *Hub) Remove(ctx context.Context, id string, keepHistory bool) error {
 			close(removed)
 		}()
 		<-remote.recorded
+		if remote.phone != nil {
+			remote.phone.pushing.Lock()
+			remote.phone.gone = true
+			remote.phone.pushing.Unlock()
+		}
 		slog.Info("stopped collecting from another device", "name", remote.Name, "historyKept", keepHistory)
 		if !keepHistory {
 			h.deleteData(remote)
@@ -777,7 +788,7 @@ func (r *Remote) Refused() bool {
 // Router reports whether the device is a router, which the hub reads in a
 // language it speaks.
 func (r *Remote) Router() bool {
-	return r.ReadByHub() && !r.Checked
+	return r.ReadByHub() && !r.Checked && !r.Phone
 }
 
 // Kind tells what the device is used as.
@@ -831,6 +842,23 @@ func (h *Hub) Wait() {
 // caller before taking mu, as reading them can take seconds; it is unused
 // for a fixed device.
 func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
+	kind, err := readKind(h.ctx, h.store.DB(), device.ID)
+	if err != nil {
+		slog.Error("read the kind of a device; taking it for a server", "name", device.Name, "error", err)
+		kind = KindServer
+	}
+	// A phone's agent reads what the phone sent last, as a router's reads
+	// the router; its code tells its pushes apart.
+	var pushed *phone
+	switch {
+	case kind == KindPhone && device.Address == "":
+		pushed = &phone{minutes: &fetcher{store: h.store, device: device.ID, maxEntries: h.historyEntries, retention: h.retention}}
+		device.Phone, device.Source = true, pushed
+	case kind == KindPhone:
+		// Kept from a phone removed with its history, whose name a device
+		// with an address took over.
+		kind = KindServer
+	}
 	// A device from HUB_DEVICES is collected from at whatever address it is
 	// set to, as the hub's owner chose it, such as a VM behind port
 	// forwarding on the hub itself. One added on the page is not, even when
@@ -847,7 +875,7 @@ func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
 	agent.pagePort = h.pagePort
 	agent.hubID = h.id
 	agent.maxEntries = h.historyEntries
-	if !device.ReadByHub() {
+	if !device.ReadByHub() || device.Phone {
 		code, err := readCode(h.ctx, h.store.DB(), device.ID)
 		if err != nil {
 			slog.Error("read the pairing code of a device; sending none", "name", device.Name, "error", err)
@@ -856,11 +884,6 @@ func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
 	}
 	if err := watch(h.ctx, h.store.DB(), device.ID, time.Now()); err != nil {
 		slog.Error("store when the hub started collecting from a device", "name", device.Name, "error", err)
-	}
-	kind, err := readKind(h.ctx, h.store.DB(), device.ID)
-	if err != nil {
-		slog.Error("read the kind of a device; taking it for a server", "name", device.Name, "error", err)
-		kind = KindServer
 	}
 	recent := &history.Recent{}
 	watched := &watchedAgent{agent: agent, db: h.store.DB(), device: device.ID}
@@ -883,11 +906,15 @@ func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
 		stop:     stop,
 		recorded: make(chan struct{}),
 		kind:     kind,
+		phone:    pushed,
 	}
 	recorder := &history.Recorder{Store: h.store, Recent: recent, Device: device.ID, Collector: watched, MaxEntries: h.historyEntries}
 	// A router or check keeps no minutes to fetch; the hub stores the
 	// average of its own readings.
-	if !device.ReadByHub() {
+	switch {
+	case device.Phone:
+		recorder.Fetch = phoneFetch
+	case !device.ReadByHub():
 		fetcher := &fetcher{agent: agent, store: h.store, device: device.ID, maxEntries: h.historyEntries, retention: h.retention}
 		recorder.Fetch = fetcher.fetch
 	}
@@ -897,6 +924,10 @@ func (h *Hub) start(device Device, fixed bool, own []netip.Addr) {
 		watched.stop(ctx)
 	})
 	h.remotes = append(h.remotes, remote)
+	if device.Phone {
+		slog.Info("taking the pushes of a phone", "name", device.Name)
+		return
+	}
 	slog.Info("collecting from another device", "name", device.Name, "address", device.Address)
 }
 
@@ -921,6 +952,10 @@ func (h *Hub) taken(device Device) error {
 // findAddress returns the device at the same address and port. The caller
 // holds mu.
 func (h *Hub) findAddress(address string) *Remote {
+	// A phone has no address, which no other device has either.
+	if address == "" {
+		return nil
+	}
 	for _, r := range h.remotes {
 		if SameAddress(r.Address, address) {
 			return r

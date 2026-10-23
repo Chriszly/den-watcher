@@ -974,7 +974,7 @@ func TestKindIsKeptAndCanBeChanged(t *testing.T) {
 	if _, err := h.Add(ctx, "Laptop", startDevice(t), KindPC, ""); err != nil {
 		t.Fatalf("Add() error = %v", err)
 	}
-	if _, err := h.Add(ctx, "Tablet", startDevice(t), "phone", ""); problemOf(err) != ProblemKind {
+	if _, err := h.Add(ctx, "Tablet", startDevice(t), "tablet", ""); problemOf(err) != ProblemKind {
 		t.Errorf("Add() with an unknown kind error = %v, want problem %q", err, ProblemKind)
 	}
 	if err := h.SetKind(ctx, "pi", KindPC); err != nil {

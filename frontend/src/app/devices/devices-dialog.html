@@ -27,6 +27,8 @@
         </span>
         @if (device.router) {
           <span class="router hint">{{ i18n.t('devicesDialog.router') }}</span>
+        } @else if (device.kind === 'phone') {
+          <span class="router hint">{{ kindName('phone', i18n) }}</span>
         } @else {
           <span
             class="choices kind"

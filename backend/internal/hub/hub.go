@@ -608,6 +608,11 @@ func (h *Hub) Remove(ctx context.Context, id string, keepHistory bool) error {
 			close(removed)
 		}()
 		<-remote.recorded
+		if remote.phone != nil {
+			remote.phone.pushing.Lock()
+			remote.phone.gone = true
+			remote.phone.pushing.Unlock()
+		}
 		slog.Info("stopped collecting from another device", "name", remote.Name, "historyKept", keepHistory)
 		if !keepHistory {
 			h.deleteData(remote)

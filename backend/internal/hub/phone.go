@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -73,6 +74,9 @@ type phone struct {
 	// time, as each goes on from where the one before stopped.
 	pushing sync.Mutex
 	minutes *fetcher
+	// gone is set, under pushing, once the phone was removed, so a push
+	// that found it before stores nothing after its data was deleted.
+	gone bool
 }
 
 // Collect returns the phone's newest reading, or ErrUnreachable when it has
@@ -90,6 +94,7 @@ func (p *phone) Collect(context.Context) (metrics.Snapshot, error) {
 // which it sends with every push. A phone has no address: it comes to the
 // hub. Problems with the phone are InputErrors.
 func (h *Hub) AddPhone(ctx context.Context, name, code string) (Device, error) {
+	name = strings.TrimSpace(name)
 	id, err := checkName(name)
 	if err != nil {
 		return Device{}, err
@@ -125,8 +130,12 @@ func (h *Hub) AddPhone(ctx context.Context, name, code string) (Device, error) {
 
 // phoneWith returns the phone with the pairing code, or nil. Every phone's
 // code is compared in full, so how long that takes does not tell how much
-// of a code was right. The caller holds mu.
+// of a code was right. No code is no phone's, also not one whose code could
+// not be read at the start. The caller holds mu.
 func (h *Hub) phoneWith(code string) *Remote {
+	if code == "" {
+		return nil
+	}
 	var found *Remote
 	for _, r := range h.remotes {
 		if r.phone != nil && subtle.ConstantTimeCompare([]byte(r.Agent.pairingCode()), []byte(code)) == 1 {
@@ -155,8 +164,18 @@ func (h *Hub) Receive(ctx context.Context, code string, push Push) (PushAnswer, 
 	if remote == nil {
 		return PushAnswer{}, ErrUnknownPhone
 	}
-	p := remote.phone
-	now := time.Now()
+	return remote.phone.receive(ctx, push, time.Now())
+}
+
+// receive keeps the reading of a push, received at now, and stores its
+// minutes, unless the phone was removed since it was found.
+func (p *phone) receive(ctx context.Context, push Push, now time.Time) (PushAnswer, error) {
+	p.pushing.Lock()
+	defer p.pushing.Unlock()
+	// Its minutes would outlast its deleted history.
+	if p.gone {
+		return PushAnswer{}, ErrUnknownPhone
+	}
 	if push.Snapshot != nil {
 		snapshot := *push.Snapshot
 		// The newest reading shows when the hub received it, as for a
@@ -166,9 +185,6 @@ func (h *Hub) Receive(ctx context.Context, code string, push Push) (PushAnswer, 
 		p.latest, p.latestAt = snapshot, now
 		p.mu.Unlock()
 	}
-
-	p.pushing.Lock()
-	defer p.pushing.Unlock()
 	after, err := p.minutes.receive(ctx, MinutesAnswer{Now: push.Now, Minutes: push.Minutes, Extras: push.Extras}, now)
 	return PushAnswer{After: after}, err
 }

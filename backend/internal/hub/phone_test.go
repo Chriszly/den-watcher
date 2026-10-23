@@ -174,3 +174,42 @@ func TestAPhonesCodeCanBeChanged(t *testing.T) {
 		t.Errorf("Receive() with the new code error = %v", err)
 	}
 }
+
+func TestNoPushIsTakenWithoutACodeOrAfterTheRemoval(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t)
+	h := openTestHub(t, store, nil)
+	device, err := h.AddPhone(ctx, "  Pixel  ", "7KQM-X2RP")
+	if err != nil {
+		t.Fatalf("AddPhone() error = %v", err)
+	}
+	if device.Name != "Pixel" {
+		t.Errorf("name = %q, want it without the spaces around it", device.Name)
+	}
+	remote := h.Remotes()[0]
+
+	// As for a phone whose code could not be read at the start.
+	remote.Agent.setPairingCode("")
+	if _, err := h.Receive(ctx, "", Push{Now: time.Now().Unix()}); !errors.Is(err, ErrUnknownPhone) {
+		t.Errorf("Receive() without a code error = %v, want %v", err, ErrUnknownPhone)
+	}
+	remote.Agent.setPairingCode("7KQMX2RP")
+
+	// A push that found the phone before it was removed stores nothing once
+	// its data is deleted.
+	remote.phone.pushing.Lock()
+	if err := h.Remove(ctx, "pixel", false); err != nil {
+		t.Fatalf("Remove() error = %v", err)
+	}
+	remote.phone.pushing.Unlock()
+	if err := h.waitRemoved(ctx, "pixel", time.Minute); err != nil {
+		t.Fatalf("waitRemoved() error = %v", err)
+	}
+	push := Push{Now: time.Now().Unix(), Minutes: []history.Minute{memoryMinute(time.Now().Add(-time.Minute), 40)}}
+	if _, err := remote.phone.receive(ctx, push, time.Now()); !errors.Is(err, ErrUnknownPhone) {
+		t.Errorf("receive() after the removal error = %v, want %v", err, ErrUnknownPhone)
+	}
+	if got := pushedMinutes(t, store, "pixel"); len(got) != 0 {
+		t.Errorf("minutes of the removed phone = %v, want none", got)
+	}
+}

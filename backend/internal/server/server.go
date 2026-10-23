@@ -159,7 +159,7 @@ func New(site Site) http.Handler {
 		}
 	}
 	link := &hubLink{}
-	mux.HandleFunc("GET /api/metrics", pairedOnly(site.Pairing, link.remember(forDevice(site.Devices, metricsHandler))))
+	mux.HandleFunc("GET /api/metrics", pairedOnly(site.Pairing, true, link.remember(forDevice(site.Devices, metricsHandler))))
 	mux.HandleFunc("GET /api/hub", link.handler)
 	if site.Pairing != nil {
 		mux.HandleFunc("GET /api/pairing", pairingHandler(site.Pairing, false))
@@ -172,7 +172,7 @@ func New(site Site) http.Handler {
 	}))
 	mux.HandleFunc("GET /api/availability", forDevice(site.Devices, availabilityHandler))
 	if site.Minutes != nil {
-		mux.HandleFunc("GET "+hub.MinutesPath, pairedOnly(site.Pairing, minutesHandler(site.Minutes)))
+		mux.HandleFunc("GET "+hub.MinutesPath, pairedOnly(site.Pairing, true, minutesHandler(site.Minutes)))
 	}
 	if site.Alerts != nil {
 		mux.HandleFunc("GET /api/alerts", alertsHandler(site.Alerts))
@@ -209,9 +209,9 @@ func New(site Site) http.Handler {
 func NewDataOnly(collector metrics.Source, minutes MinuteSource, paired Pairing, allowedHosts []string) http.Handler {
 	mux := http.NewServeMux()
 	link := &hubLink{}
-	mux.HandleFunc("GET /api/metrics", pairedOnly(paired, link.remember(metricsHandler(Device{ID: hub.LocalID, Metrics: collector}))))
+	mux.HandleFunc("GET /api/metrics", pairedOnly(paired, false, link.remember(metricsHandler(Device{ID: hub.LocalID, Metrics: collector}))))
 	if minutes != nil {
-		mux.HandleFunc("GET "+hub.MinutesPath, pairedOnly(paired, minutesHandler(minutes)))
+		mux.HandleFunc("GET "+hub.MinutesPath, pairedOnly(paired, false, minutesHandler(minutes)))
 	}
 	mux.HandleFunc("GET /api/hub", link.handler)
 	if paired != nil {

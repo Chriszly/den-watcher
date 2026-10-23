@@ -25,16 +25,19 @@ var wrongCodeDelay = time.Second
 // pairedOnly refuses a request from a hub, one that sends a hub id, until the
 // hub is paired: it sent this machine's pairing code once, or was paired
 // without it while this machine was updated (see pairing.Open). A request
-// without a hub id, as from this machine's own page, is not from a hub and
-// passes. Without p, as when the database could not be opened, every request
+// without a hub id is not from a hub. With page, as on a machine with a
+// website whose page reads the same usage, it passes. Without, as on a
+// device without a website, only one from this machine passes, such as a
+// check of the install, so leaving out the hub id does not get around the
+// code. Without p, as when the database could not be opened, every request
 // passes, as before pairing.
-func pairedOnly(p Pairing, next http.HandlerFunc) http.HandlerFunc {
+func pairedOnly(p Pairing, page bool, next http.HandlerFunc) http.HandlerFunc {
 	if p == nil {
 		return next
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := hubAsking(r)
-		if id == "" {
+		if id == "" && (page || fromThisMachine(r)) {
 			next(w, r)
 			return
 		}

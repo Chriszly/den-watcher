@@ -3,6 +3,7 @@ package pairing
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -82,6 +83,26 @@ func TestNormalize(t *testing.T) {
 	}
 }
 
+func TestValid(t *testing.T) {
+	for code, want := range map[string]bool{
+		"7KQM-X2RP":  true,
+		"7kqm-x2rp":  false,
+		"7KQMX2RP":   false,
+		"7KQM-X2R0":  false, // no 0, 1, I and O
+		"7KQM-X2RPA": false,
+		"7KQM X2RP":  false,
+		"7KQM-X2R\n": false,
+		"":           false,
+	} {
+		if got := Valid(code); got != want {
+			t.Errorf("Valid(%q) = %v, want %v", code, got, want)
+		}
+	}
+	if code := open(t, openTestDB(t), false).Code(); !Valid(code) {
+		t.Errorf("Valid(%q) = false for the code a device shows", code)
+	}
+}
+
 func TestAnUpdatedDevicePairsTheHubsThatCollectAlready(t *testing.T) {
 	ctx := context.Background()
 	db := openTestDB(t)
@@ -109,5 +130,21 @@ func TestANewDevicePairsNoHubWithoutTheCode(t *testing.T) {
 	p := open(t, openTestDB(t), false)
 	if got := p.Allow(context.Background(), office, ""); got != Needed {
 		t.Fatalf("Allow() on a new device = %v, want Needed", got)
+	}
+}
+
+func TestAnUpdatedDevicePairsAFewHubsWithoutTheCode(t *testing.T) {
+	ctx := context.Background()
+	p := open(t, openTestDB(t), true)
+	for i := range maxOpenHubs {
+		if got := p.Allow(ctx, fmt.Sprintf("%032x", i), ""); got != Paired {
+			t.Fatalf("Allow() of hub %d right after the update = %v, want Paired", i, got)
+		}
+	}
+	if got := p.Allow(ctx, office, ""); got != Needed {
+		t.Fatalf("Allow() of one hub more than %d right after the update = %v, want Needed", maxOpenHubs, got)
+	}
+	if got := p.Allow(ctx, office, p.Code()); got != Paired {
+		t.Fatalf("Allow() of that hub with the code = %v, want Paired", got)
 	}
 }

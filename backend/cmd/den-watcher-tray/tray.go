@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Chriszly/den-watcher/backend/internal/pairing"
 )
 
 // serviceState is what Windows tells about the service.
@@ -255,24 +257,10 @@ func askPairing(ctx context.Context, client *http.Client, port string) (string, 
 		return "", err
 	}
 	// Shown in the menu, so only a code as the service makes one is taken.
-	if !validCode(body.Code) {
+	if !pairing.Valid(body.Code) {
 		return "", fmt.Errorf("GET /api/pairing answered %q, which is no pairing code", body.Code)
 	}
 	return body.Code, nil
-}
-
-// validCode reports whether code looks like a pairing code, such as
-// 7KQM-X2RP.
-func validCode(code string) bool {
-	if len(code) != 9 || code[4] != '-' {
-		return false
-	}
-	for i, r := range code {
-		if i != 4 && (r < '0' || r > '9') && (r < 'A' || r > 'Z') {
-			return false
-		}
-	}
-	return true
 }
 
 // pairingText is the menu line with the pairing code.

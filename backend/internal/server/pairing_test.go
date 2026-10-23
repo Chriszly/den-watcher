@@ -70,9 +70,19 @@ func TestAHubCollectsOnlyOnceItGaveThePairingCode(t *testing.T) {
 			if rec.Code != http.StatusForbidden || rec.Header().Get(pairing.ProblemHeader) != "wrong" {
 				t.Errorf("%s: %s with a wrong code = %d, %q; want 403, wrong", name, path, rec.Code, rec.Header().Get(pairing.ProblemHeader))
 			}
-			// A request that is not from a hub, as from the page, passes.
-			if rec := get(h, path, "192.168.1.20:5000"); rec.Code != http.StatusOK {
-				t.Errorf("%s: %s without a hub id = %d, want 200", name, path, rec.Code)
+			// A request that is not from a hub passes where the page reads
+			// the same usage. Without a website, only one from the machine
+			// itself does, so leaving out the hub id does not get around
+			// the code.
+			want := http.StatusOK
+			if name == "data only" {
+				want = http.StatusForbidden
+			}
+			if rec := get(h, path, "192.168.1.20:5000"); rec.Code != want {
+				t.Errorf("%s: %s without a hub id = %d, want %d", name, path, rec.Code, want)
+			}
+			if rec := get(h, path, "127.0.0.1:5000"); rec.Code != http.StatusOK {
+				t.Errorf("%s: %s without a hub id from the machine itself = %d, want 200", name, path, rec.Code)
 			}
 		}
 		if rec := getWithCode(h, "/api/metrics", "7KQM-X2RP"); rec.Code != http.StatusOK {
@@ -134,5 +144,18 @@ func TestPairingCodeIsShownAtTheAddressListenedOn(t *testing.T) {
 		if rec.Code != want {
 			t.Errorf("GET /api/pairing from %s to %s = %d, want %d", from, local, rec.Code, want)
 		}
+	}
+}
+
+func TestAHubIDThatIsNoHubIDGetsNoUsageWithoutTheCode(t *testing.T) {
+	handler := NewDataOnly(fakeCollector{}, nil, &fakePairing{code: "7KQM-X2RP", paired: map[string]bool{}}, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/metrics", nil)
+	req.RemoteAddr = "192.168.1.20:5000"
+	req.Host = "192.168.1.9:9393"
+	req.Header.Set(hub.HubIDHeader, "not-a-hub-id")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden || rec.Header().Get(pairing.ProblemHeader) != "needed" {
+		t.Errorf("GET /api/metrics with a hub id that is none = %d, %q; want 403, needed", rec.Code, rec.Header().Get(pairing.ProblemHeader))
 	}
 }

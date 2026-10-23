@@ -9,6 +9,7 @@ import {
   DeviceService,
   backupName,
   deviceState,
+  notInUse,
 } from './devices';
 
 describe('DeviceService', () => {
@@ -106,5 +107,14 @@ describe('deviceState', () => {
       'reachable',
     );
     expect(deviceState({ id: 'nas', name: 'NAS', unreachable: true })).toBe('unreachable');
+  });
+});
+
+describe('notInUse', () => {
+  it('takes a PC or phone that does not answer for one not in use, and a server for an outage', () => {
+    expect(notInUse({ id: 'phone', name: 'Phone', kind: 'phone', unreachable: true })).toBe(true);
+    expect(notInUse({ id: 'laptop', name: 'Laptop', kind: 'pc', unreachable: true })).toBe(true);
+    expect(notInUse({ id: 'nas', name: 'NAS', kind: 'server', unreachable: true })).toBe(false);
+    expect(notInUse({ id: 'phone', name: 'Phone', kind: 'phone' })).toBe(false);
   });
 });

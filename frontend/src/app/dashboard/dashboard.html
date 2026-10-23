@@ -19,22 +19,24 @@
     @if (a) {
       @if (s) {
         <p class="sensor availability">
-          <span>{{ i18n.t(a.kind === 'pc' ? 'dashboard.usage' : 'dashboard.availability') }}</span
+          <span>{{
+            i18n.t(switchedOff(a.kind) ? 'dashboard.usage' : 'dashboard.availability')
+          }}</span
           ><span>{{ availablePercent(a) | number: '1.0-2' : i18n.language() }} %</span>
         </p>
       } @else {
         <h3>
-          {{ i18n.t(a.kind === 'pc' ? 'dashboard.usage' : 'dashboard.availability') }}
+          {{ i18n.t(switchedOff(a.kind) ? 'dashboard.usage' : 'dashboard.availability') }}
           <app-card-info
             [text]="
-              i18n.t(a.kind === 'pc' ? 'dashboard.info.usage' : 'dashboard.info.availability')
+              i18n.t(switchedOff(a.kind) ? 'dashboard.info.usage' : 'dashboard.info.availability')
             "
           />
         </h3>
         <p class="value">{{ availablePercent(a) | number: '1.0-2' : i18n.language() }} %</p>
       }
       <p class="detail">
-        @if (a.kind === 'pc') {
+        @if (switchedOff(a.kind)) {
           {{
             i18n.t(a.outages > 0 ? 'dashboard.notInUseSince' : 'dashboard.alwaysInUseSince', {
               duration: formatDuration(a.offlineSeconds, i18n),
@@ -59,12 +61,12 @@
       @if (a.lastOutage; as last) {
         <p class="detail">
           {{
-            a.kind === 'pc'
+            switchedOff(a.kind)
               ? i18n.plural(a.outages, 'dashboard.offTimes.one', 'dashboard.offTimes.other')
               : i18n.plural(a.outages, 'dashboard.outages.one', 'dashboard.outages.other')
           }}
           {{
-            i18n.t(a.kind === 'pc' ? 'dashboard.lastOff' : 'dashboard.lastOutage', {
+            i18n.t(switchedOff(a.kind) ? 'dashboard.lastOff' : 'dashboard.lastOutage', {
               date: when(last.start),
               duration: outageLength(last),
             })

@@ -3,13 +3,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { I18n } from '../i18n/i18n';
 import { DeviceItem } from './device-item';
-import { DEVICE_KINDS, DeviceService } from './devices';
+import { DEVICE_GROUPS, DeviceService } from './devices';
 import { FleetValues } from './fleet-values';
 import { ManageButton } from './manage-button';
 
 /**
  * The list of devices to pick the one whose usage is shown, once the hub collects from other
- * devices, grouped into servers and PCs, with the comparison of all of them first and the button to
+ * devices, grouped into servers, PCs and phones, with the comparison of all of them first and the button to
  * add or remove devices last. Compact, it shows the devices as rings.
  */
 @Component({
@@ -26,9 +26,9 @@ export class DevicePicker {
   protected readonly fleet = inject(FleetValues);
   protected readonly i18n = inject(I18n);
 
-  /** The devices by kind, servers first; the hub and things without a kind count as servers. */
+  /** The devices by kind, servers first and phones last; the hub and things without a kind count as servers. */
   protected readonly groups = computed(() =>
-    DEVICE_KINDS.map((kind) => ({
+    DEVICE_GROUPS.map((kind) => ({
       kind,
       devices: this.devices.devices().filter((d) => (d.kind ?? 'server') === kind),
     })).filter((group) => group.devices.length > 0),

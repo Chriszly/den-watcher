@@ -563,7 +563,7 @@ func alertTargets(localName string, local metrics.Source, others *hub.Hub) []ale
 		targets = append(targets, alerts.Target{
 			ID:               remote.ID,
 			Name:             remote.Name,
-			PC:               remote.Kind() == hub.KindPC,
+			PC:               remote.Kind() == hub.KindPC || remote.Kind() == hub.KindPhone,
 			Unreachable:      unreachable,
 			UnreachableSince: since,
 			Usage:            remote.Agent.Latest(),

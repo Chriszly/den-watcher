@@ -85,6 +85,10 @@ func (h *Hub) SetCode(ctx context.Context, id, code string) error {
 	}
 	h.mu.Lock()
 	remote := h.find(id)
+	if remote != nil && remote.Phone {
+		defer h.mu.Unlock()
+		return h.setPhoneCode(ctx, remote, code)
+	}
 	h.mu.Unlock()
 	if remote == nil {
 		return &InputError{Problem: ProblemNotFound, Message: "there is no device with this id"}
@@ -129,4 +133,22 @@ func (r *Remote) Pairing() string {
 		return ""
 	}
 	return r.watched.pairingRefused()
+}
+
+// setPhoneCode changes the pairing code a phone's pushes are taken with, as
+// when its app was set up anew and shows another code. A phone is not asked:
+// it comes to the hub. The caller holds mu.
+func (h *Hub) setPhoneCode(ctx context.Context, remote *Remote, code string) error {
+	if code == "" {
+		return &InputError{Problem: ProblemPairingNeeded, Message: "give the pairing code the phone shows, such as 7KQM-X2RP"}
+	}
+	if other := h.phoneWith(code); other != nil && other != remote {
+		return &InputError{Problem: ProblemPairingTaken, Message: "another phone has this pairing code; give the code this phone shows"}
+	}
+	if err := storeCode(context.WithoutCancel(ctx), h.store.DB(), remote.ID, code); err != nil {
+		return err
+	}
+	remote.Agent.setPairingCode(code)
+	slog.Info("changed the pairing code of a phone", "name", remote.Name)
+	return nil
 }

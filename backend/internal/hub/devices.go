@@ -41,6 +41,9 @@ type Device struct {
 	// answers, such as a printer, whose Source does that. Checks come from
 	// HUB_CHECKS.
 	Checked bool
+	// Phone is set for a phone, which has no Address: it sends the hub its
+	// usage (see AddPhone). Source then reads what it sent last.
+	Phone bool
 }
 
 // ParseDevices reads the devices from a comma-separated list of entries such
@@ -218,6 +221,9 @@ const (
 	ProblemPairingNeeded Problem = "pairingNeeded"
 	ProblemPairingWrong  Problem = "pairingWrong"
 	ProblemPairingNone   Problem = "pairingNone"
+	// ProblemPairingTaken is a phone's pairing code that another phone has
+	// already, as each phone is told apart by its code.
+	ProblemPairingTaken Problem = "pairingTaken"
 )
 
 // InputError is a device that cannot be added or removed as asked.

@@ -24,6 +24,11 @@ type Hub interface {
 	// addresses cannot be added.
 	Add(ctx context.Context, name, address string, kind hub.Kind, code string) (hub.Device, error)
 	Remove(ctx context.Context, id string, keepHistory bool) error
+	// AddPhone adds a phone, with the pairing code it shows, which it sends
+	// with every push; a phone has no address.
+	AddPhone(ctx context.Context, name, code string) (hub.Device, error)
+	// Receive takes what the phone with the pairing code pushed.
+	Receive(ctx context.Context, code string, push hub.Push) (hub.PushAnswer, error)
 	// SetKind changes what a device is used as.
 	SetKind(ctx context.Context, id string, kind hub.Kind) error
 	// SetCode changes the pairing code sent to a device.
@@ -86,6 +91,13 @@ type addRequest struct {
 	Password string `json:"password"`
 }
 
+type phoneRequest struct {
+	Name string `json:"name"`
+	// Code is the pairing code the phone's app shows.
+	Code     string `json:"code"`
+	Password string `json:"password"`
+}
+
 type codeRequest struct {
 	Code     string `json:"code"`
 	Password string `json:"password"`
@@ -114,6 +126,18 @@ func (c *deviceChanges) add(w http.ResponseWriter, r *http.Request) {
 		}
 		device, err := c.hub.Add(r.Context(), request.Name, request.Address, kind, request.Code)
 		return Device{ID: device.ID, Name: device.Name, Address: device.Address, Kind: kind, Removable: true}, err
+	})
+}
+
+// addPhone serves POST /api/phones: adds the phone in the body.
+func (c *deviceChanges) addPhone(w http.ResponseWriter, r *http.Request) {
+	var request phoneRequest
+	if !readJSON(w, r, &request) {
+		return
+	}
+	c.change(w, r, request.Password, true, func() (any, error) {
+		device, err := c.hub.AddPhone(r.Context(), request.Name, request.Code)
+		return Device{ID: device.ID, Name: device.Name, Kind: hub.KindPhone, Removable: true}, err
 	})
 }
 
@@ -277,7 +301,7 @@ func inputStatus(problem hub.Problem) int {
 	switch problem {
 	case hub.ProblemNotFound:
 		return http.StatusNotFound
-	case hub.ProblemNameTaken, hub.ProblemAddressTaken, hub.ProblemFixed, hub.ProblemRemoving:
+	case hub.ProblemNameTaken, hub.ProblemAddressTaken, hub.ProblemFixed, hub.ProblemRemoving, hub.ProblemPairingTaken:
 		return http.StatusConflict
 	case hub.ProblemUnreachable, hub.ProblemHostUnknown, hub.ProblemPairingNeeded, hub.ProblemPairingWrong:
 		return http.StatusUnprocessableEntity

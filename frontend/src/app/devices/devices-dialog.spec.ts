@@ -58,6 +58,11 @@ describe('DevicesDialog', () => {
       .match('/api/pairing')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush({ code: '' }));
+    // Tests that do not look at the status page leave it unanswered, as a hub without one.
+    http
+      .match('/api/status-page')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush({ enabled: false, passwordSet: false }));
     // The marks of the charts are read alongside the history; these tests leave them unanswered.
     http.match((r) => r.url === '/api/events');
     http.verify();
@@ -262,6 +267,58 @@ describe('DevicesDialog', () => {
     fixture.detectChanges();
 
     expect(element().querySelector('.own-code')).toBeNull();
+  });
+
+  it('leaves out the status page when the hub has none', async () => {
+    http.expectOne('/api/status-page').flush({ enabled: false, passwordSet: false });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(element().querySelector('form.status-page')).toBeNull();
+  });
+
+  it("sets the status page's password with the password for changing devices", async () => {
+    http.expectOne('/api/status-page').flush({
+      enabled: true,
+      port: '9443',
+      fingerprint: 'AB:CD',
+      passwordSet: false,
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(element().textContent).toContain('A minimal page on port 9443');
+    expect(element().querySelector('.fingerprint')?.textContent).toBe('AB:CD');
+    expect(element().textContent).toContain('No password is set yet');
+    expect(button('Set password').disabled).toBe(true);
+
+    await type('status-password', 'remote password');
+    await type('status-repeated', 'remote passwort');
+    expect(element().textContent).toContain('The passwords are not the same');
+    expect(button('Set password').disabled).toBe(true);
+    await type('status-repeated', 'remote password');
+    button('Set password').click();
+
+    const change = http.expectOne('/api/status-page/password');
+    expect(change.request.method).toBe('POST');
+    expect(change.request.body).toEqual({
+      password: 'correct horse',
+      newPassword: 'remote password',
+    });
+    change.flush(null, { status: 204, statusText: 'No Content' });
+    http
+      .expectOne((r) => r.method === 'GET' && r.url === '/api/devices')
+      .flush({ devices: [{ id: 'local', name: '' }], passwordSet: true });
+    http
+      .expectOne('/api/status-page')
+      .flush({ enabled: true, port: '9443', fingerprint: 'AB:CD', passwordSet: true });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(element().textContent).toContain('The password of the status page is set.');
+    expect(input('status-password').value).toBe('');
+    expect(button('Change password')).toBeDefined();
   });
 
   it('counts a change as done when the list cannot be read afterwards', async () => {

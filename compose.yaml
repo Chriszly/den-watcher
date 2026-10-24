@@ -29,6 +29,10 @@ services:
     # that try IPv6 first fall back to IPv4 on their own.
     ports:
       - "0.0.0.0:${PORT:-9393}:9393"
+      # The status page, for outside the local network, published only with
+      # STATUS_PORT; without it, this is a random port on the host's
+      # loopback, where nothing listens and nothing can conflict.
+      - "${STATUS_PORT:+0.0.0.0:}${STATUS_PORT:-127.0.0.1:}:9443"
     environment:
       # The port the page is reachable on from the network, which a hub tells
       # the devices it collects from so they can link back to it.
@@ -72,6 +76,10 @@ services:
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
       # true serves GET /metrics for Prometheus; see .env.example.
       PROMETHEUS: ${PROMETHEUS:-}
+      # The status page for outside the local network, on with STATUS_PORT;
+      # see .env.example.
+      STATUS_ADDR: ${STATUS_PORT:+:9443}
+      STATUS_PUBLIC_PORT: ${STATUS_PORT:-}
       # Where the add-ons below write what they read.
       ADDONS_DIR: /addons
     volumes:

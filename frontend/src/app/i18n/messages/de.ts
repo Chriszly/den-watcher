@@ -174,6 +174,19 @@ export const de: Messages = {
   'devicesDialog.ownCodeHint':
     'Ein Hub fragt nach diesem Code, wenn dieses Gerät dort hinzugefügt wird; ohne ihn erfasst der Hub nur, ob das Gerät antwortet.',
   'devicesDialog.backupTitle': 'Sicherung',
+  'devicesDialog.statusTitle': 'Statusseite für unterwegs',
+  'devicesDialog.statusHint':
+    'Eine schlichte Seite auf Port {port}, die nur zeigt, ob jedes Gerät online ist und wie viele Alarme es hat, damit du es auch außerhalb deines Heimnetzes prüfen kannst. Sie nutzt HTTPS mit einem eigenen Zertifikat, darum warnt der Browser beim ersten Mal.',
+  'devicesDialog.statusFingerprint':
+    'Fingerabdruck des Zertifikats (SHA-256), zum Vergleich mit dem, den der Browser zeigt:',
+  'devicesDialog.statusPasswordSet':
+    'Ein Passwort ist gesetzt. Wenn du es änderst, werden alle von der Statusseite abgemeldet.',
+  'devicesDialog.statusPasswordNone':
+    'Noch ist kein Passwort gesetzt, darum zeigt die Statusseite keine Geräte.',
+  'devicesDialog.statusNew': 'Neues Passwort',
+  'devicesDialog.statusSet': 'Passwort setzen',
+  'devicesDialog.statusChange': 'Passwort ändern',
+  'devicesDialog.statusSaved': 'Das Passwort der Statusseite ist gesetzt.',
   'devices.problem.wrongPassword': 'Das Passwort ist falsch.',
   'devices.problem.passwordLength': 'Das Passwort braucht mindestens {count} Zeichen.',
   'devices.problem.name':
@@ -227,6 +240,8 @@ export const de: Messages = {
   'passwordDialog.backupHint':
     'Die Datei gehört nicht in fremde Hände: Sie enthält die Adressen der Geräte und den Hash des Passworts.',
   'passwordDialog.backup': 'Eine Sicherung der Datenbank des Hubs herunterladen?',
+  'passwordDialog.statusPassword': 'Das Passwort der Statusseite für unterwegs setzen?',
+  'passwordDialog.confirmStatus': 'Setzen',
   'history.unit': 'Einheit des angezeigten Zeitraums',
   'history.range': 'Angezeigter Zeitraum',
   'history.unreachableStale':

@@ -9,7 +9,13 @@ import {
 import { DOCUMENT, Injectable, inject } from '@angular/core';
 import { Observable, delay, mergeMap, of, throwError, timer } from 'rxjs';
 
-import { Availability, DeviceList, LOCAL_DEVICE, Suggestion } from '../app/devices/devices';
+import {
+  Availability,
+  DeviceList,
+  LOCAL_DEVICE,
+  StatusPage,
+  Suggestion,
+} from '../app/devices/devices';
 import { EMPTY_LAYOUT } from '../app/dashboard/page-layout';
 import { History, Series } from '../app/metrics/metrics';
 import { DEMO_BUILD, demoVersion } from './demo-build';
@@ -41,6 +47,15 @@ const LATENCY_MS = 60;
 
 /** The pairing code the demo's hub shows for itself, as a hub that collects from it would ask. */
 export const DEMO_PAIRING_CODE = '7KQM-X2RP';
+
+/** The demo hub's remote status page, as one set up with STATUS_ADDR. */
+export const DEMO_STATUS_PAGE: StatusPage = {
+  enabled: true,
+  port: '9443',
+  fingerprint:
+    '3A:7F:C2:19:8E:44:D0:6B:A1:5C:E9:02:7D:B8:31:F6:4E:90:2A:C7:58:1D:EB:63:0F:A4:96:3C:D2:71:8B:E5',
+  passwordSet: true,
+};
 
 /**
  * Answers the page's requests to /api with made-up values from the sample
@@ -81,6 +96,9 @@ export class DemoBackend implements HttpBackend {
     }
     if (request.method === 'GET' && url.pathname === '/api/pairing') {
       return respond(request, { code: DEMO_PAIRING_CODE });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/status-page') {
+      return respond(request, DEMO_STATUS_PAGE);
     }
     if (url.pathname === '/api/layout') {
       return this.layout(request);

@@ -18,8 +18,8 @@ import { DeviceKind, MIN_PASSWORD_LENGTH, kindName } from './devices';
 
 /** What the password is asked for. */
 export interface PasswordDialogData {
-  action: 'add' | 'remove' | 'kind' | 'pairing' | 'backup';
-  /** The name of the device that is changed; empty for a backup. */
+  action: 'add' | 'remove' | 'kind' | 'pairing' | 'backup' | 'statusPassword';
+  /** The name of the device that is changed; empty for a backup and the status page's password. */
   deviceName: string;
   /** For changing the kind: the new kind. */
   kind?: DeviceKind;
@@ -35,7 +35,8 @@ export interface PasswordDialogResult {
 }
 
 /**
- * Asks for the password before a device is added, removed or changed, or a backup is downloaded. Before the first
+ * Asks for the password before a device is added, removed or changed, a backup is downloaded or the status
+ * page's password is set. Before the first
  * change it asks to choose one instead, twice, since it cannot be changed later.
  */
 @Component({
@@ -94,6 +95,8 @@ export class PasswordDialog {
         return this.i18n.t('passwordDialog.pairing', { device });
       case 'backup':
         return this.i18n.t('passwordDialog.backup');
+      case 'statusPassword':
+        return this.i18n.t('passwordDialog.statusPassword');
     }
   });
 
@@ -108,6 +111,8 @@ export class PasswordDialog {
         return this.i18n.t('passwordDialog.confirmKind');
       case 'backup':
         return this.i18n.t('passwordDialog.confirmBackup');
+      case 'statusPassword':
+        return this.i18n.t('passwordDialog.confirmStatus');
     }
   });
 

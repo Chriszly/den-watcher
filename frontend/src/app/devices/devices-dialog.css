@@ -126,3 +126,21 @@ form.pairing button {
   letter-spacing: 0.1em;
   user-select: all;
 }
+
+/* The remote status page below the backup, its button on a line of its own. */
+form.status-page {
+  margin-top: 1.25rem;
+}
+
+form.status-page button {
+  flex-basis: 100%;
+  max-width: max-content;
+}
+
+/* The certificate's fingerprint, wrapped anywhere, to read off and compare. */
+.fingerprint {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}

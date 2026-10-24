@@ -1,6 +1,8 @@
 // Package password keeps the password that protects changes to a hub's list
 // of devices. It is chosen when the first device is added and stays the same
-// after that. Only a salted hash is stored.
+// after that. The same kind of password, kept in a table of its own, guards
+// the remote status page, and that one can be changed. Only a salted hash is
+// stored.
 package password
 
 import (
@@ -11,6 +13,7 @@ import (
 	"crypto/subtle"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/netip"
 	"sync"
 	"time"
@@ -46,17 +49,23 @@ var (
 	ErrAlreadySet = errors.New("the password has been chosen already")
 )
 
+// schema creates a table for one password; %s is its name.
 const schema = `
-CREATE TABLE IF NOT EXISTS password (
+CREATE TABLE IF NOT EXISTS %s (
 	id   INTEGER PRIMARY KEY CHECK (id = 1), -- there is only one password
 	salt BLOB NOT NULL,
 	hash BLOB NOT NULL
 );
 `
 
+// StatusTable is the table of the password for the remote status page.
+const StatusTable = "status_password"
+
 // Password is the stored password.
 type Password struct {
 	db *sql.DB
+	// table is the name of the table the password is kept in, set in code.
+	table string
 	// iterations is how often the hash is repeated; fewer only in tests.
 	iterations int
 
@@ -79,18 +88,25 @@ type turn struct {
 	checks int
 }
 
-// Open returns the password kept in db, creating its table when needed.
+// Open returns the password for changing devices kept in db, creating its
+// table when needed.
 func Open(ctx context.Context, db *sql.DB) (*Password, error) {
-	if _, err := db.ExecContext(ctx, schema); err != nil {
+	return OpenTable(ctx, db, "password")
+}
+
+// OpenTable returns the password kept in the table of db named table, such
+// as StatusTable, creating it when needed. table is a name set in code.
+func OpenTable(ctx context.Context, db *sql.DB, table string) (*Password, error) {
+	if _, err := db.ExecContext(ctx, fmt.Sprintf(schema, table)); err != nil {
 		return nil, err
 	}
-	return &Password{db: db, iterations: iterations}, nil
+	return &Password{db: db, table: table, iterations: iterations}, nil
 }
 
 // IsSet reports whether a password has been chosen.
 func (p *Password) IsSet(ctx context.Context) (bool, error) {
 	var count int
-	err := p.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM password`).Scan(&count)
+	err := p.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+p.table).Scan(&count)
 	return count > 0, err
 }
 
@@ -107,7 +123,7 @@ func (p *Password) Check(ctx context.Context, from netip.Addr, password string) 
 	defer done()
 
 	var salt, hash []byte
-	err = p.db.QueryRowContext(ctx, `SELECT salt, hash FROM password WHERE id = 1`).Scan(&salt, &hash)
+	err = p.db.QueryRowContext(ctx, `SELECT salt, hash FROM `+p.table+` WHERE id = 1`).Scan(&salt, &hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotSet
 	}
@@ -177,21 +193,14 @@ func client(from netip.Addr) netip.Addr {
 // before, since it never changes, and ErrLength when password is too short
 // or too long.
 func (p *Password) Set(ctx context.Context, password string) error {
-	if err := CheckNew(password); err != nil {
-		return err
-	}
-	salt := make([]byte, saltBytes)
-	if _, err := rand.Read(salt); err != nil {
-		return err
-	}
-	hash, err := p.derive(password, salt)
+	salt, hash, err := p.hashNew(password)
 	if err != nil {
 		return err
 	}
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	result, err := p.db.ExecContext(ctx, `INSERT OR IGNORE INTO password (id, salt, hash) VALUES (1, ?, ?)`, salt, hash)
+	result, err := p.db.ExecContext(ctx, `INSERT OR IGNORE INTO `+p.table+` (id, salt, hash) VALUES (1, ?, ?)`, salt, hash) //nolint:gosec // table is a name set in code
 	if err != nil {
 		return err
 	}
@@ -199,6 +208,33 @@ func (p *Password) Set(ctx context.Context, password string) error {
 		return errors.Join(ErrAlreadySet, err)
 	}
 	return nil
+}
+
+// Change sets the password, whether one was chosen before or not. It returns
+// ErrLength when password is too short or too long.
+func (p *Password) Change(ctx context.Context, password string) error {
+	salt, hash, err := p.hashNew(password)
+	if err != nil {
+		return err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	_, err = p.db.ExecContext(ctx, `INSERT OR REPLACE INTO `+p.table+` (id, salt, hash) VALUES (1, ?, ?)`, salt, hash) //nolint:gosec // table is a name set in code
+	return err
+}
+
+// hashNew returns a new salt and the hash of password with it, or ErrLength
+// when password is too short or too long.
+func (p *Password) hashNew(password string) (salt, hash []byte, err error) {
+	if err := CheckNew(password); err != nil {
+		return nil, nil, err
+	}
+	salt = make([]byte, saltBytes)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, nil, err
+	}
+	hash, err = p.derive(password, salt)
+	return salt, hash, err
 }
 
 // CheckNew returns ErrLength when password is too short or too long to be chosen.
@@ -211,7 +247,7 @@ func CheckNew(password string) error {
 
 // Reset deletes the password, so the next change chooses a new one.
 func (p *Password) Reset(ctx context.Context) error {
-	_, err := p.db.ExecContext(ctx, `DELETE FROM password`)
+	_, err := p.db.ExecContext(ctx, `DELETE FROM `+p.table) //nolint:gosec // table is a name set in code
 	return err
 }
 

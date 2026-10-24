@@ -11,6 +11,7 @@ import { MetricsService } from '../app/metrics/metrics';
 import {
   DEMO_PAIRING_CODE,
   DEMO_RETENTION_DAYS,
+  DEMO_STATUS_PAGE,
   DemoBackend,
   LAYOUT_STORAGE_KEY,
   csvFileName,
@@ -41,6 +42,14 @@ describe('DemoBackend', () => {
     } finally {
       localStorage.removeItem(LAYOUT_STORAGE_KEY);
     }
+  });
+
+  it('shows a remote status page whose password cannot be changed', async () => {
+    expect(await firstValueFrom(devices.statusPage())).toEqual(DEMO_STATUS_PAGE);
+    const refused = await firstValueFrom(devices.setStatusPassword('new password', 'hub')).catch(
+      (error: unknown) => error,
+    );
+    expect(problemMessage(refused, TestBed.inject(I18n))).toContain('demo');
   });
 
   it('shows the alerts of the values that need attention, and a log', async () => {

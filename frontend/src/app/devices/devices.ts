@@ -113,6 +113,21 @@ export interface Suggestion {
   kind: DeviceKind;
 }
 
+/**
+ * The body of GET /api/status-page: the remote status page, a minimal page on a port of its own
+ * for outside the local network, set up with STATUS_ADDR.
+ */
+export interface StatusPage {
+  /** False when the hub has no status page; the rest is missing then. */
+  enabled: boolean;
+  /** The port it is reachable on. */
+  port?: string;
+  /** The SHA-256 of its self-signed certificate, as pairs of hex digits split by colons. */
+  fingerprint?: string;
+  /** Whether its password is set; until it is, the page shows no devices. */
+  passwordSet: boolean;
+}
+
 /** The machine the backend runs on. The API answers for it when a request names no device. */
 export const LOCAL_DEVICE: Device = { id: 'local', name: '' };
 
@@ -301,6 +316,19 @@ export class DeviceService {
             : throwError(() => error),
         ),
       );
+  }
+
+  /** Reads whether the hub has a remote status page, and where. */
+  statusPage(): Observable<StatusPage> {
+    return this.http.get<StatusPage>('/api/status-page');
+  }
+
+  /**
+   * Sets or changes the password of the remote status page, guarded by the password for changing
+   * devices; without that one yet, `password` becomes it.
+   */
+  setStatusPassword(newPassword: string, password: string): Observable<void> {
+    return this.http.post<void>('/api/status-page/password', { password, newPassword });
   }
 
   /** Removes a device added on the page, and its history unless `keepHistory` is set. */

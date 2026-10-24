@@ -24,21 +24,38 @@ func TestStructuresMatchWindows(t *testing.T) {
 	if got := unsafe.Offsetof(deviceInfo{}.name); got != 64 {
 		t.Errorf("szName is at %d, want 64", got)
 	}
+	for name, sizes := range map[string][2]uintptr{
+		"DEVPROPCOMPKEY":            {unsafe.Sizeof(devPropCompKey{}), 32},
+		"DEVPROPERTY":               {unsafe.Sizeof(devProperty{}), 48},
+		"DEVPROP_FILTER_EXPRESSION": {unsafe.Sizeof(devPropFilterExpression{}), 56},
+		"DEV_OBJECT":                {unsafe.Sizeof(devObject{}), 32},
+	} {
+		if sizes[0] != sizes[1] {
+			t.Errorf("%s takes %d bytes, want %d", name, sizes[0], sizes[1])
+		}
+	}
 }
 
-func TestReadingOfInfosKeepsConnectedDevices(t *testing.T) {
+func TestReadingOfKeepsConnectedDevices(t *testing.T) {
 	name := func(s string) (n [248]uint16) {
 		copy(n[:], windows.StringToUTF16(s))
 		return n
 	}
-	got := readingOfInfos([]deviceInfo{
+	got := readingOf([]deviceInfo{
 		{address: 0xaabbccddee01, classOfDevice: 0x240418, connected: 1, name: name("WH-1000XM5")},
 		{address: 0xaabbccddee02, classOfDevice: 0x5a020c, remembered: 1, name: name("Pixel")},
-	})
+	}, leDevices([]leEndpoint{
+		{name: "Xbox Wireless Controller", address: "98:7a:14:00:00:01", connected: true, appearance: 0x03c4},
+		{name: "MX Master 3", address: "aa:bb:cc:dd:ee:03", appearance: 0x03c2},
+		{name: "WH-1000XM5", address: "aa:bb:cc:dd:ee:01", connected: true, appearance: 0x0943},
+	}))
 
-	want := &Reading{Connected: 1, Devices: []Device{{Key: "AABBCCDDEE01", Name: "WH-1000XM5", Kind: KindHeadphones}}}
+	want := &Reading{Connected: 2, Devices: []Device{
+		{Key: "AABBCCDDEE01", Name: "WH-1000XM5", Kind: KindHeadphones},
+		{Key: "987A14000001", Name: "Xbox Wireless Controller", Kind: KindGameController},
+	}}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("readingOfInfos() = %+v, want %+v", got, want)
+		t.Errorf("readingOf() = %+v, want %+v", got, want)
 	}
 }
 

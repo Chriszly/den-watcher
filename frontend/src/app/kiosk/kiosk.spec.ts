@@ -6,7 +6,7 @@ import { Alert } from '../alerts/alert';
 import { App } from '../app';
 import { Dashboard } from '../dashboard/dashboard';
 import { Device, DeviceService, LOCAL_DEVICE } from '../devices/devices';
-import { TIMELINE_STORAGE_KEY } from '../history/timeline';
+import { VIEW_STORAGE_KEY } from '../dashboard/page-view';
 import { I18n, LANGUAGE_STORAGE_KEY } from '../i18n/i18n';
 import { PAGE_RELOAD } from '../update/missing-part';
 import { KioskMode, PAGE_SEARCH, kioskOrder, kioskSeconds, nextKioskDevice } from './kiosk';
@@ -161,7 +161,7 @@ describe('App on a wall display', () => {
   });
 
   it('shows the cards, not the timeline picked in this browser, and keeps that choice', () => {
-    localStorage.setItem(TIMELINE_STORAGE_KEY, 'true');
+    localStorage.setItem(VIEW_STORAGE_KEY, 'timeline');
     try {
       TestBed.configureTestingModule({
         imports: [App],
@@ -177,9 +177,9 @@ describe('App on a wall display', () => {
 
       expect(element.querySelector('app-timeline')).toBeNull();
       expect(element.querySelector('.categories')).not.toBeNull();
-      expect(localStorage.getItem(TIMELINE_STORAGE_KEY)).toBe('true');
+      expect(localStorage.getItem(VIEW_STORAGE_KEY)).toBe('timeline');
     } finally {
-      localStorage.removeItem(TIMELINE_STORAGE_KEY);
+      localStorage.removeItem(VIEW_STORAGE_KEY);
     }
   });
 

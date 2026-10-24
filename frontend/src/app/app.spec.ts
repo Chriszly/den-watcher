@@ -4,7 +4,6 @@ import { DeferBlockState, TestBed } from '@angular/core/testing';
 
 import { App } from './app';
 import { DeviceService, LOCAL_DEVICE } from './devices/devices';
-import { TIMELINE_STORAGE_KEY, TimelineMode } from './history/timeline';
 import { MissingParts, PAGE_RELOAD } from './update/missing-part';
 
 describe('App', () => {
@@ -46,26 +45,16 @@ describe('App', () => {
     expect(toggle).not.toBeNull();
   });
 
-  it('switches to the timeline and back when the mascot is clicked', () => {
+  it('shows the mascot as a picture, not a button', () => {
     TestBed.configureTestingModule({
       imports: [App],
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
-    const mascot = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
-      'header button.mascot',
-    )!;
-    expect(mascot.getAttribute('aria-label')).toBe('Show every value on one timeline');
-    expect(mascot.getAttribute('aria-pressed')).toBe('false');
-
-    mascot.click();
-    fixture.detectChanges();
-    expect(mascot.getAttribute('aria-pressed')).toBe('true');
-    expect(TestBed.inject(TimelineMode).on()).toBe(true);
-
-    mascot.click();
-    localStorage.removeItem(TIMELINE_STORAGE_KEY);
+    const header = (fixture.nativeElement as HTMLElement).querySelector('header')!;
+    expect(header.querySelector('span.mascot app-mascot')).not.toBeNull();
+    expect(header.querySelector('button.mascot')).toBeNull();
   });
 
   it('stands in for the comparison when it cannot be loaded', async () => {

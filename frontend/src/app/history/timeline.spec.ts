@@ -6,7 +6,7 @@ import { By } from '@angular/platform-browser';
 import { History } from '../metrics/metrics';
 import { ChartCanvas } from './chart-canvas';
 import { HistoryStore, refreshIntervalMs } from './history-store';
-import { TIMELINE_STORAGE_KEY, Timeline, TimelineMode } from './timeline';
+import { Timeline } from './timeline';
 
 const HISTORY: History = {
   from: 0,
@@ -308,19 +308,5 @@ describe('Timeline', () => {
     const host = fixture.nativeElement as HTMLElement;
     expect(host.querySelector('.axis')).toBeNull();
     expect(host.querySelector('app-timeline-row')).toBeNull();
-  });
-});
-
-describe('TimelineMode', () => {
-  afterEach(() => localStorage.removeItem(TIMELINE_STORAGE_KEY));
-
-  it('is off until switched on, and remembers the choice', () => {
-    expect(TestBed.inject(TimelineMode).on()).toBe(false);
-
-    TestBed.inject(TimelineMode).toggle();
-    expect(localStorage.getItem(TIMELINE_STORAGE_KEY)).toBe('true');
-
-    TestBed.resetTestingModule();
-    expect(TestBed.inject(TimelineMode).on()).toBe(true);
   });
 });

@@ -118,6 +118,9 @@ type Site struct {
 	// which GET /api/pairing shows; nil lets every hub collect and leaves
 	// out GET /api/pairing.
 	Pairing Pairing
+	// StatusPage is the remote status page, from STATUS_ADDR; nil when it is
+	// off, which GET /api/status-page then tells.
+	StatusPage StatusPage
 }
 
 // LayoutStore keeps how the page is arranged, for every browser that opens it.
@@ -159,7 +162,11 @@ func New(site Site) http.Handler {
 		if site.Backups != nil {
 			mux.HandleFunc("POST /api/backup", changes.backup)
 		}
+		if site.StatusPage != nil {
+			mux.HandleFunc("POST /api/status-page/password", changes.setStatusPassword(site.StatusPage))
+		}
 	}
+	mux.HandleFunc("GET /api/status-page", statusPageHandler(site.StatusPage))
 	link := &hubLink{}
 	mux.HandleFunc("GET /api/metrics", pairedOnly(site.Pairing, true, link.remember(forDevice(site.Devices, metricsHandler))))
 	mux.HandleFunc("GET /api/hub", link.handler)

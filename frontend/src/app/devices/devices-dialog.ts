@@ -43,6 +43,8 @@ import {
   Device,
   DeviceKind,
   DeviceService,
+  MIN_PASSWORD_LENGTH,
+  StatusPage,
   Suggestion,
   kindName,
   problemMessage,
@@ -96,6 +98,22 @@ export class DevicesDialog {
   protected readonly ownCode = signal('');
   protected readonly kinds = DEVICE_KINDS;
   protected readonly kindName = kindName;
+  /** The remote status page; null until it is read, and when the hub has none. */
+  protected readonly statusPage = signal<StatusPage | null>(null);
+  /** The new password typed in for the status page, and typed again. */
+  protected readonly statusPassword = signal('');
+  protected readonly statusRepeated = signal('');
+  protected readonly minLength = MIN_PASSWORD_LENGTH;
+  protected readonly statusMismatch = computed(
+    () => this.statusRepeated() !== '' && this.statusRepeated() !== this.statusPassword(),
+  );
+  protected readonly canSetStatusPassword = computed(
+    () =>
+      this.statusPassword().length >= MIN_PASSWORD_LENGTH &&
+      this.statusRepeated() === this.statusPassword(),
+  );
+  /** Set once the status page's password was set in this dialog. */
+  protected readonly statusSaved = signal(false);
   protected readonly problem = signal('');
   protected readonly busy = signal(false);
   /** Emits when a change starts, to stop a failed change's reading of the list. */
@@ -141,6 +159,8 @@ export class DevicesDialog {
         takeUntilDestroyed(),
       )
       .subscribe((code) => this.ownCode.set(code));
+
+    this.loadStatusPage();
 
     // Filled in only when nothing has been typed yet; a suggestion that
     // cannot be read leaves the form empty, as before.
@@ -226,6 +246,34 @@ export class DevicesDialog {
         .backup(result.password)
         .pipe(tap((backup) => saveFile(this.document, backup.file, backup.name))),
     ).subscribe();
+  }
+
+  /** Asks for the password for changing devices and sets the status page's password. */
+  protected setStatusPassword(): void {
+    if (!this.canSetStatusPassword()) {
+      return;
+    }
+    const newPassword = this.statusPassword();
+    this.statusSaved.set(false);
+    this.change({ action: 'statusPassword', deviceName: '' }, (result) =>
+      this.devices.setStatusPassword(newPassword, result.password),
+    ).subscribe(() => {
+      this.statusPassword.set('');
+      this.statusRepeated.set('');
+      this.statusSaved.set(true);
+      this.loadStatusPage();
+    });
+  }
+
+  /** Reads the remote status page; one that cannot be read is left out, as when there is none. */
+  private loadStatusPage(): void {
+    this.devices
+      .statusPage()
+      .pipe(
+        catchError(() => of(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((page) => this.statusPage.set(page?.enabled ? page : null));
   }
 
   /**

@@ -77,11 +77,12 @@ What goes over the wire:
 | Hub | Each device | `GET /api/metrics`: the device's current usage as JSON, a few kilobytes. The `Usage-Control-Hub-Port` header tells the port of the hub's page; the device remembers it with the hub's address. The `Usage-Control-Hub-Id` header tells the hub's id ([while the hub is away](#while-the-hub-is-away)) | every 5 s |
 | Program on the device | The device | `GET /api/hub`: the hub's page as `{"url": "http://192.168.1.20:9393/"}`, empty until a hub asked; only answered to 127.0.0.1 and ::1 | when needed |
 | Prometheus | Hub | `GET /metrics`: the usage of every device in the Prometheus text format; only with `PROMETHEUS=true` | as often as Prometheus scrapes |
+| Browser anywhere | Hub | the [status page](#the-status-page) on `STATUS_ADDR`, over HTTPS: whether each device is online and how many alerts it has; only with `STATUS_ADDR` | once a minute while it is open |
 | Hub | GitHub | `GET https://api.github.com/repos/Chriszly/den-watcher/releases/latest` | once a day, at start and every 24 h after, or an hour after a failed check; only on releases, never with `DATA_ONLY` |
 
 The usage, availability, chart, event and disk forecast polls pause while the tab is hidden and read again at once when it is shown; the list of devices, which carries the alerts that last, is read every 30 seconds then, for the tab's title and the browser's notifications. All traffic on the local network is plain HTTP. Nothing else leaves the network: no telemetry, no account, no cloud service. The daily version check only reads the newest release's tag; nothing is downloaded or installed.
 
-Devices never talk to each other or to the browser on their own. Every connection starts from a browser, from the hub or, with `PROMETHEUS=true`, from Prometheus.
+Devices never talk to each other or to the browser on their own. Every connection starts from a browser, from the hub or, with `PROMETHEUS=true`, from Prometheus. Only the status page, with `STATUS_ADDR`, answers from outside the local network.
 
 ## Inside one device
 
@@ -299,7 +300,28 @@ The website and the API answer only the local network. Every request passes thre
 2. **The Host header** must be a name the device knows: an IP address, `localhost`, its hostname, any `.local` name, or a name in `ALLOWED_HOSTS`. Otherwise: `421 Misdirected Request`. This stops DNS rebinding, where a web page from the internet points its own domain at the device's LAN address to read the API through a browser on the LAN.
 3. Responses carry `X-Content-Type-Options: nosniff`, and `Content-Security-Policy: frame-ancestors 'none'` with `X-Frame-Options: DENY`, so no other site can show the page in a frame (dashboards that embed pages in a frame, such as a Home Assistant iframe card, show it empty; open it in its own tab instead), and the website is served without directory listings.
 
+The [status page](#the-status-page) is the one exception: it has a port of its own and answers anyone who reaches it, over HTTPS and behind a password.
+
 The hub applies the same address check to its outgoing connections. In Docker, the port is published over IPv4 only (`0.0.0.0:9393`): Docker's proxy would hand IPv6 connections over from its own internal address, which hides the real client.
+
+## The status page
+
+With `STATUS_ADDR`, the hub runs a second server for the status page, meant to be reachable from the internet (see [Check the devices from outside](setup.md#8-check-the-devices-from-outside)). It shares nothing with the website but the list of devices it reads:
+
+- **What it shows:** for each device its name, whether it is online, offline (a server that does not answer) or switched off (a PC or phone that does not answer), and how many alerts it has. No values, addresses, ids or versions. The page is HTML from the server, with no script, and reloads itself every minute.
+- **TLS:** a self-signed ECDSA P-256 certificate, made at the first start and kept in the database (`status_certificate`), valid for 825 days and replaced 30 days before it ends. TLS 1.2 or newer. Its SHA-256 fingerprint is logged at every start and shown in the *Devices* dialog.
+- **Password:** kept as a salted PBKDF2 hash like the password for changing devices, in a table of its own (`status_password`), and set with `POST /api/status-page/password`, which needs that password. Each client checks one password at a time, and a wrong one is answered one second late.
+- **Sessions:** a signed-in visitor gets a random 256-bit cookie (`Secure`, `HttpOnly`, `SameSite=Strict`) for 30 days; the hub keeps only its SHA-256, in memory, so a restart or a new password signs everyone out. At most 100 visitors are signed in at once.
+- **Limits:** 60 requests a minute per address (per /64 for IPv6), 5 wrong passwords per address before a 15-minute lockout, 50 wrong passwords from all addresses within an hour before nobody can sign in until it is over, at most 64 connections at once, and short timeouts. A sign-in or sign-out from another site, by `Sec-Fetch-Site` or else `Origin`, is refused.
+- **Headers:** `Content-Security-Policy: default-src 'none'` with only the page's own style allowed by its hash, `frame-ancestors 'none'` and `form-action 'self'`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, `X-Robots-Tag: noindex, nofollow` and `Cache-Control: no-store`.
+
+| Method and path | Answers |
+| --- | --- |
+| `GET /` | the devices to a signed-in visitor, else the sign-in form, or why nobody can sign in while no password is set |
+| `POST /login` | form field `password`; `303` to `/` with the session cookie, else the form again with `401` wrong password, `403` no password set, `429` locked out |
+| `POST /logout` | `303` to `/`, ending the session |
+
+Every other path is `404`, and a client past its requests `429`.
 
 ## HTTP API
 
@@ -319,6 +341,8 @@ Answers under `/api/` with a body are JSON with `Cache-Control: no-store`, excep
 | `POST /api/phones` | body `{ name, code, password }`: a [phone](#phones), with the pairing code its app shows; `201` with the new device, of kind `phone` and without an address | `400` name, a code as for `POST /api/devices`, or password length, `403` wrong password, `409` name or code taken, or a device with the same name still being removed, `415` not JSON, `422` no code, `503` the hub is stopping |
 | `POST /api/phone/minutes` | the phone's code in `Usage-Control-Pairing-Code`, body `{ now, snapshot, minutes: [{ time, values }], extras? }`, at most 8 MiB; `200` with `{ after }`, the phone's time of the newest minute the hub has; see [Phones](#phones) | `400` not JSON, or larger than 8 MiB, `403` no phone has the code (answered one second late), `413` more than 120 minutes or 10,000 values, `415` not sent as JSON |
 | `PUT /api/devices/<id>/pairing` | body `{ code, password }`: the [pairing code](#pairing) the hub sends the device from now on, for a device from `HUB_DEVICES` too, or the one a phone sends from now on; `204` | `400` a code as for `POST /api/devices`, or a router or check, which has none, `409` another phone has it, `403` wrong password, `404` unknown device, `422` the device refuses the code |
+| `GET /api/status-page` | `{ enabled, port, fingerprint, passwordSet }`: whether the hub serves the [status page](#the-status-page), the port it is reachable on, its certificate's SHA-256 and whether its password is set; only `{ enabled: false, passwordSet: false }` without `STATUS_ADDR` | |
+| `POST /api/status-page/password` | body `{ password, newPassword }`: sets or changes the status page's password to `newPassword`, guarded by `password`, the one for changing devices (chosen by this request when there is none yet), and signs everyone out of the status page; `204`. Only with `STATUS_ADDR` | `400` either password's length, `403` wrong password, `415` not JSON |
 | `GET /api/pairing` | `{ code }`: this device's own [pairing code](#pairing), such as `7KQM-X2RP` | `403` on a data-only device, from anywhere but the machine itself; `404` when its database could not be opened |
 | `GET /api/history?from=<s>&to=<s>[&device=<id>]` | `{ from, to, stepSeconds, retentionDays, series: [{ metric, points: [{ time, value }] }], lastReading?, extras? }`, at most 360 points per metric. `extras` describes the series of [extras](data.md#extras) by metric. For an unreachable device, `lastReading` is the time of its newest reading, and a range ending later is moved back to end there, keeping its length | `400` when `from` and `to` are not Unix seconds with `from` before `to` |
 | `GET /api/history.csv?from=<s>&to=<s>[&device=<id>]` | the same history as `GET /api/history`, over the same range and in the same steps, as a CSV file (RFC 4180, UTF-8, lines ending in CRLF) to download: a header `time` and the name of each [metric](data.md#what-is-kept-in-the-history), then a row for each time, oldest first, with the time in ISO 8601 in UTC (`2026-10-13T12:00:00Z`) and an empty cell where a metric has no value. A metric name that starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a `'` in front, so a spreadsheet does not run it as a formula; values are plain numbers. `Content-Disposition: attachment` names the file `<device>-<from>-<to>.csv`, such as `Linux-NAS-20261013T120000Z-20261013T130000Z.csv`: the device's name (`den-watcher` for the hub's own when it has none) with every character but letters, digits, `.`, `-` and `_` made a `-`, in ASCII as `filename` and, for a name beyond ASCII, in UTF-8 as `filename*` | `400` and `404` as `GET /api/history` |

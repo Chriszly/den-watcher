@@ -174,6 +174,19 @@ export const es: Messages = {
   'devicesDialog.ownCodeHint':
     'Un hub pide este código cuando este dispositivo se añade allí; sin él, el hub solo registra si el dispositivo responde.',
   'devicesDialog.backupTitle': 'Copia de seguridad',
+  'devicesDialog.statusTitle': 'Página de estado remota',
+  'devicesDialog.statusHint':
+    'Una página mínima en el puerto {port} que solo muestra si cada dispositivo está en línea y cuántas alertas tiene, para comprobarlo desde fuera de tu red doméstica. Usa HTTPS con un certificado propio, así que el navegador avisa la primera vez.',
+  'devicesDialog.statusFingerprint':
+    'Huella del certificado (SHA-256), para compararla con la que muestra el navegador:',
+  'devicesDialog.statusPasswordSet':
+    'Hay una contraseña. Cambiarla cierra la sesión de todos en la página de estado.',
+  'devicesDialog.statusPasswordNone':
+    'Aún no hay contraseña, así que la página de estado no muestra dispositivos.',
+  'devicesDialog.statusNew': 'Nueva contraseña',
+  'devicesDialog.statusSet': 'Establecer contraseña',
+  'devicesDialog.statusChange': 'Cambiar contraseña',
+  'devicesDialog.statusSaved': 'La contraseña de la página de estado está establecida.',
   'devices.problem.wrongPassword': 'La contraseña no es correcta.',
   'devices.problem.passwordLength': 'La contraseña necesita al menos {count} caracteres.',
   'devices.problem.name':
@@ -227,6 +240,8 @@ export const es: Messages = {
   'passwordDialog.backupHint':
     'Guarda el archivo en privado: contiene las direcciones de tus dispositivos y el hash de la contraseña.',
   'passwordDialog.backup': '¿Descargar una copia de seguridad de la base de datos del hub?',
+  'passwordDialog.statusPassword': '¿Establecer la contraseña de la página de estado remota?',
+  'passwordDialog.confirmStatus': 'Establecer',
   'history.unit': 'Unidad del periodo mostrado',
   'history.range': 'Periodo mostrado',
   'history.unreachableStale':

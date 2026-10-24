@@ -172,6 +172,19 @@ export const fr: Messages = {
   'devicesDialog.ownCodeHint':
     "Un hub demande ce code quand cet appareil y est ajouté ; sans lui, le hub ne suit que si l'appareil répond.",
   'devicesDialog.backupTitle': 'Sauvegarde',
+  'devicesDialog.statusTitle': 'Page d’état à distance',
+  'devicesDialog.statusHint':
+    'Une page minimale sur le port {port} qui montre seulement si chaque appareil est en ligne et combien d’alertes il a, pour vérifier depuis l’extérieur de votre réseau domestique. Elle utilise HTTPS avec son propre certificat, le navigateur affiche donc un avertissement la première fois.',
+  'devicesDialog.statusFingerprint':
+    'Empreinte du certificat (SHA-256), à comparer avec celle que montre le navigateur :',
+  'devicesDialog.statusPasswordSet':
+    'Un mot de passe est défini. Le changer déconnecte tout le monde de la page d’état.',
+  'devicesDialog.statusPasswordNone':
+    'Aucun mot de passe n’est encore défini, la page d’état ne montre donc aucun appareil.',
+  'devicesDialog.statusNew': 'Nouveau mot de passe',
+  'devicesDialog.statusSet': 'Définir le mot de passe',
+  'devicesDialog.statusChange': 'Changer le mot de passe',
+  'devicesDialog.statusSaved': 'Le mot de passe de la page d’état est défini.',
   'devices.problem.wrongPassword': 'Le mot de passe est incorrect.',
   'devices.problem.passwordLength': 'Le mot de passe doit comporter au moins {count} caractères.',
   'devices.problem.name':
@@ -226,6 +239,8 @@ export const fr: Messages = {
   'passwordDialog.backupHint':
     'Gardez le fichier privé : il contient les adresses de vos appareils et le hachage du mot de passe.',
   'passwordDialog.backup': 'Télécharger une sauvegarde de la base de données du hub ?',
+  'passwordDialog.statusPassword': 'Définir le mot de passe de la page d’état à distance ?',
+  'passwordDialog.confirmStatus': 'Définir',
   'history.unit': 'Unité de la période affichée',
   'history.range': 'Période affichée',
   'history.unreachableStale':

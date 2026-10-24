@@ -317,6 +317,24 @@ scrape_configs:
 
 On Windows, the installer has no option for it; set it on a Linux hub.
 
+## 8. Check the devices from outside
+
+With `STATUS_ADDR`, the hub also serves the status page: a minimal page on a port of its own that tells whether each device is online, offline or switched off and how many alerts it has, and nothing else: no values, no addresses, no version. It is the only part of den-watcher meant to be reachable from the internet, so you can check on your devices from anywhere. In Docker, set the port on the host in `.env`:
+
+```bash
+STATUS_PORT=9443
+```
+
+`compose.yaml` then publishes it and sets `STATUS_ADDR=:9443` inside the container; for the Linux service, set `STATUS_ADDR=:9443` in `/etc/den-watcher.env`. Then:
+
+1. Open the hub's page on the local network, click *Devices* and set a password under *Remote status page*. Setting or changing it asks for the password for changing devices; changing it signs everyone out of the status page. Until it is set, the status page shows no devices.
+2. Forward the port on the router to the hub, such as TCP 9443 to `192.168.1.20:9443`, and open `https://<your public address>:9443` from outside. With a public address that changes, a dynamic DNS name from the router helps.
+3. The page uses HTTPS with a certificate the hub makes itself, so the browser warns the first time. Compare the fingerprint the browser shows with the one in the *Devices* dialog (and in the hub's log) before you continue; if they are the same, the connection goes to your hub. The certificate is kept in the database and replaced 30 days before it ends, after about two years; the browser warns once more then.
+
+How it is protected: it answers only HTTPS (TLS 1.2 or newer), shows nothing but the sign-in form until the password is given, and keeps a visitor signed in for 30 days with a cookie that is sent only over HTTPS and only by the page itself. Each address may send 60 requests a minute; after 5 wrong passwords it may guess no more for 15 minutes, and after 50 wrong passwords from all addresses together within an hour nobody can sign in until the hour is over, while those signed in keep seeing the page. Every wrong password is answered one second late. It serves only `/`, `/login` and `/logout`; the website and the API stay on the local network. Choose a long password: it is the only thing between the internet and the list of your devices.
+
+On Windows, the installer has no option for it; set it on a Linux hub.
+
 ## Run from source
 
 To run den-watcher on a computer without Docker or an installer, such as a Mac, build the website once and then the binary. You need Node.js (version in `frontend/.nvmrc`) and Go (version in `backend/go.mod`). In PowerShell on Windows:
@@ -357,6 +375,9 @@ Settings are environment variables. In Docker they go in `.env` next to `compose
 | `RESET_PASSWORD` | `false` | `true` deletes the password for changing devices at start; unset it again right after |
 | `UPDATE_CHECK` | `true` | `false` stops the daily check for a newer release. When set, it must be `true` or `false` on every device, data-only ones too, which never check: an invalid value stops the program |
 | `ALLOWED_HOSTS` | none | other names this device answers to, comma-separated, besides IP addresses, `localhost`, its hostname and `.local` names. A name with letters such as ü goes in the `xn--` form the browser sends, such as `xn--kche-0ra.lan` for `küche.lan`; written as `küche.lan` it is left out with a warning |
+| `STATUS_ADDR` | none | the address of the status page, such as `:9443`, for outside the local network; see [Check the devices from outside](#8-check-the-devices-from-outside). Set by `compose.yaml` from `STATUS_PORT`. Not with `DATA_ONLY`: both together stop the program |
+| `STATUS_PORT` | none | Docker only: the port on the host for the status page, which turns it on |
+| `STATUS_PUBLIC_PORT` | the port of `STATUS_ADDR`; `STATUS_PORT` in Docker | the port the *Devices* dialog names for the status page |
 | `PROMETHEUS` | `false` | `true` serves `GET /metrics`, the usage of this device and of every device it collects from for Prometheus; see [Show the usage in Grafana](#7-show-the-usage-in-grafana). Not with `DATA_ONLY`: both together stop the program |
 | `DOCKER_DIR` | `/var/lib/docker` | for the containers add-on: Docker's data folder, as `docker info` shows it under *Docker Root Dir*, from which it reads the containers' names. The Linux service cannot read folders below `/home`, so rootless Docker's names show only with the container. The inodes add-on leaves out the containers' layers mounted below it |
 | `ADDONS_DIR` | `/run/den-watcher-addons` for the Linux service; else none | the folder add-ons write their values to, which are shown as extras. Fixed for the Linux service, whose add-ons always write to `/run/den-watcher-addons`: leave it out of `/etc/den-watcher.env` |

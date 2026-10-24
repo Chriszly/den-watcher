@@ -176,6 +176,19 @@ export const en = {
   'devicesDialog.ownCodeHint':
     'A hub asks for this code when this device is added there; without it, the hub keeps only whether the device answers.',
   'devicesDialog.backupTitle': 'Backup',
+  'devicesDialog.statusTitle': 'Remote status page',
+  'devicesDialog.statusHint':
+    'A minimal page on port {port} that shows only whether each device is online and how many alerts it has, for checking from outside your home network. It uses HTTPS with a certificate of its own, so the browser warns about it the first time.',
+  'devicesDialog.statusFingerprint':
+    'Certificate fingerprint (SHA-256), to compare with the one the browser shows:',
+  'devicesDialog.statusPasswordSet':
+    'A password is set. Changing it signs everyone out of the status page.',
+  'devicesDialog.statusPasswordNone':
+    'No password is set yet, so the status page shows no devices.',
+  'devicesDialog.statusNew': 'New password',
+  'devicesDialog.statusSet': 'Set password',
+  'devicesDialog.statusChange': 'Change password',
+  'devicesDialog.statusSaved': 'The password of the status page is set.',
   'devices.problem.wrongPassword': 'The password is wrong.',
   'devices.problem.passwordLength': 'The password needs at least {count} characters.',
   'devices.problem.name':
@@ -224,6 +237,8 @@ export const en = {
   'passwordDialog.backupHint':
     'Keep the file private: it holds the addresses of your devices and the hash of the password.',
   'passwordDialog.backup': "Download a backup of the hub's database?",
+  'passwordDialog.statusPassword': 'Set the password of the remote status page?',
+  'passwordDialog.confirmStatus': 'Set',
   'history.unit': 'Unit of the time shown',
   'history.range': 'Time shown',
   'history.unreachableStale': 'The history cannot be read. Showing the last values read.',

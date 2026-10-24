@@ -56,6 +56,14 @@
 //	PROMETHEUS      true to serve GET /metrics, the usage of this device and
 //	                of every device it collects from in the Prometheus text
 //	                format, for Prometheus and Grafana (default false)
+//	STATUS_ADDR     address of the remote status page, such as :9443: a
+//	                minimal page, over HTTPS with a self-signed certificate
+//	                and behind a password set on the website, that tells
+//	                whether each device is online and how many alerts it
+//	                has, meant to be reachable from the internet (default
+//	                none: no status page; not with DATA_ONLY)
+//	STATUS_PUBLIC_PORT  port the status page is reachable on, when it is not
+//	                the one in STATUS_ADDR (set by compose.yaml)
 package main
 
 import (
@@ -92,6 +100,7 @@ import (
 	"github.com/Chriszly/den-watcher/backend/internal/reach"
 	"github.com/Chriszly/den-watcher/backend/internal/router"
 	"github.com/Chriszly/den-watcher/backend/internal/server"
+	"github.com/Chriszly/den-watcher/backend/internal/statuspage"
 	"github.com/Chriszly/den-watcher/backend/internal/update"
 	"github.com/Chriszly/den-watcher/backend/internal/version"
 	"github.com/Chriszly/den-watcher/backend/internal/web"
@@ -202,6 +211,13 @@ func run(ctx context.Context) error {
 	if dataOnly && prometheus {
 		return errors.New("PROMETHEUS is set, but DATA_ONLY serves only the usage for a hub; let Prometheus scrape the hub, which lists this device too, or unset one of the two")
 	}
+	statusAddr, statusPort, err := statusPageSettings()
+	if err != nil {
+		return err
+	}
+	if dataOnly && statusAddr != "" {
+		return errors.New("STATUS_ADDR is set, but DATA_ONLY turns off the website and history the status page needs; set it on the hub instead, or unset one of the two")
+	}
 
 	hours, err := intSettingOr("BUFFER_HOURS", int(history.DefaultBufferSpan/time.Hour), 168, " of hours")
 	if err != nil {
@@ -254,6 +270,9 @@ func run(ctx context.Context) error {
 	// device keeps only the minutes the hub has not fetched yet.
 	var handler http.Handler
 	var waitForRecorders func()
+	// statusServer serves the remote status page; nil when it is off.
+	var statusServer *http.Server
+	var statusListener net.Listener
 	if dataOnly {
 		minutes, paired, wait := withBuffer(ctx, sampler, databasePath, bufferSpan, historyEntries, existed)
 		waitForRecorders = wait
@@ -284,6 +303,21 @@ func run(ctx context.Context) error {
 		if prometheus {
 			slog.Info("serving the usage for Prometheus at /metrics")
 		}
+		if statusAddr != "" {
+			page, certs, err := openStatusPage(ctx, store, site.Devices)
+			if err == nil {
+				statusListener, err = statuspage.Listen(statusAddr, certs)
+			}
+			if err != nil {
+				// The recorders stop before the database is closed.
+				stop()
+				wait()
+				return fmt.Errorf("set up the status page at STATUS_ADDR: %w", err)
+			}
+			defer func() { _ = statusListener.Close() }()
+			statusServer = statuspage.NewServer(page)
+			site.StatusPage = remoteStatus{Page: page, certs: certs, port: statusPort}
+		}
 		handler = server.New(site)
 	}
 	// The recorders stop before the database is closed.
@@ -308,15 +342,29 @@ func run(ctx context.Context) error {
 		slog.Info("den-watcher listening", "addr", addr)
 		serveErr <- httpServer.Serve(listener)
 	}()
+	statusErr := make(chan error, 1)
+	if statusServer != nil {
+		go func() {
+			slog.Info("serving the status page over HTTPS", "addr", statusAddr)
+			statusErr <- statusServer.Serve(statusListener)
+		}()
+	}
 
 	select {
 	case err := <-serveErr:
 		return err
+	case err := <-statusErr:
+		return fmt.Errorf("serve the status page: %w", err)
 	case <-ctx.Done():
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	if statusServer != nil {
+		// The status page has nothing to finish that matters, so an error
+		// here does not stop the website's own shutdown.
+		_ = statusServer.Shutdown(shutdownCtx)
+	}
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		return err
 	}
@@ -749,6 +797,72 @@ func systemDisk() string {
 	}
 	return "/"
 }
+
+// statusPageSettings reads STATUS_ADDR, the address of the remote status
+// page, empty when it is off, and the port it is reachable on: from
+// STATUS_PUBLIC_PORT, or the port of STATUS_ADDR.
+func statusPageSettings() (addr, port string, err error) {
+	addr = strings.TrimSpace(os.Getenv("STATUS_ADDR"))
+	if addr == "" {
+		return "", "", nil
+	}
+	_, port, err = net.SplitHostPort(addr)
+	if n, convErr := strconv.Atoi(port); err != nil || convErr != nil || n < 1 || n > 65535 {
+		return "", "", fmt.Errorf("STATUS_ADDR is %q; set it to an address and port such as :9443, or leave it empty for no status page", addr)
+	}
+	if public := strings.TrimSpace(os.Getenv("STATUS_PUBLIC_PORT")); public != "" {
+		if n, err := strconv.Atoi(public); err != nil || n < 1 || n > 65535 {
+			return "", "", fmt.Errorf("STATUS_PUBLIC_PORT is %q; set it to a port from 1 to 65535", public)
+		}
+		port = public
+	}
+	return addr, port, nil
+}
+
+// openStatusPage returns the remote status page for devices, with its
+// password and self-signed certificate kept in store.
+func openStatusPage(ctx context.Context, store *history.Store, devices server.Devices) (*statuspage.Page, *statuspage.Certificates, error) {
+	statusPassword, err := password.OpenTable(ctx, store.DB(), password.StatusTable)
+	if err != nil {
+		return nil, nil, err
+	}
+	certs, err := statuspage.OpenCertificates(ctx, store.DB())
+	if err != nil {
+		return nil, nil, err
+	}
+	slog.Info("the status page's certificate; check that a browser shows the same before trusting it", "sha256", certs.Fingerprint())
+	return statuspage.New(func() []statuspage.Device { return statusDevices(devices.List()) }, statusPassword), certs, nil
+}
+
+// statusDevices is what the remote status page shows of devices: each one's
+// name, whether it answers and how many alerts it has. A PC or phone that
+// does not answer is switched off rather than offline, and a device waiting
+// for its pairing code answers all the same.
+func statusDevices(devices []server.Device) []statuspage.Device {
+	shown := make([]statuspage.Device, 0, len(devices))
+	for _, d := range devices {
+		state := statuspage.Online
+		if d.Unreachable && d.Pairing == "" {
+			state = statuspage.Offline
+			if d.Kind == hub.KindPC || d.Kind == hub.KindPhone {
+				state = statuspage.Off
+			}
+		}
+		shown = append(shown, statuspage.Device{Name: d.Name, State: state, Alerts: len(d.Alerts)})
+	}
+	return shown
+}
+
+// remoteStatus is the status page as the website sets its password and
+// tells where it is.
+type remoteStatus struct {
+	*statuspage.Page
+	certs *statuspage.Certificates
+	port  string
+}
+
+func (s remoteStatus) Port() string        { return s.port }
+func (s remoteStatus) Fingerprint() string { return s.certs.Fingerprint() }
 
 // pagePort returns the port the page is reachable on from the network, which
 // a hub tells the devices it collects from: PUBLIC_PORT, or the port of

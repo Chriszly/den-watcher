@@ -92,4 +92,11 @@ describe('PasswordDialog', () => {
     expect(element().querySelector('mat-checkbox')).toBeNull();
     expect(confirmButton().textContent?.trim()).toBe('Download');
   });
+
+  it("asks for the password to set the status page's password", async () => {
+    await open({ action: 'statusPassword', deviceName: '', passwordSet: true });
+
+    expect(element().textContent).toContain('Set the password of the remote status page?');
+    expect(confirmButton().textContent?.trim()).toBe('Set');
+  });
 });

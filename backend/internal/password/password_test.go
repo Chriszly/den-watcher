@@ -92,6 +92,41 @@ func TestResetLetsTheNextChangeChooseAPassword(t *testing.T) {
 	}
 }
 
+func TestTheStatusPasswordCanBeChangedApartFromTheOther(t *testing.T) {
+	ctx := context.Background()
+	devices := openTestPassword(t)
+	status, err := OpenTable(ctx, devices.db, StatusTable)
+	if err != nil {
+		t.Fatalf("OpenTable() error = %v", err)
+	}
+	status.iterations = 1000
+	if err := devices.Set(ctx, "devices password"); err != nil {
+		t.Fatalf("Set() error = %v", err)
+	}
+	if set, err := status.IsSet(ctx); err != nil || set {
+		t.Fatalf("status IsSet() = %v, %v with only the devices password; want false", set, err)
+	}
+
+	if err := status.Change(ctx, "short"); !errors.Is(err, ErrLength) {
+		t.Errorf("Change(%q) error = %v, want ErrLength", "short", err)
+	}
+	if err := status.Change(ctx, "first status"); err != nil {
+		t.Fatalf("Change() error = %v", err)
+	}
+	if err := status.Change(ctx, "second status"); err != nil {
+		t.Fatalf("Change() a second time: error = %v", err)
+	}
+	if err := status.Check(ctx, office, "second status"); err != nil {
+		t.Errorf("Check() with the changed password: error = %v", err)
+	}
+	if err := status.Check(ctx, laptop, "first status"); !errors.Is(err, ErrWrong) {
+		t.Errorf("Check() with the old password: error = %v, want ErrWrong", err)
+	}
+	if err := devices.Check(ctx, office, "devices password"); err != nil {
+		t.Errorf("devices Check() after changing the status password: error = %v", err)
+	}
+}
+
 func TestGuessesInParallelGetOneAnswerASecond(t *testing.T) {
 	ctx := context.Background()
 	p := openTestPassword(t)

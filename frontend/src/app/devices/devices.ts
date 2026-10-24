@@ -183,6 +183,8 @@ export class DeviceService {
   readonly selectedId = signal(LOCAL_DEVICE.id);
   /** Whether the page compares all devices instead of showing the picked one. */
   readonly comparing = signal(false);
+  /** Whether the page shows the home page of all devices instead of the picked one. */
+  readonly home = signal(false);
   readonly selected = computed(
     () => this.devices().find((d) => d.id === this.selectedId()) ?? LOCAL_DEVICE,
   );
@@ -190,6 +192,19 @@ export class DeviceService {
   /** Shows the device on its own, also when the devices were being compared. */
   show(id: string): void {
     this.selectedId.set(id);
+    this.comparing.set(false);
+    this.home.set(false);
+  }
+
+  /** Compares all devices, also when the home page was shown. */
+  compare(): void {
+    this.comparing.set(true);
+    this.home.set(false);
+  }
+
+  /** Shows the home page of all devices. */
+  goHome(): void {
+    this.home.set(true);
     this.comparing.set(false);
   }
 

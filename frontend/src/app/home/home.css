@@ -1,0 +1,152 @@
+h2 {
+  margin: 0 0 1rem;
+  font: var(--mat-sys-headline-small);
+}
+
+h3 {
+  margin: 1.5rem 0 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-title-small);
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The sentence on top, green when all is fine and in the color of the worst alert otherwise. */
+.status {
+  padding: 1rem 1.25rem;
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface-container-low);
+
+  > p {
+    margin: 0;
+  }
+
+  &.alert {
+    background: var(--alert-level-surface);
+    color: var(--on-alert-level-surface);
+  }
+
+  &.warning {
+    background: var(--warning-level-surface);
+    color: var(--on-warning-level-surface);
+  }
+}
+
+.headline {
+  font: var(--mat-sys-title-large);
+}
+
+.problems {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+
+  button {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: center;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: var(--mat-sys-corner-medium);
+    background: var(--mat-sys-surface-container-low);
+    color: var(--mat-sys-on-surface);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+}
+
+.problems .name,
+.tiles .name {
+  font: var(--mat-sys-title-small);
+}
+
+.problems .text {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* Even tiles, as many in a row as fit. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: 0.5rem;
+
+  button {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    height: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--mat-sys-corner-medium);
+    background: var(--mat-sys-surface-container-low);
+    color: var(--mat-sys-on-surface);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &.alert {
+      border-color: var(--alert-level);
+    }
+
+    &.warning {
+      border-color: var(--warning-level);
+    }
+  }
+}
+
+.problems button,
+.tiles button {
+  &:hover {
+    background: var(--mat-sys-surface-container);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+  }
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+
+  > .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.bars {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.25rem 0.5rem;
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+
+  > progress {
+    width: 100%;
+  }
+
+  > .value {
+    color: var(--mat-sys-on-surface);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+}
+
+.note {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}

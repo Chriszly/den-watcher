@@ -1,0 +1,89 @@
+@let c = counts();
+<h2>{{ i18n.t('home.title') }}</h2>
+<!-- One sentence on how the devices are, in the color of the worst that needs a look. -->
+<div class="status" [class]="problems()[0]?.level ?? 'fine'" role="status">
+  <p class="headline">
+    @if (c.look > 0) {
+      {{ i18n.plural(c.look, 'home.look.one', 'home.look.other') }}
+    } @else {
+      {{ i18n.t('home.allFine') }}
+    }
+  </p>
+  <p>
+    {{ i18n.plural(c.fine, 'home.fine.one', 'home.fine.other') }}
+    @if (c.notInUse > 0) {
+      · {{ i18n.plural(c.notInUse, 'home.notInUse.one', 'home.notInUse.other') }}
+    }
+  </p>
+</div>
+
+@if (problems().length > 0) {
+  <ul class="problems">
+    @for (p of problems(); track $index) {
+      <li>
+        <button type="button" [title]="i18n.t('compare.open')" (click)="devices.show(p.device.id)">
+          <app-alert-icon [level]="p.level" aria-hidden="true" />
+          <span class="name">{{ deviceName(p.device) }}</span>
+          <span class="text">{{ p.text }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+}
+
+@for (group of groups(); track group.kind) {
+  <section [attr.aria-labelledby]="'home-group-' + group.kind">
+    <h3 [id]="'home-group-' + group.kind">{{ i18n.t(`devices.group.${group.kind}`) }}</h3>
+    <ul class="tiles">
+      @for (tile of group.tiles; track tile.device.id) {
+        @let s = tile.summary;
+        <li>
+          <button
+            type="button"
+            [class]="tile.alert"
+            [title]="i18n.t('compare.open')"
+            (click)="devices.show(tile.device.id)"
+          >
+            <span class="title">
+              <app-status-dot [state]="tile.state" />
+              <span class="name">{{ tile.name }}</span>
+              @if (tile.alert; as level) {
+                <app-alert-icon
+                  [level]="level"
+                  role="img"
+                  [attr.aria-label]="i18n.t('alerts.onCard')"
+                />
+              }
+            </span>
+            @if (s && (s.cpu !== undefined || s.memory !== undefined || s.disk)) {
+              <span class="bars">
+                @if (s.cpu !== undefined) {
+                  <span>{{ i18n.t('compare.cpu') }}</span>
+                  <progress max="100" [value]="s.cpu"></progress>
+                  <span class="value">{{ s.cpu | number: '1.0-0' : i18n.language() }} %</span>
+                }
+                @if (s.memory !== undefined) {
+                  <span>{{ i18n.t('compare.memory') }}</span>
+                  <progress max="100" [value]="s.memory"></progress>
+                  <span class="value">{{ s.memory | number: '1.0-0' : i18n.language() }} %</span>
+                }
+                @if (s.disk; as d) {
+                  <span [title]="d.path">{{ i18n.t('home.disk') }}</span>
+                  <progress max="100" [value]="d.percent"></progress>
+                  <span class="value">{{ d.percent | number: '1.0-0' : i18n.language() }} %</span>
+                }
+              </span>
+              @if (s.temperature; as t) {
+                <span class="note"
+                  >{{ t.celsius | number: '1.0-0' : i18n.language() }} °C · {{ t.sensor }}</span
+                >
+              }
+            } @else if (tile.note) {
+              <span class="note">{{ tile.note }}</span>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  </section>
+}

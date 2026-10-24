@@ -45,6 +45,18 @@ describe('DeviceService', () => {
     expect(devices.comparing()).toBe(false);
   });
 
+  it('shows the home page or the comparison, one at a time, until a device is picked', () => {
+    http.expectOne('/api/devices').flush({ devices: [{ id: 'local', name: '' }] });
+
+    devices.goHome();
+    expect([devices.home(), devices.comparing()]).toEqual([true, false]);
+    devices.compare();
+    expect([devices.home(), devices.comparing()]).toEqual([false, true]);
+    devices.goHome();
+    devices.show('local');
+    expect([devices.home(), devices.comparing()]).toEqual([false, false]);
+  });
+
   it('reads the list again every few seconds, and only now and then while the page is hidden', () => {
     let visibilityState: DocumentVisibilityState = 'visible';
     vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibilityState);

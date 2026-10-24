@@ -10,6 +10,7 @@ import { Dashboard } from './dashboard/dashboard';
 import { DevicePicker } from './devices/device-picker';
 import { DeviceService, deviceName } from './devices/devices';
 import { ManageButton } from './devices/manage-button';
+import { Home } from './home/home';
 import { I18n } from './i18n/i18n';
 import { KioskAlerts } from './kiosk/kiosk-alerts';
 import { KioskMode } from './kiosk/kiosk';
@@ -28,6 +29,7 @@ import { UpdateNotice } from './update/update-notice';
     ConnectionBanner,
     Dashboard,
     DevicePicker,
+    Home,
     KioskAlerts,
     LanguageSwitcher,
     ManageButton,

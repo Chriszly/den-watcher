@@ -58,6 +58,8 @@
     } @error {
       <app-missing-part />
     }
+  } @else if (devices.home() && several && !kiosk.on) {
+    <app-home />
   } @else {
     <app-dashboard />
   }

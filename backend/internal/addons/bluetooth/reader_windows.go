@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -49,11 +50,12 @@ type deviceInfo struct {
 	name          [248]uint16
 }
 
-// NewReader returns what reads the connected devices, through Windows'
-// Bluetooth API in bluetoothapis.dll: the classic devices, such as headsets,
-// speakers and older keyboards and mice, with their name and kind. The API
-// does not list Bluetooth Low Energy devices, so those do not show. Without
-// a Bluetooth radio it reads nothing. Why it cannot read is logged once, and
+// NewReader returns what reads the connected devices, with their name and
+// kind: the classic devices, such as headsets, speakers and older keyboards
+// and mice, through Windows' Bluetooth API in bluetoothapis.dll, and the
+// Bluetooth Low Energy ones, such as newer game controllers, keyboards and
+// mice, through Windows' device query (see le_windows.go). Without a
+// Bluetooth radio it reads nothing. Why it cannot read is logged once, and
 // again when it changes. The sysDir of other systems means nothing here.
 func NewReader(string) func(context.Context) *Reading {
 	logged := ""
@@ -90,7 +92,8 @@ func readDevices() (*Reading, error) {
 	if err != nil {
 		return nil, errors.Join(radioErr, err)
 	}
-	return readingOfInfos(infos), radioErr
+	endpoints, leErr := findLEDevices()
+	return readingOf(infos, leDevices(endpoints)), errors.Join(radioErr, leErr)
 }
 
 // hasRadio reports whether the computer has a Bluetooth radio that is on.
@@ -140,8 +143,10 @@ func findDevices() ([]deviceInfo, error) {
 	}
 }
 
-// readingOfInfos returns the connected devices of infos.
-func readingOfInfos(infos []deviceInfo) *Reading {
+// readingOf returns the connected classic devices of infos, and the
+// connected LE devices le that are not among them: a device that speaks both
+// shows once.
+func readingOf(infos []deviceInfo, le []Device) *Reading {
 	reading := &Reading{}
 	for _, info := range infos {
 		if info.connected == 0 {
@@ -152,6 +157,11 @@ func readingOfInfos(infos []deviceInfo) *Reading {
 			Name: windows.UTF16ToString(info.name[:]),
 			Kind: classKind(info.classOfDevice),
 		})
+	}
+	for _, d := range le {
+		if !slices.ContainsFunc(reading.Devices, func(c Device) bool { return c.Key == d.Key }) {
+			reading.Devices = append(reading.Devices, d)
+		}
 	}
 	reading.Connected = len(reading.Devices)
 	return reading

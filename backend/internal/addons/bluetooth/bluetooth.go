@@ -3,8 +3,9 @@
 // over the system D-Bus for the name, kind and battery of each connected
 // device (see bluez.go), and where BlueZ cannot be asked, counts the
 // connections the kernel lists in /sys/class/bluetooth (see sysfs.go). On
-// Windows it asks the Bluetooth API for the connected classic devices (see
-// reader_windows.go). Other systems report nothing.
+// Windows it asks the Bluetooth API for the connected classic devices and the
+// device query for the connected Bluetooth Low Energy ones (see
+// reader_windows.go and le_windows.go). Other systems report nothing.
 //
 // It only reads; nothing in here changes the machine or its Bluetooth: it
 // starts no scan and connects or disconnects nothing.
@@ -99,6 +100,32 @@ func classKind(class uint32) Kind {
 		if minor&0xf == 1 || minor&0xf == 2 { // joystick, gamepad
 			return KindGameController
 		}
+	}
+	return KindOther
+}
+
+// appearanceKind returns the kind of a Bluetooth Low Energy device from the
+// appearance it gives, as the Bluetooth specification's assigned numbers
+// define it: the category in bits 6 to 15, and a subcategory below it.
+func appearanceKind(appearance uint16) Kind {
+	switch appearance >> 6 {
+	case 0x001:
+		return KindPhone
+	case 0x002:
+		return KindComputer
+	case 0x00f: // human interface device
+		switch appearance & 0x3f {
+		case 1:
+			return KindKeyboard
+		case 2:
+			return KindMouse
+		case 3, 4: // joystick, gamepad
+			return KindGameController
+		}
+	case 0x021: // audio sink
+		return KindSpeaker
+	case 0x025: // wearable audio device: earbud, headset, headphones
+		return KindHeadphones
 	}
 	return KindOther
 }

@@ -29,6 +29,25 @@ func TestClassKind(t *testing.T) {
 	}
 }
 
+func TestAppearanceKind(t *testing.T) {
+	for appearance, want := range map[uint16]Kind{
+		0x03c4: KindGameController, // gamepad, as an Xbox controller gives
+		0x03c3: KindGameController, // joystick
+		0x03c1: KindKeyboard,
+		0x03c2: KindMouse,
+		0x03c0: KindOther,      // a human interface device of no named sort
+		0x0941: KindHeadphones, // earbud
+		0x0841: KindSpeaker,
+		0x0040: KindPhone,
+		0x0080: KindComputer,
+		0x0000: KindOther,
+	} {
+		if got := appearanceKind(appearance); got != want {
+			t.Errorf("appearanceKind(%#06x) = %v, want %v", appearance, got, want)
+		}
+	}
+}
+
 func TestExtrasWithoutBluetoothShowNothing(t *testing.T) {
 	if got := Extras(nil); got != nil {
 		t.Errorf("Extras(nil) = %+v, want nothing", got)

@@ -7,6 +7,7 @@ import {
   Injector,
   afterNextRender,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -29,6 +30,7 @@ import {
   LOCAL_DEVICE,
   deviceName,
   switchedOff,
+  readByHub,
 } from '../devices/devices';
 import { I18n } from '../i18n/i18n';
 import { MessageKey } from '../i18n/messages/en';
@@ -80,6 +82,8 @@ import { FitLabels } from './fit-labels';
 import { Glance } from './glance';
 import { HiddenCard, HiddenCards } from './hidden-cards';
 import { PageView, ViewSwitch } from './page-view';
+import { RowKey, rowKeys } from './row-keys';
+import { CategoryRow } from './category-row';
 
 /** How often the dashboard asks the backend for new values. */
 export const REFRESH_INTERVAL_MS = 2000;
@@ -308,6 +312,7 @@ type Problem = 'backend' | 'device';
     CardCharts,
     CategoryCharts,
     CategoryFold,
+    CategoryRow,
     Details,
     DecimalPipe,
     DiskForecast,
@@ -407,6 +412,20 @@ export class Dashboard {
   protected readonly smartCard = ALERT_CARDS.smart;
   /** Whether the values show as cards in the categories or on one timeline; the switch above them picks it. */
   protected readonly pageView = inject(PageView);
+  /** The category open in the rows view; one at a time, so the page stays short. */
+  protected readonly openRow = signal<Section | null>(null);
+  /** The main values of each category, for the heads of the rows. */
+  private readonly keys = computed(() => {
+    const s = this.snapshot();
+    return s
+      ? rowKeys(
+          s,
+          this.history.history()?.series ?? [],
+          readByHub(this.devices.selected()),
+          this.i18n,
+        )
+      : {};
+  });
   protected readonly kiosk = inject(KioskMode);
   /**
    * The sections of the page: the pinned cards, then the categories, or one section of every other
@@ -423,9 +442,11 @@ export class Dashboard {
     const arranging = this.arrangement.arranging();
     const isCard = (card: Card) => card.kind !== 'extra' || !isDetailGroup(card.group.id);
     const made = this.arrangement.made();
-    const pinned = this.arrangement
-      .pinned()
-      .flatMap((id) => cards.filter((card) => card.id === id && isCard(card) && !hidden.has(id)));
+    // The rows view shows every card in its category, so it has no pinned cards and is always grouped.
+    const rows = this.pageView.view() === 'rows' && !this.kiosk.on;
+    const pinned = (rows ? [] : this.arrangement.pinned()).flatMap((id) =>
+      cards.filter((card) => card.id === id && isCard(card) && !hidden.has(id)),
+    );
     const pinnedIds = new Set(pinned.map((card) => card.id));
     const pinnedSection: DashboardSection = {
       category: PINNED,
@@ -439,7 +460,7 @@ export class Dashboard {
     // Not grouped, every card that is not pinned shows in one section, in the order of the
     // categories until it is moved.
     const groups: { section: Section; cards: Card[]; arranged: Card[]; charts: Chart[] }[] =
-      this.arrangement.grouped()
+      this.arrangement.grouped() || rows
         ? CATEGORIES.map((category) => ({
             section: category,
             cards: inCategory(category),
@@ -505,6 +526,12 @@ export class Dashboard {
   protected readonly loadAverageText = loadAverageText;
 
   constructor() {
+    // Cards are arranged only where they show as cards.
+    effect(() => {
+      if (this.pageView.view() !== 'cards' && this.arrangement.arranging()) {
+        this.arrangement.arranging.set(false);
+      }
+    });
     toObservable(this.devices.selectedId)
       .pipe(
         // Another device's values are not shown while the picked one's load.
@@ -713,6 +740,15 @@ export class Dashboard {
   }
 
   /** How many cards, charts and detail values a folded category holds, for its title. */
+  /** Opens a row of the rows view, closing the one open before, or closes it when it is open. */
+  protected toggleRow(category: Section): void {
+    this.openRow.update((open) => (open === category ? null : category));
+  }
+
+  protected keysOf(category: Section): RowKey[] {
+    return (this.keys() as Partial<Record<Section, RowKey[]>>)[category] ?? [];
+  }
+
   protected sectionCount(cards: number, charts: number, values: number): string {
     return [
       cards > 0 ? this.i18n.plural(cards, 'categories.cards.one', 'categories.cards.other') : '',

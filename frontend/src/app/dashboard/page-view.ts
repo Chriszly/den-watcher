@@ -3,8 +3,11 @@ import { DOCUMENT, Component, Injectable, inject, signal } from '@angular/core';
 import { readStored, store } from '../browser';
 import { I18n } from '../i18n/i18n';
 
-/** How the page shows a device's values: as cards by category, or as one timeline of every value. */
-export type View = 'cards' | 'timeline';
+/**
+ * How the page shows a device's values: as one even row per category that opens its cards, as
+ * cards by category, or as one timeline of every value.
+ */
+export type View = 'rows' | 'cards' | 'timeline';
 
 /** Where the picked view is kept between visits, in localStorage. */
 export const VIEW_STORAGE_KEY = 'view';
@@ -13,7 +16,7 @@ export const OLD_TIMELINE_STORAGE_KEY = 'timeline';
 
 function storedView(window: Window | null): View {
   const view = readStored(window, VIEW_STORAGE_KEY);
-  if (view === 'cards' || view === 'timeline') {
+  if (view === 'rows' || view === 'cards' || view === 'timeline') {
     return view;
   }
   return readStored(window, OLD_TIMELINE_STORAGE_KEY) === 'true' ? 'timeline' : 'cards';
@@ -33,6 +36,7 @@ export class PageView {
 
 /** The views in the order the switch shows them, each with its label and the path of its icon. */
 const VIEWS = [
+  { view: 'rows', label: 'view.rows', icon: 'M4 6h16M4 12h16M4 18h16' },
   {
     view: 'cards',
     label: 'view.cards',

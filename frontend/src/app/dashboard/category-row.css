@@ -1,0 +1,123 @@
+/* The title on the left, the values in four even columns, the chevron on the right; on a phone the
+   values go under the title, two by two. */
+.head {
+  display: grid;
+  grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr) 1.5rem;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.875rem 1.25rem;
+  border: none;
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface-container-low);
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mat-sys-surface-container);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+  }
+
+  &[aria-expanded='true'] {
+    border-radius: var(--mat-sys-corner-large) var(--mat-sys-corner-large) 0 0;
+  }
+}
+
+.name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font: var(--mat-sys-title-medium);
+
+  > app-alert-icon {
+    --alert-icon-size: 1.25rem;
+  }
+}
+
+.count {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.keys {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.key {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  > app-sparkline {
+    height: 1.5rem;
+    margin-top: 0.25rem;
+  }
+}
+
+.label {
+  overflow: hidden;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  font: var(--mat-sys-title-large);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.unit {
+  margin-left: 0.25rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+/* Points right while closed and down while open. */
+.chevron::before {
+  content: '';
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin: auto;
+  border-right: 2px solid var(--mat-sys-on-surface-variant);
+  border-bottom: 2px solid var(--mat-sys-on-surface-variant);
+  transform: rotate(-45deg);
+  transition: transform 150ms;
+}
+
+.head[aria-expanded='true'] > .chevron::before {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron::before {
+    transition: none;
+  }
+}
+
+@media (width < 56rem) {
+  .head {
+    grid-template-columns: minmax(0, 1fr) 1.5rem;
+  }
+
+  .keys {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

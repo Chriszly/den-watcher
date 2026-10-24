@@ -111,8 +111,12 @@
   <app-range-picker />
 }
 
+@let rows = pageView.view() === 'rows' && !kiosk.on;
+<!-- The rows show the main values themselves, so they do without the glance row. -->
 @if (snapshot(); as s) {
-  <app-glance [snapshot]="s" [class.stale]="connection.lost()" />
+  @if (!rows) {
+    <app-glance [snapshot]="s" [class.stale]="connection.lost()" />
+  }
 } @else if (problem() === 'device' && shownAvailability(); as a) {
   <div class="cards alone">
     <ng-container *ngTemplateOutlet="uptimeCard; context: { $implicit: null, availability: a }" />
@@ -126,7 +130,7 @@
 @if (!kiosk.on && (snapshot() || timeline)) {
   <div class="view-bar">
     <app-view-switch />
-    @if (snapshot() && !timeline) {
+    @if (snapshot() && pageView.view() === 'cards') {
       <app-arrange-bar />
     }
   </div>
@@ -134,17 +138,33 @@
 @if (timeline) {
   <app-timeline [class.stale]="connection.lost()" />
 } @else {
-  @let arranging = arrangement.arranging();
-  <div class="categories" [class.stale]="connection.lost()">
+  @let arranging = arrangement.arranging() && !rows;
+  <div class="categories" [class.rows]="rows" [class.stale]="connection.lost()">
     @for (section of sections(); track section.category) {
-      @let folded = foldedCategories.folded().has(section.category);
-      <section class="category" [attr.aria-labelledby]="'category-' + section.category">
+      @let folded =
+        rows ? openRow() !== section.category : foldedCategories.folded().has(section.category);
+      <section
+        class="category"
+        [class.open]="rows && !folded"
+        [attr.aria-labelledby]="'category-' + section.category"
+      >
         <h2 class="category-title" [id]="'category-' + section.category">
-          <app-category-fold
-            [category]="section.category"
-            [count]="sectionCount(section.cards.length, section.charts.length, section.values)"
-            [alert]="categoryAlert(section.cards)"
-          />
+          @if (rows && section.category !== 'pinned' && section.category !== 'all') {
+            <app-category-row
+              [category]="section.category"
+              [keys]="keysOf(section.category)"
+              [count]="sectionCount(section.cards.length, section.charts.length, section.values)"
+              [alert]="categoryAlert(section.cards)"
+              [open]="!folded"
+              (opened)="toggleRow(section.category)"
+            />
+          } @else {
+            <app-category-fold
+              [category]="section.category"
+              [count]="sectionCount(section.cards.length, section.charts.length, section.values)"
+              [alert]="categoryAlert(section.cards)"
+            />
+          }
         </h2>
         @if (!folded) {
           @if (snapshot(); as s) {

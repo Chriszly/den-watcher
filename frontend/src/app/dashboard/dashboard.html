@@ -121,13 +121,20 @@
   <p>{{ i18n.t('dashboard.loading') }}</p>
 }
 
-@if (timeline.on() && !kiosk.on) {
+@let timeline = pageView.view() === 'timeline' && !kiosk.on;
+<!-- A wall display always shows the cards, and takes no clicks to pick another view. -->
+@if (!kiosk.on && (snapshot() || timeline)) {
+  <div class="view-bar">
+    <app-view-switch />
+    @if (snapshot() && !timeline) {
+      <app-arrange-bar />
+    }
+  </div>
+}
+@if (timeline) {
   <app-timeline [class.stale]="connection.lost()" />
 } @else {
   @let arranging = arrangement.arranging();
-  @if (snapshot() && !kiosk.on) {
-    <app-arrange-bar />
-  }
   <div class="categories" [class.stale]="connection.lost()">
     @for (section of sections(); track section.category) {
       @let folded = foldedCategories.folded().has(section.category);

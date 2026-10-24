@@ -232,3 +232,17 @@ progress {
 .slot.cdk-drag-animating {
   transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
 }
+
+/* Above the values: the switch between the cards and the timeline, then the arranging of the cards. */
+.view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+
+  > app-arrange-bar {
+    flex: 1 1 auto;
+    margin-top: 0;
+  }
+}

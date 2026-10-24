@@ -1,8 +1,7 @@
 import { DatePipe, formatDate } from '@angular/common';
-import { DOCUMENT, Component, Injectable, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { readStored, store } from '../browser';
 import { I18n } from '../i18n/i18n';
 import { ChartEvents } from './chart-events';
 import { HistoryStore } from './history-store';
@@ -14,21 +13,6 @@ import { TimelineLine, TimelineRow } from './timeline-row';
 import { CsvDownload } from './csv-download';
 import { TimelineMarks } from './timeline-marks';
 import { Stretch, TimelineZoom } from './timeline-zoom';
-
-/** Where the choice of the timeline over the cards is kept between visits, in localStorage. */
-export const TIMELINE_STORAGE_KEY = 'timeline';
-
-/** Whether the page shows every value on one timeline instead of the cards; kept for the next visit. */
-@Injectable({ providedIn: 'root' })
-export class TimelineMode {
-  private readonly window = inject(DOCUMENT).defaultView;
-  readonly on = signal(readStored(this.window, TIMELINE_STORAGE_KEY) === 'true');
-
-  toggle(): void {
-    this.on.update((on) => !on);
-    store(this.window, TIMELINE_STORAGE_KEY, String(this.on()));
-  }
-}
 
 /**
  * Every value of the picked device as one row, all over one time axis: the range picked at the top

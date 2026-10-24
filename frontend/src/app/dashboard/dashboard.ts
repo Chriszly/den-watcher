@@ -22,7 +22,7 @@ import { CategoryCharts } from '../history/category-charts';
 import { Chart, DeviceCharts, valueChartsOf } from '../history/history';
 import { HistoryStore } from '../history/history-store';
 import { RangePicker } from '../history/range-picker';
-import { Timeline, TimelineMode } from '../history/timeline';
+import { Timeline } from '../history/timeline';
 import {
   Availability,
   DeviceService,
@@ -79,6 +79,7 @@ import { DiskForecast } from './disk-forecast';
 import { FitLabels } from './fit-labels';
 import { Glance } from './glance';
 import { HiddenCard, HiddenCards } from './hidden-cards';
+import { PageView, ViewSwitch } from './page-view';
 
 /** How often the dashboard asks the backend for new values. */
 export const REFRESH_INTERVAL_MS = 2000;
@@ -318,6 +319,7 @@ type Problem = 'backend' | 'device';
     RangePicker,
     ScrollRows,
     Timeline,
+    ViewSwitch,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
@@ -403,8 +405,8 @@ export class Dashboard {
   });
   /** The card the SMART alerts show on: the one with the group's values, not the ones split off it. */
   protected readonly smartCard = ALERT_CARDS.smart;
-  /** Whether every value shows on one timeline instead of in the categories; the mascot switches it. */
-  protected readonly timeline = inject(TimelineMode);
+  /** Whether the values show as cards in the categories or on one timeline; the switch above them picks it. */
+  protected readonly pageView = inject(PageView);
   protected readonly kiosk = inject(KioskMode);
   /**
    * The sections of the page: the pinned cards, then the categories, or one section of every other

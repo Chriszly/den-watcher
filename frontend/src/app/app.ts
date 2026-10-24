@@ -10,7 +10,6 @@ import { Dashboard } from './dashboard/dashboard';
 import { DevicePicker } from './devices/device-picker';
 import { DeviceService, deviceName } from './devices/devices';
 import { ManageButton } from './devices/manage-button';
-import { TimelineMode } from './history/timeline';
 import { I18n } from './i18n/i18n';
 import { KioskAlerts } from './kiosk/kiosk-alerts';
 import { KioskMode } from './kiosk/kiosk';
@@ -45,7 +44,6 @@ export class App {
   protected readonly devices = inject(DeviceService);
   protected readonly sidebar = inject(SidebarState);
   protected readonly i18n = inject(I18n);
-  protected readonly timeline = inject(TimelineMode);
   protected readonly kiosk = inject(KioskMode);
   protected readonly parts = inject(MissingParts);
 

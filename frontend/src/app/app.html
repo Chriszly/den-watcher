@@ -21,20 +21,7 @@
         <span class="visually-hidden">{{ i18n.t('sidebar.open') }}</span>
       </button>
     }
-    @if (kiosk.on) {
-      <span class="mascot"><app-mascot /></span>
-    } @else {
-      <!-- A quiet switch: the mascot turns the cards into one timeline of every value, and back. -->
-      <button
-        type="button"
-        class="mascot"
-        [attr.aria-pressed]="timeline.on()"
-        [attr.aria-label]="i18n.t('timeline.show')"
-        (click)="timeline.toggle()"
-      >
-        <app-mascot />
-      </button>
-    }
+    <span class="mascot"><app-mascot /></span>
     <h1>Den-Watcher</h1>
     @if (kiosk.on) {
       @if (several) {

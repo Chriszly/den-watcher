@@ -246,3 +246,29 @@ progress {
     margin-top: 0;
   }
 }
+
+/* The rows view: one even row per category, and the open one's cards in a frame under its head. */
+.categories.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+
+  > .category {
+    margin: 0;
+    border-radius: var(--mat-sys-corner-large);
+  }
+
+  > .category.open {
+    padding: 0 1rem 1rem;
+    border: 1px solid var(--mat-sys-surface-container-low);
+
+    > .category-title {
+      margin: 0 -1rem 1rem;
+    }
+  }
+
+  .category-title:has(app-category-row) {
+    margin: 0;
+  }
+}

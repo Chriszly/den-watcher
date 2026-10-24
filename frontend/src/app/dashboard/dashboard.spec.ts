@@ -988,17 +988,62 @@ describe('Dashboard', () => {
     respond(snapshot);
     const element = fixture.nativeElement as HTMLElement;
     const buttons = [...element.querySelectorAll<HTMLButtonElement>('app-view-switch button')];
-    expect(buttons.map((b) => b.textContent!.trim())).toEqual(['Cards', 'Timeline']);
+    expect(buttons.map((b) => b.textContent!.trim())).toEqual(['Rows', 'Cards', 'Timeline']);
     expect(element.querySelector('app-arrange-bar')).not.toBeNull();
 
-    buttons[1].click();
+    buttons[2].click();
     fixture.detectChanges();
     expect(element.querySelector('app-timeline')).not.toBeNull();
     expect(element.querySelector('.categories')).toBeNull();
     expect(element.querySelector('app-arrange-bar')).toBeNull();
     expect(element.querySelector('app-glance')).not.toBeNull();
-    expect(buttons[1].getAttribute('aria-pressed')).toBe('true');
+    expect(buttons[2].getAttribute('aria-pressed')).toBe('true');
 
+    TestBed.inject(PageView).pick('cards');
+    localStorage.removeItem(VIEW_STORAGE_KEY);
+  });
+
+  it('shows one row per category with its main values, and opens one row at a time', () => {
+    TestBed.inject(PageView).pick('rows');
+    respond(snapshot);
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('app-glance')).toBeNull();
+    expect(element.querySelector('app-arrange-bar')).toBeNull();
+    const heads = () => [...element.querySelectorAll<HTMLButtonElement>('app-category-row button')];
+    expect(heads().map((b) => b.querySelector('.title')!.textContent!.trim())).toEqual([
+      'System',
+      'Storage',
+      'Network',
+      'Temperature and power',
+      'Device',
+    ]);
+    expect([...heads()[0].querySelectorAll('.key .label')].map((l) => l.textContent)).toEqual([
+      'CPU',
+      'Memory',
+    ]);
+    expect(heads()[0].querySelector('.key .value')!.textContent).toBe('12.5%');
+    expect(element.querySelector('.category .card')).toBeNull();
+
+    heads()[0].click();
+    fixture.detectChanges();
+    expect(heads()[0].getAttribute('aria-expanded')).toBe('true');
+    expect(element.querySelector('.category.open .card')).not.toBeNull();
+
+    heads()[1].click();
+    fixture.detectChanges();
+    expect(heads()[0].getAttribute('aria-expanded')).toBe('false');
+    expect(heads()[1].getAttribute('aria-expanded')).toBe('true');
+
+    TestBed.inject(PageView).pick('cards');
+    localStorage.removeItem(VIEW_STORAGE_KEY);
+  });
+
+  it('stops arranging the cards when another view is picked', () => {
+    respond(snapshot);
+    TestBed.inject(Arrangement).arranging.set(true);
+    TestBed.inject(PageView).pick('rows');
+    fixture.detectChanges();
+    expect(TestBed.inject(Arrangement).arranging()).toBe(false);
     TestBed.inject(PageView).pick('cards');
     localStorage.removeItem(VIEW_STORAGE_KEY);
   });

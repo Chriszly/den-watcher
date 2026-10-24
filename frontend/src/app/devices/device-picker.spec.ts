@@ -133,6 +133,28 @@ describe('DevicePicker', () => {
     expect(pressed()).toEqual([false, false, true]);
   });
 
+  it('shows the home page until a device or the comparison is picked', () => {
+    show([
+      { id: 'local', name: '' },
+      { id: 'pi', name: 'Pi' },
+    ]);
+    const devices = TestBed.inject(DeviceService);
+    const home = element().querySelector<HTMLButtonElement>('.home')!;
+    const compare = element().querySelector<HTMLButtonElement>('.compare')!;
+    const pressed = () =>
+      [home, compare, ...items()].map((b) => b.getAttribute('aria-pressed') === 'true');
+    expect(text(home)).toBe('Home');
+
+    home.click();
+    fixture.detectChanges();
+    expect(devices.home()).toBe(true);
+    expect(pressed()).toEqual([true, false, false, false]);
+
+    compare.click();
+    fixture.detectChanges();
+    expect(pressed()).toEqual([false, true, false, false]);
+  });
+
   it('tells why a device does not answer, and a PC that is off is just not in use', () => {
     show([
       { id: 'local', name: '' },

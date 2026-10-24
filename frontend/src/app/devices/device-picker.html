@@ -1,9 +1,21 @@
 <button
   type="button"
+  class="home"
+  [attr.aria-pressed]="devices.home()"
+  [title]="i18n.t('home.title')"
+  (click)="devices.goHome()"
+>
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 3 3 10.5V21h6.5v-6h5v6H21V10.5z" />
+  </svg>
+  <span [class.visually-hidden]="compact()">{{ i18n.t('home.title') }}</span>
+</button>
+<button
+  type="button"
   class="compare"
   [attr.aria-pressed]="devices.comparing()"
   [title]="i18n.t('compare.title')"
-  (click)="devices.comparing.set(true)"
+  (click)="devices.compare()"
 >
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
@@ -19,7 +31,9 @@
           <app-device-item
             [device]="device"
             [summary]="fleet.summaries().get(device.id)"
-            [selected]="!devices.comparing() && device.id === devices.selectedId()"
+            [selected]="
+              !devices.comparing() && !devices.home() && device.id === devices.selectedId()
+            "
             [compact]="compact()"
             (picked)="devices.show(device.id)"
           />

@@ -21,6 +21,9 @@ import (
 type fakePassword struct {
 	mu   sync.Mutex
 	word string
+	// wrongDelay is how late a wrong password is answered, as the real one
+	// does.
+	wrongDelay time.Duration
 }
 
 func (f *fakePassword) IsSet(context.Context) (bool, error) {
@@ -31,11 +34,13 @@ func (f *fakePassword) IsSet(context.Context) (bool, error) {
 
 func (f *fakePassword) Check(_ context.Context, _ netip.Addr, given string) error {
 	f.mu.Lock()
-	defer f.mu.Unlock()
+	word, delay := f.word, f.wrongDelay
+	f.mu.Unlock()
 	switch {
-	case f.word == "":
+	case word == "":
 		return password.ErrNotSet
-	case given != f.word:
+	case given != word:
+		time.Sleep(delay)
 		return password.ErrWrong
 	}
 	return nil
@@ -188,6 +193,45 @@ func TestWrongPasswordsLockAClientOut(t *testing.T) {
 	signIn(t, h, "198.51.100.7", "correct horse")
 
 	now = now.Add(lockout)
+	signIn(t, h, "203.0.113.5", "correct horse")
+}
+
+func TestGuessesSentAtOnceCountBeforeTheyAreAnswered(t *testing.T) {
+	page := New(func() []Device { return testDevices }, &fakePassword{word: "correct horse", wrongDelay: 50 * time.Millisecond})
+	h := page.Handler()
+
+	const sent = 20
+	codes := make(chan int, sent)
+	var wg sync.WaitGroup
+	for range sent {
+		wg.Go(func() {
+			codes <- send(h, http.MethodPost, "/login", "203.0.113.5", "", url.Values{"password": {"guess"}}).Code
+		})
+	}
+	wg.Wait()
+	close(codes)
+	checked := 0
+	for code := range codes {
+		if code == http.StatusUnauthorized {
+			checked++
+		}
+	}
+	if checked != maxWrong {
+		t.Errorf("%d of %d guesses sent at once were checked, want %d", checked, sent, maxWrong)
+	}
+}
+
+func TestARightPasswordOrNoneDoesNotUseUpGuesses(t *testing.T) {
+	page, h := newTestPage(t, "")
+	for range maxWrong + 1 {
+		send(h, http.MethodPost, "/login", "203.0.113.5", "", url.Values{"password": {"guess"}})
+	}
+	if err := page.ChangePassword(context.Background(), "correct horse"); err != nil {
+		t.Fatalf("ChangePassword() error = %v", err)
+	}
+	for range maxWrongAll + 1 {
+		signIn(t, h, "198.51.100.7", "correct horse")
+	}
 	signIn(t, h, "203.0.113.5", "correct horse")
 }
 

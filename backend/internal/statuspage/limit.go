@@ -67,8 +67,12 @@ func (l *limiter) allow(addr netip.Addr, now time.Time) bool {
 	return c.requests <= requestsPerMinute
 }
 
-// mayGuess reports whether the client at addr may send a password at now.
-func (l *limiter) mayGuess(addr netip.Addr, now time.Time) bool {
+// guess reports whether the client at addr may send a password at now, and
+// counts it as wrong until refund or succeeded says otherwise. Counting it
+// before it is checked keeps a client that sends many passwords at once from
+// getting more guesses than maxWrong, as each is counted before the next
+// asks.
+func (l *limiter) guess(addr netip.Addr, now time.Time) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if now.Sub(l.allStart) >= allWindow {
@@ -84,24 +88,32 @@ func (l *limiter) mayGuess(addr netip.Addr, now time.Time) bool {
 	if c.wrong >= maxWrong && now.Sub(c.lastWrong) >= lockout {
 		c.wrong = 0
 	}
-	return c.wrong < maxWrong
+	if c.wrong >= maxWrong {
+		return false
+	}
+	c.wrong++
+	c.lastWrong = now
+	l.allWrong++
+	return true
 }
 
-// failed counts a wrong password from the client at addr.
-func (l *limiter) failed(addr netip.Addr, now time.Time) {
+// refund takes back a guess of the client at addr that was not checked, as
+// no password is set or the check failed.
+func (l *limiter) refund(addr netip.Addr) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.allWrong++
-	if c := l.client(addr, now); c != nil {
-		c.wrong++
-		c.lastWrong = now
+	l.allWrong = max(l.allWrong-1, 0)
+	if c := l.clients[clientKey(addr)]; c != nil {
+		c.wrong = max(c.wrong-1, 0)
 	}
 }
 
-// succeeded forgets the wrong passwords of the client at addr.
+// succeeded takes back the right guess of the client at addr, and forgets
+// its wrong ones.
 func (l *limiter) succeeded(addr netip.Addr) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.allWrong = max(l.allWrong-1, 0)
 	if c := l.clients[clientKey(addr)]; c != nil {
 		c.wrong = 0
 	}

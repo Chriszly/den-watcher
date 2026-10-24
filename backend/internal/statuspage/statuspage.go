@@ -165,7 +165,7 @@ func (p *Page) login(w http.ResponseWriter, r *http.Request) {
 	}
 	client := clientOf(r)
 	now := p.now()
-	if !p.limits.mayGuess(client, now) {
+	if !p.limits.guess(client, now) {
 		w.Header().Set("Retry-After", retryAfter(lockout))
 		p.render(w, http.StatusTooManyRequests, loginView(text, text.TooMany, true))
 		return
@@ -173,13 +173,14 @@ func (p *Page) login(w http.ResponseWriter, r *http.Request) {
 	err := p.password.Check(r.Context(), client, r.PostForm.Get("password"))
 	switch {
 	case errors.Is(err, password.ErrNotSet):
+		p.limits.refund(client)
 		p.render(w, http.StatusForbidden, loginView(text, text.NotSet, false))
 		return
 	case errors.Is(err, password.ErrWrong):
-		p.limits.failed(client, p.now())
 		p.render(w, http.StatusUnauthorized, loginView(text, text.Wrong, true))
 		return
 	case err != nil:
+		p.limits.refund(client)
 		slog.Error("check the status page password", "error", err)
 		p.render(w, http.StatusInternalServerError, loginView(text, text.Failed, true))
 		return
